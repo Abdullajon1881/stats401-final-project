@@ -1,7 +1,7 @@
 {
   "project": "STATS 401 - Tashkent Transit & Walkability",
   "milestone": "Week 3 - data foundation",
-  "generated_at_utc": "2026-09-08T13:49:49+00:00",
+  "generated_at_utc": "2026-09-08T16:44:51+00:00",
   "generated_by": "scripts/acquire_data.py",
   "coordinate_reference_systems": {
     "storage_geographic": "EPSG:4326",
@@ -22,7 +22,7 @@
   },
   "sources": {
     "osm_boundaries": {
-      "acquired_at_utc": "2026-09-08T13:43:46+00:00",
+      "acquired_at_utc": "2026-09-08T16:43:45+00:00",
       "source": "OpenStreetMap (Overpass API / OSMnx)",
       "url": "https://www.openstreetmap.org/relation/2216724",
       "licence": "Open Database License (ODbL) v1.0",
@@ -52,19 +52,28 @@
         "city_boundary": 1,
         "districts_total": 13,
         "districts_matched_to_siat": 12
-      }
+      },
+      "overpass_endpoint": "https://overpass-api.de/api",
+      "notes": [
+        {
+          "id": "district_without_siat_row_17389398",
+          "text": "OSM district 'Yangi Toshkent Tumani' (relation 17389398, start_date=2024, 196 km2) is a member of the Tashkent city relation but has no SIAT population row. Kept with in_siat=False."
+        }
+      ]
     },
     "siat_population": {
-      "acquired_at_utc": "2026-09-08T12:07:51+00:00",
+      "acquired_at_utc": "2026-09-08T16:40:30+00:00",
       "source": "Statistics Agency under the President of the Republic of Uzbekistan (SIAT)",
       "url": "https://siat.stat.uz/data/3890/?lang=en",
       "api_url": "https://api.siat.stat.uz/sdmx/3890/table/download/?download_format=csv",
       "dataset_id": 3890,
       "dataset_code": "2.01.02.0056",
       "dataset_title": "Permanent population (city)",
-      "licence": "unclear",
-      "licence_note": "No explicit licence statement found on the SIAT dataset page or portal footer. Treated as official public statistics used with attribution; FLAGGED FOR REVIEW before publication.",
-      "licence_status": "unclear",
+      "licence": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "licence_status": "verified",
+      "licence_evidence": "The SIAT dataset page itself carries the footer \"Manba: Oʻzbekiston Respublikasi Statistika agentligi · Litsenziya: CC BY 4.0\" (Source: Statistics Agency of the Republic of Uzbekistan · Licence: CC BY 4.0), linking to https://creativecommons.org/licenses/by/4.0/. The parent site stat.uz states independently: \"All site materials are available under license: Creative Commons Attribution 4.0 International\".",
+      "attribution_required": "Statistics Agency under the President of the Republic of Uzbekistan; stat.uz asks that a link to www.stat.uz be provided when referencing its information.",
       "method": "HTTP GET of the portal CSV download endpoint, then the CSV it points to",
       "reference_period": "2026-Q2",
       "source_units": "thousand people",
@@ -88,13 +97,15 @@
       }
     },
     "worldpop": {
-      "acquired_at_utc": "2026-09-08T12:07:51+00:00",
+      "acquired_at_utc": "2026-09-08T16:40:31+00:00",
       "source": "WorldPop, University of Southampton",
       "url": "https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2026/UZB/v1/100m/constrained/uzb_pop_2026_CN_100m_R2025A_v1.tif",
       "landing_page": "https://hub.worldpop.org/geodata/summary?id=76048",
       "doi": "10.5258/SOTON/WP00839",
       "product": "Global_2015_2030 constrained, 100m, individual countries",
       "release": "R2025A",
+      "release_status": "alpha. The official release statement (worldpop.org, September 2025) says: \"The dataset currently represents an alpha version (R2025A) public release product and may change over the coming year as improvements are made.\" Treat as candidate within-district spatial weights, not validated truth.",
+      "release_statement_url": "https://data.worldpop.org/repo/prj/Global_2015_2030/R2025A/doc/Global2_Release_Statement_R2025A_v1.pdf",
       "product_year": 2026,
       "licence": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
       "licence_url": "https://hub.worldpop.org/data/licence.txt",
@@ -132,7 +143,7 @@
       }
     },
     "osm_walk_network": {
-      "acquired_at_utc": "2026-09-08T13:28:51+00:00",
+      "acquired_at_utc": "2026-09-08T16:43:11+00:00",
       "source": "OpenStreetMap (Overpass API / OSMnx)",
       "url": "https://www.openstreetmap.org/",
       "licence": "Open Database License (ODbL) v1.0",
@@ -152,16 +163,18 @@
       "feature_counts": {
         "nodes": 111386,
         "edges": 308272
-      }
+      },
+      "overpass_endpoint": "https://overpass.kumi.systems/api"
     },
     "osm_metro": {
-      "acquired_at_utc": "2026-09-08T13:49:49+00:00",
+      "acquired_at_utc": "2026-09-08T16:44:51+00:00",
       "licence": "Open Database License (ODbL) v1.0",
       "licence_url": "https://www.openstreetmap.org/copyright",
       "licence_status": "verified",
       "source": "OpenStreetMap (Overpass API / OSMnx)",
       "url": "https://www.openstreetmap.org/",
       "crs": "EPSG:4326",
+      "overpass_endpoint": "https://overpass-api.de/api",
       "method": "Overpass QL union query over the city bbox (out center), clipped to the city boundary",
       "query_rule": "Candidates: railway in (station, halt, subway_entrance), station=subway, subway=yes, public_transport=station. Station = (station=subway OR subway=yes) AND NOT railway=subway_entrance. Entrance = railway=subway_entrance. railway=station alone is rejected so the national railway terminal is not counted as a metro station.",
       "dedupe_rule": "Two station objects within 200 m that share any name variant (name / name:en / name:ru) are one station. This merges the Latin+Cyrillic double-mappings that OSM carries for several Tashkent stations while keeping genuine interchanges (Oybek/Mingo'rik, Paxtakor/Alisher Navoiy, Amir Temur xiyoboni/Yunus Rajabiy, Do'stlik/Texnopark) separate. A node beats a way; a Latin name beats a Cyrillic one. Entrances within 5 m collapse regardless of name.",
@@ -191,41 +204,49 @@
       }
     },
     "osm_bus_stops": {
-      "acquired_at_utc": "2026-09-08T13:49:49+00:00",
+      "acquired_at_utc": "2026-09-08T16:44:51+00:00",
       "licence": "Open Database License (ODbL) v1.0",
       "licence_url": "https://www.openstreetmap.org/copyright",
       "licence_status": "verified",
       "source": "OpenStreetMap (Overpass API / OSMnx)",
       "url": "https://www.openstreetmap.org/",
       "crs": "EPSG:4326",
+      "overpass_endpoint": "https://overpass.kumi.systems/api",
       "method": "Overpass QL union query over the city bbox (out center), clipped to the city boundary",
       "query_rule": "Candidates: highway=bus_stop, public_transport in (platform, stop_position), bus=yes. Kept when highway=bus_stop OR (public_transport in (platform, stop_position) AND bus=yes); rail, metro and tram platforms are excluded.",
       "dedupe_rule": "Rule A: a stop_position within 50 m of a platform sharing any name variant (25 m when unnamed) is dropped as the same physical stop. Rule B: same-role, same-name objects within 5 m collapse. Stops on opposite sides of a road are both platforms and are deliberately kept separate.",
       "outputs": [
         {
           "path": "data/processed/bus_stops.geojson",
-          "size_bytes": 913453,
-          "size_human": "892.0 KB"
+          "size_bytes": 912987,
+          "size_human": "891.6 KB"
         }
       ],
       "feature_counts": {
-        "raw_candidates": 3805,
-        "classified_as_bus": 2383,
-        "inside_city": 2283,
-        "removed_stop_position_paired_with_platform": 120,
+        "raw_candidates": 3801,
+        "classified_as_bus": 2382,
+        "inside_city": 2282,
+        "removed_stop_position_paired_with_platform": 119,
         "removed_coincident_same_role": 0,
         "final_bus_stops": 2163,
-        "without_name": 231
-      }
+        "without_name": 235
+      },
+      "notes": [
+        {
+          "id": "stops_without_name",
+          "text": "235 of 2163 bus stops have no name tag in OSM; they are kept because an unnamed stop is still a physical access point."
+        }
+      ]
     },
     "osm_bazaars": {
-      "acquired_at_utc": "2026-09-08T13:49:49+00:00",
+      "acquired_at_utc": "2026-09-08T16:44:51+00:00",
       "licence": "Open Database License (ODbL) v1.0",
       "licence_url": "https://www.openstreetmap.org/copyright",
       "licence_status": "verified",
       "source": "OpenStreetMap (Overpass API / OSMnx)",
       "url": "https://www.openstreetmap.org/",
       "crs": "EPSG:4326",
+      "overpass_endpoint": "https://overpass-api.de/api",
       "method": "Overpass QL union query over the city bbox (out center), clipped to the city boundary",
       "query_rule": "amenity=marketplace only; no other tag is treated as a bazaar.",
       "dedupe_rule": "Same normalised name within 100 m collapses to one marketplace; the polygon is preferred over a node inside it.",
@@ -241,14 +262,31 @@
         "duplicates_removed": 0,
         "final_bazaars": 83,
         "without_name": 7
-      }
+      },
+      "notes": [
+        {
+          "id": "coverage_lower_bound",
+          "text": "Bazaar coverage rests on amenity=marketplace only. Smaller informal markets are very likely missing from OSM; 83 is a lower bound, not a census."
+        }
+      ]
     }
   },
   "notes": [
-    "OSM district 'Yangi Toshkent Tumani' (relation 17389398, start_date=2024, 196 km2) is a member of the Tashkent city relation but has no SIAT population row. Kept with in_siat=False.",
-    "233 of 2164 bus stops have no name tag in OSM; they are kept because an unnamed stop is still a physical access point.",
-    "Bazaar coverage rests on amenity=marketplace only. Smaller informal markets are very likely missing from OSM; the count is a lower bound, not a census.",
-    "231 of 2163 bus stops have no name tag in OSM; they are kept because an unnamed stop is still a physical access point."
+    {
+      "source": "osm_bazaars",
+      "id": "coverage_lower_bound",
+      "text": "Bazaar coverage rests on amenity=marketplace only. Smaller informal markets are very likely missing from OSM; 83 is a lower bound, not a census."
+    },
+    {
+      "source": "osm_boundaries",
+      "id": "district_without_siat_row_17389398",
+      "text": "OSM district 'Yangi Toshkent Tumani' (relation 17389398, start_date=2024, 196 km2) is a member of the Tashkent city relation but has no SIAT population row. Kept with in_siat=False."
+    },
+    {
+      "source": "osm_bus_stops",
+      "id": "stops_without_name",
+      "text": "235 of 2163 bus stops have no name tag in OSM; they are kept because an unnamed stop is still a physical access point."
+    }
   ],
   "worldpop_profile": {
     "crs": "EPSG:4326",
@@ -287,19 +325,57 @@
       "unique_station_names": 50
     },
     "bus": {
-      "raw_candidates": 3805,
-      "classified_as_bus": 2383,
-      "inside_city": 2283,
-      "removed_stop_position_paired_with_platform": 120,
+      "raw_candidates": 3801,
+      "classified_as_bus": 2382,
+      "inside_city": 2282,
+      "removed_stop_position_paired_with_platform": 119,
       "removed_coincident_same_role": 0,
       "final_bus_stops": 2163,
-      "without_name": 231
+      "without_name": 235
     },
     "bazaars": {
       "raw_candidates": 100,
       "duplicates_removed": 0,
       "final_bazaars": 83,
       "without_name": 7
+    }
+  },
+  "diagnostic_sources": {
+    "worldpop_year_comparison": {
+      "acquired_at_utc": "2026-09-08T16:51:15+00:00",
+      "purpose": "Reproduces the WorldPop-vs-SIAT claims in docs/data_sources.md. Diagnostic only - not an input to the accessibility analysis.",
+      "produced_by": "scripts/audit_population_surface.py",
+      "source": "WorldPop, University of Southampton",
+      "product": "Global_2015_2030 constrained, 100m, individual countries",
+      "release": "R2025A",
+      "release_status": "alpha. The official release statement (worldpop.org, September 2025) says: \"The dataset currently represents an alpha version (R2025A) public release product and may change over the coming year as improvements are made.\" Treat as candidate within-district spatial weights, not validated truth.",
+      "release_statement_url": "https://data.worldpop.org/repo/prj/Global_2015_2030/R2025A/doc/Global2_Release_Statement_R2025A_v1.pdf",
+      "licence": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+      "licence_url": "https://hub.worldpop.org/data/licence.txt",
+      "licence_status": "verified",
+      "years": [
+        2020,
+        2026
+      ],
+      "rasters": [
+        {
+          "year": 2020,
+          "url": "https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2020/UZB/v1/100m/constrained/uzb_pop_2020_CN_100m_R2025A_v1.tif",
+          "path": "data/external/uzb_pop_2020_CN_100m_R2025A_v1.tif",
+          "size_bytes": 35389279,
+          "size_human": "33.7 MB",
+          "sha256": "d8a58d01f11a433e6e9de71ef628fcfed1f9c6d39f3f5ef603f0e22c60fb095a"
+        },
+        {
+          "year": 2026,
+          "url": "https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2026/UZB/v1/100m/constrained/uzb_pop_2026_CN_100m_R2025A_v1.tif",
+          "path": "data/external/uzb_pop_2026_CN_100m_R2025A_v1.tif",
+          "size_bytes": 36219169,
+          "size_human": "34.5 MB",
+          "sha256": "bfc656b81253a253228d1e40984059a5825a0d16f14b8cb0ac28f51d876bd68c"
+        }
+      ],
+      "output": "data/processed/worldpop_siat_diagnostic.csv"
     }
   }
 }

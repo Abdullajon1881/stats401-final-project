@@ -67,6 +67,18 @@ WORLDPOP_URL = (
 WORLDPOP_LANDING = "https://hub.worldpop.org/geodata/summary?id=76048"
 WORLDPOP_LICENCE_URL = "https://hub.worldpop.org/data/licence.txt"
 WORLDPOP_DOI = "10.5258/SOTON/WP00839"
+# WorldPop's own release statement calls R2025A an alpha product. Recorded so the
+# manifest never presents this raster as settled ground truth.
+WORLDPOP_RELEASE_STATEMENT_URL = (
+    "https://data.worldpop.org/repo/prj/Global_2015_2030/R2025A/doc/"
+    "Global2_Release_Statement_R2025A_v1.pdf"
+)
+WORLDPOP_RELEASE_STATUS = (
+    "alpha. The official release statement (worldpop.org, September 2025) says: "
+    "\"The dataset currently represents an alpha version (R2025A) public release "
+    "product and may change over the coming year as improvements are made.\" "
+    "Treat as candidate within-district spatial weights, not validated truth."
+)
 
 # --- Networking --------------------------------------------------------------
 USER_AGENT = "stats401-final-project/1.0 (academic coursework; contact via GitHub)"
@@ -100,6 +112,7 @@ BUS_STOPS_FILE = PROCESSED_DIR / "bus_stops.geojson"
 BAZAARS_FILE = PROCESSED_DIR / "bazaars.geojson"
 SIAT_POPULATION_FILE = PROCESSED_DIR / "siat_district_population.csv"
 DISTRICT_NAME_MAP_FILE = PROCESSED_DIR / "district_name_crosswalk.csv"
+WORLDPOP_DIAGNOSTIC_FILE = PROCESSED_DIR / "worldpop_siat_diagnostic.csv"
 WALK_GRAPH_FILE = EXTERNAL_DIR / "tashkent_walk_network.graphml"
 WORLDPOP_RASTER = EXTERNAL_DIR / WORLDPOP_FILENAME
 

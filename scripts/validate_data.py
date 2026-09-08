@@ -11,6 +11,9 @@ but do not fail the run.
 
 from __future__ import annotations
 
+import argparse
+import json
+import math
 import sys
 from pathlib import Path
 
@@ -69,6 +72,22 @@ def load(path: Path) -> gpd.GeoDataFrame | None:
     if not path.exists():
         return None
     return gpd.read_file(path)
+
+
+def _manifest_sources() -> dict:
+    if not cfg.MANIFEST_PATH.exists():
+        return {}
+    return json.loads(cfg.MANIFEST_PATH.read_text(encoding="utf-8")).get("sources", {})
+
+
+def _manifest_output(path: Path) -> dict | None:
+    """Find the manifest `outputs` entry describing `path`, if any."""
+    wanted = str(path.relative_to(cfg.REPO_ROOT)).replace("\\", "/")
+    for source in _manifest_sources().values():
+        for output in source.get("outputs", []):
+            if output.get("path") == wanted:
+                return output
+    return None
 
 
 def validate_files_present() -> dict[Path, gpd.GeoDataFrame | None]:
@@ -291,18 +310,119 @@ def validate_points(layers, districts) -> None:
                 print(f"      {str(name):26s} {count:5d}")
 
 
-def validate_worldpop(layers) -> None:
-    section("6. WorldPop raster")
+def validate_manifest_counts(layers, population) -> None:
+    """Cross-check the manifest's recorded counts against the actual files.
+
+    The manifest is the provenance record. If it claims a count the committed
+    data does not have, the provenance is wrong and that is a hard failure, not
+    a warning.
+    """
+    section("6. Source manifest vs processed files")
+    if not cfg.MANIFEST_PATH.exists():
+        check(False, "source_manifest.json loadable")
+        return
+
+    manifest = json.loads(cfg.MANIFEST_PATH.read_text(encoding="utf-8"))
+    sources = manifest.get("sources", {})
+
+    def counted(path: Path) -> int | None:
+        gdf = layers.get(path)
+        return None if gdf is None else len(gdf)
+
+    expectations = [
+        ("osm_metro", "final_stations", counted(cfg.METRO_STATIONS_FILE), "metro stations"),
+        ("osm_metro", "final_entrances", counted(cfg.METRO_ENTRANCES_FILE), "metro entrances"),
+        ("osm_bus_stops", "final_bus_stops", counted(cfg.BUS_STOPS_FILE), "bus stops"),
+        (
+            "osm_bus_stops",
+            "without_name",
+            None
+            if layers.get(cfg.BUS_STOPS_FILE) is None
+            else int(layers[cfg.BUS_STOPS_FILE]["name"].isna().sum()),
+            "unnamed bus stops",
+        ),
+        ("osm_bazaars", "final_bazaars", counted(cfg.BAZAARS_FILE), "bazaars"),
+        ("osm_boundaries", "districts_total", counted(cfg.DISTRICTS_FILE), "districts"),
+        (
+            "siat_population",
+            "district_rows",
+            None if population is None else len(population),
+            "SIAT population rows",
+        ),
+    ]
+    for source_key, field, actual, label in expectations:
+        recorded = sources.get(source_key, {}).get("feature_counts", {}).get(field)
+        if recorded is None:
+            check(False, f"manifest records {source_key}.{field} for {label}")
+            continue
+        if actual is None:
+            check(False, f"{label}: file present to compare against the manifest")
+            continue
+        check(
+            recorded == actual,
+            f"{label}: manifest says {recorded}, file has {actual}",
+        )
+
+    # The manifest's notes must not contradict themselves. Two notes with the
+    # same (source, id) would mean a stale note survived a rerun.
+    notes = manifest.get("notes", [])
+    keys = [(n.get("source"), n.get("id")) for n in notes]
+    duplicates = {k for k in keys if keys.count(k) > 1}
+    check(not duplicates, f"manifest notes have unique (source, id) keys "
+                          f"(duplicates: {sorted(duplicates) or 'none'})")
+    # Notes quote live counts in their text. That text is what a reader believes,
+    # so it has to agree with the file too - this is the exact bug class that let
+    # "233 of 2164" and "231 of 2163" sit in the manifest at the same time.
+    bus = layers.get(cfg.BUS_STOPS_FILE)
+    note_text = next(
+        (n.get("text", "") for n in notes if n.get("id") == "stops_without_name"), None
+    )
+    if bus is not None and note_text is not None:
+        expected = f"{int(bus['name'].isna().sum())} of {len(bus)} bus stops"
+        check(
+            expected in note_text,
+            f"bus-stop note quotes the current counts ('{expected}')",
+        )
+
+    print(f"    manifest notes: {len(notes)}")
+    for note in notes:
+        print(f"      [{note.get('source')}/{note.get('id')}] {note.get('text', '')[:90]}")
+
+
+def validate_worldpop(layers, *, required: bool) -> None:
+    section("7. WorldPop raster (external artifact)")
     raster = cfg.WORLDPOP_RASTER
     if not raster.exists():
         check(
             False,
             f"WorldPop raster present at {raster.relative_to(cfg.REPO_ROOT)} "
             f"(run: python scripts/acquire_data.py)",
-            critical=False,
+            critical=required,
         )
         print("    skipping raster checks; the file is gitignored and must be downloaded")
         return
+
+    # Size and checksum must match what the manifest recorded, otherwise the
+    # provenance record does not describe the file actually on disk.
+    recorded = _manifest_output(cfg.WORLDPOP_RASTER)
+    if recorded is None:
+        check(False, "manifest records an output entry for the WorldPop raster")
+    else:
+        actual_size = cfg.file_size_bytes(raster)
+        check(
+            recorded.get("size_bytes") == actual_size,
+            f"WorldPop size matches the manifest "
+            f"({recorded.get('size_bytes')} vs {actual_size})",
+        )
+        recorded_hash = recorded.get("sha256")
+        if recorded_hash is None:
+            check(False, "manifest records a sha256 for the WorldPop raster")
+        else:
+            actual_hash = cfg.sha256_file(raster)
+            check(
+                recorded_hash == actual_hash,
+                f"WorldPop sha256 matches the manifest ({actual_hash[:16]}...)",
+            )
 
     import rasterio
     from rasterio.mask import mask
@@ -338,6 +458,107 @@ def validate_worldpop(layers) -> None:
             )
 
 
+def validate_walk_graph(layers, *, required: bool) -> None:
+    """Validate the pedestrian graph that lives outside git.
+
+    The graph is the input to every Week 4 isochrone, so a corrupt or truncated
+    download must fail loudly rather than be discovered mid-analysis.
+    """
+    section("8. Pedestrian walk network (external artifact)")
+    path = cfg.WALK_GRAPH_FILE
+    if not path.exists():
+        check(
+            False,
+            f"walk graph present at {path.relative_to(cfg.REPO_ROOT)} "
+            f"(run: python scripts/acquire_data.py)",
+            critical=required,
+        )
+        print("    skipping graph checks; the file is gitignored and must be rebuilt")
+        return
+
+    import networkx as nx
+    import osmnx as ox
+
+    try:
+        graph = ox.load_graphml(path)
+    except Exception as error:  # noqa: BLE001 - a load failure is the finding
+        check(False, f"walk graph loads with OSMnx ({type(error).__name__}: {error})")
+        return
+    check(True, "walk graph loads with OSMnx")
+
+    n_nodes = graph.number_of_nodes()
+    n_edges = graph.number_of_edges()
+    check(n_nodes > 0 and n_edges > 0,
+          f"walk graph is non-empty ({n_nodes:,} nodes, {n_edges:,} edges)")
+
+    graph_crs = graph.graph.get("crs")
+    check(graph_crs is not None, f"walk graph declares a CRS ({graph_crs})")
+    if graph_crs is not None:
+        check(
+            str(graph_crs).lower().replace("epsg:", "") == "4326",
+            f"walk graph is stored in EPSG:4326 (got {graph_crs})",
+        )
+
+    recorded = _manifest_sources().get("osm_walk_network", {}).get("feature_counts", {})
+    if not recorded:
+        check(False, "manifest records node/edge counts for the walk network")
+    else:
+        check(recorded.get("nodes") == n_nodes,
+              f"walk graph node count matches the manifest "
+              f"({recorded.get('nodes')} vs {n_nodes})")
+        check(recorded.get("edges") == n_edges,
+              f"walk graph edge count matches the manifest "
+              f"({recorded.get('edges')} vs {n_edges})")
+
+    # Node coordinates
+    xs = [d.get("x") for _, d in graph.nodes(data=True)]
+    ys = [d.get("y") for _, d in graph.nodes(data=True)]
+    finite_xy = all(
+        isinstance(v, (int, float)) and math.isfinite(v) for v in xs
+    ) and all(isinstance(v, (int, float)) and math.isfinite(v) for v in ys)
+    check(finite_xy, "every node has finite x/y coordinates")
+
+    # Edge lengths drive the isochrones, so they must all be usable numbers.
+    lengths = [d.get("length") for _, _, d in graph.edges(data=True)]
+    missing = sum(1 for v in lengths if v is None)
+    check(missing == 0, f"every edge has a length attribute ({missing} missing)")
+    numeric = [v for v in lengths if isinstance(v, (int, float)) and math.isfinite(v)]
+    check(len(numeric) == len(lengths),
+          f"every edge length is numeric and finite "
+          f"({len(lengths) - len(numeric)} bad values)")
+    if numeric:
+        non_positive = sum(1 for v in numeric if v <= 0)
+        check(non_positive == 0,
+              f"every edge has positive length ({non_positive} non-positive)")
+        print(f"    edge length: min {min(numeric):.2f} m, "
+              f"median {sorted(numeric)[len(numeric) // 2]:.2f} m, "
+              f"max {max(numeric):.2f} m, total {sum(numeric) / 1000:,.0f} km")
+
+    # Spatial extent must cover the study area.
+    boundary = layers.get(cfg.BOUNDARY_FILE)
+    if boundary is not None and xs and ys:
+        west, south, east, north = boundary.total_bounds
+        gw, gs, ge, gn = min(xs), min(ys), max(xs), max(ys)
+        print(f"    graph bounds : {gw:.4f}, {gs:.4f}, {ge:.4f}, {gn:.4f}")
+        print(f"    city  bounds : {west:.4f}, {south:.4f}, {east:.4f}, {north:.4f}")
+        check(
+            gw <= west and gs <= south and ge >= east and gn >= north,
+            "walk graph extent contains the Tashkent city boundary",
+        )
+
+    # Connectivity is reported, not enforced: a real pedestrian network always
+    # contains small isolated fragments (courtyards, service areas, mapping
+    # gaps), so demanding a single component would be a brittle false alarm.
+    components = list(nx.weakly_connected_components(graph))
+    largest = max(len(c) for c in components)
+    share = largest / n_nodes
+    print(f"    weakly connected components: {len(components):,}")
+    print(f"    largest component          : {largest:,} nodes ({share:.2%})")
+    check(share > 0.90,
+          f"largest connected component holds most of the network ({share:.2%})",
+          critical=False)
+
+
 def preliminary_worldpop_vs_siat(districts, population) -> None:
     """INTERNAL VALIDATION EXPERIMENT - not a project result.
 
@@ -345,7 +566,7 @@ def preliminary_worldpop_vs_siat(districts, population) -> None:
     and that the magnitudes are comparable. No rescaling or calibration is
     applied; that belongs to the Week 4 analysis milestone.
     """
-    section("7. PRELIMINARY integration check (WorldPop vs SIAT) - NOT A RESULT")
+    section("9. PRELIMINARY integration check (WorldPop vs SIAT) - NOT A RESULT")
     if districts is None or population is None or not cfg.WORLDPOP_RASTER.exists():
         print("    skipped (missing raster, districts or population)")
         return
@@ -419,19 +640,41 @@ def preliminary_worldpop_vs_siat(districts, population) -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--repo-only",
+        action="store_true",
+        help=(
+            "check only the artifacts committed to git. Use this on a fresh clone, "
+            "before running scripts/acquire_data.py. The default is FULL validation, "
+            "which also requires the gitignored WorldPop raster and walk graph."
+        ),
+    )
+    args = parser.parse_args()
+    full = not args.repo_only
+    mode = "FULL (committed + external artifacts)" if full else "REPOSITORY-ONLY (committed artifacts)"
+
     print("=" * 74)
     print("Week 3 data foundation - validation")
+    print(f"mode: {mode}")
     print("=" * 74)
+    if not full:
+        print("\n  NOTE: --repo-only skips the WorldPop raster and the walk graph.")
+        print("        It cannot certify the foundation on its own; run the full mode")
+        print("        after `python scripts/acquire_data.py`.")
 
     layers = validate_files_present()
     validate_layer_basics(layers)
     districts = validate_districts(layers)
     population = validate_population(districts)
     validate_points(layers, districts)
-    validate_worldpop(layers)
+    validate_manifest_counts(layers, population)
+    validate_worldpop(layers, required=full)
+    validate_walk_graph(layers, required=full)
     preliminary_worldpop_vs_siat(districts, population)
 
     section("Summary")
+    print(f"  mode    : {mode}")
     print(f"  passed  : {len(PASSED)}")
     print(f"  warnings: {len(WARNINGS)}")
     print(f"  critical: {len(CRITICAL)}")
