@@ -281,18 +281,22 @@ official totals gives:
 (Full 12-row table: [`worldpop_siat_diagnostic.csv`](../data/processed/worldpop_siat_diagnostic.csv).)
 
 The per-district ratio spans **0.31 to 3.33 — a 10.8x spread** — and the
-correlation between WorldPop and SIAT district totals is **−0.077**, i.e. no
-relationship at all. WorldPop puts more people in industrial Bektemir
-(6,866/km²) than in Chilanzar (2,809/km²), which is Tashkent's densest Soviet
-mikrorayon housing. That ordering is clearly wrong.
+correlation between the WorldPop 2026 district pattern and the SIAT 2026-Q2
+district totals is **−0.077**, i.e. no relationship at all. WorldPop puts more
+people in industrial Bektemir (6,866/km²) than in Chilanzar (2,809/km²), which is
+Tashkent's densest Soviet mikrorayon housing. That ordering is clearly wrong.
 
 We checked whether this is an artifact of the 2026 projection by aggregating the
-2020 layer of the same product and repeating the comparison. It is not:
+2020 layer of the same product and repeating the comparison. It is not: the
+correlation between the **WorldPop 2020** district pattern and the **same SIAT
+2026-Q2** totals is also **−0.077**.
 
-* every district scales by **1.124** from 2020 to 2026 (spread across the 12
-  districts: 0.0002), so the 2026 layer is a uniform rescaling of the 2020
-  surface and adds no new spatial detail for Tashkent;
-* the correlation with SIAT is **−0.077 in 2020 as well** — identical to 2026.
+Both WorldPop years are deliberately compared against the *same* 2026-Q2 official
+figures. That is a test of whether WorldPop's **spatial pattern across districts
+persists** between the two releases — not an assessment of how accurate the 2020
+layer was against contemporaneous 2020 statistics. We did not acquire a 2020 SIAT
+series, because the question here is about the stability of the pattern, not
+about 2020 population accuracy.
 
 This is reproducible, not a one-off manual check. Run:
 
@@ -313,6 +317,60 @@ not to the year we picked. We verified our own aggregation independently with
 `rasterstats`, which reproduced the same totals exactly, and confirmed the
 district polygons are correctly placed (centroids and metro-station containment
 both check out), so this is not a pipeline bug.
+
+### Is the 2026 raster just the 2020 raster rescaled?
+
+An earlier draft of this document concluded, from the near-identical district
+scaling factors, that the 2026 layer "adds no new spatial detail". **That
+conclusion did not follow.** A district total is preserved by any reshuffle of
+population *between cells inside* that district, so district-level arithmetic
+cannot answer the question. Since Week 4 wants WorldPop precisely for
+within-district weights, this had to be tested at the raster-cell level.
+
+`scripts/audit_population_surface.py` now does that. It first confirms the two
+rasters share one pixel grid — identical CRS, transform, dimensions, bounds and
+nodata value — and aborts rather than comparing array positions if they ever
+diverge. It then compares corresponding cells over the union of the 12 districts
+and writes
+[`data/processed/worldpop_temporal_diagnostic.json`](../data/processed/worldpop_temporal_diagnostic.json).
+
+**The answer is no — but the departure is small.**
+
+| Measure | Value |
+|---|---|
+| Cells valid in both years | 64,920 |
+| Cells valid only in 2026 (settlement footprint growth) | 249 |
+| Cells valid only in 2020 | 0 |
+| Zero → positive | 5 |
+| Positive → zero | 0 |
+| Pearson correlation of cell values | 0.999848 |
+| Fitted scalar (least squares) | 1.1231 |
+| Ratio p5 / median / p95 | 1.100 / 1.124 / 1.152 |
+| Ratio p99 / max | 1.334 / 39.13 |
+| Cells within 1% of a pure scalar | 76.2% |
+| Cells within 5% | 94.6% |
+| Normalized RMSE after scaling | 0.0144 |
+| Σ&#124;residual&#124; ÷ total | 0.0076 |
+
+So it is **not** a pure scalar multiple: 249 cells became populated that were
+nodata in 2020, 5 went from zero to positive, 406 cells grew by more than 50%
+(up to 39×), and roughly a quarter of cells depart from the fitted scalar by more
+than 1%.
+
+But the departure is small in population terms. Scaling the 2020 surface by
+1.1231 reproduces **99.24%** of the 2026 population mass; the fast-growing cells
+carry only **0.039%** of the total, and the newly-populated cells only 0.005%.
+
+**The honest statement is therefore:** the 2026 layer is *close to, but not
+exactly,* a uniform rescaling of 2020. It contains a modest amount of genuine new
+spatial information — a slightly expanded settlement footprint and a few hundred
+rapidly-growing cells — on top of an essentially unchanged 2020 pattern.
+
+**Why this matters for Week 4.** The within-district weights we would take from
+the 2026 layer are, to within about 1%, the 2020 weights. Six years of Tashkent
+construction are represented by a handful of cells carrying 0.04% of the
+population. Any sensitivity test should treat the within-district distribution as
+2020-vintage rather than current.
 
 **What this means for Week 4.** Calibration is not a cosmetic step. WorldPop
 cannot be used to distribute population *between* districts; it can only supply
@@ -387,12 +445,17 @@ from a source we are entitled to use.
    right tag. Week 4 should fall back to the station point for those.
 6. WorldPop R2025A is an **alpha** release by WorldPop's own statement and may
    change; it is treated as candidate within-district weights, not truth.
-7. WorldPop disagrees with SIAT at district level (correlation −0.077, ratios
-   0.31–3.33). Per-district calibration is mandatory in Week 4; a single
-   city-wide scale factor would be wrong.
+7. WorldPop disagrees with SIAT at district level (correlation −0.077 for both
+   WorldPop years against SIAT 2026-Q2; ratios 0.31–3.33). Per-district
+   calibration is mandatory in Week 4; a single city-wide scale factor would be
+   wrong.
 8. A number of bus stops sit exactly on a district border, because Tashkent's
    district lines follow major roads. They are assigned to the nearest district
    and flagged `district_assignment = boundary_nearest`.
 9. Overpass mirrors replicate OSM at different lags, so raw candidate counts vary
    by a few percent between runs depending on which mirror answers. The serving
    endpoint is recorded per source in the manifest.
+10. The WorldPop 2026 within-district pattern is, to within about 1%, the 2020
+    pattern (cell-level correlation 0.9998; a single 1.1231 scalar reproduces
+    99.24% of the 2026 mass). Treat the within-district weights as 2020-vintage,
+    not current.

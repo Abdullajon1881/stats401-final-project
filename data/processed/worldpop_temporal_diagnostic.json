@@ -1,0 +1,111 @@
+{
+  "years": [
+    2020,
+    2026
+  ],
+  "grid_aligned": true,
+  "positive_cell_threshold_persons": 0.05,
+  "cells": {
+    "in_masked_window": 132797,
+    "valid_in_both": 64920,
+    "valid_only_in_baseline": 0,
+    "valid_only_in_current": 249,
+    "zero_in_both": 76,
+    "zero_to_positive": 5,
+    "positive_to_zero": 0,
+    "above_ratio_threshold": 64765
+  },
+  "totals": {
+    "worldpop_2020": 2119256.572044911,
+    "worldpop_2026": 2381865.536816947,
+    "population_in_cells_valid_only_in_current": 121.77952776476741,
+    "share_of_current_in_newly_valid_cells": 5.112517893321307e-05
+  },
+  "pearson_correlation_cell_values": 0.9998480283551034,
+  "scaling_factor": {
+    "least_squares": 1.1230851448833807,
+    "total_ratio": 1.123915607121907,
+    "median_of_cell_ratios": 1.1235212511537493
+  },
+  "ratio_percentiles": {
+    "min": 1.0,
+    "p1": 1.0223120199294242,
+    "p5": 1.1001223504858015,
+    "median": 1.123506525137478,
+    "p95": 1.1519290603368053,
+    "p99": 1.3341709345845911,
+    "max": 39.127595021885966
+  },
+  "residuals_after_least_squares_scaling": {
+    "mean_absolute": 0.27825219699329534,
+    "median_absolute": 0.13043684573866543,
+    "max_absolute": 8.352396408818706,
+    "normalized_rmse": 0.014423796310515186,
+    "sum_absolute_over_total": 0.007584027036616472
+  },
+  "fraction_of_cells_matching_scalar": {
+    "within_0.1pct": 0.10456264957924805,
+    "within_0.5pct": 0.48584883810700225,
+    "within_1pct": 0.7617385933760519,
+    "within_5pct": 0.9460047865359377,
+    "within_10pct": 0.9727321855940708
+  },
+  "redistribution": {
+    "cells_ratio_above_1_5": 406,
+    "cells_ratio_above_2": 223,
+    "cells_ratio_below_1": 0,
+    "share_of_current_total_in_cells_above_1_5": 0.00039408469621037527
+  },
+  "is_pure_scalar_multiple": false,
+  "mass_share_explained_by_scalar": 0.9924159729633836,
+  "grid_compatibility": {
+    "baseline_year": 2020,
+    "current_year": 2026,
+    "crs": {
+      "baseline": "EPSG:4326",
+      "current": "EPSG:4326",
+      "match": true
+    },
+    "dimensions": {
+      "baseline": [
+        20666,
+        10103
+      ],
+      "current": [
+        20666,
+        10103
+      ],
+      "match": true
+    },
+    "transform": {
+      "baseline": [
+        0.00083333333,
+        0.0,
+        55.99749905601,
+        0.0,
+        -0.00083333333,
+        45.59083348697
+      ],
+      "current": [
+        0.00083333333,
+        0.0,
+        55.99749905601,
+        0.0,
+        -0.00083333333,
+        45.59083348697
+      ],
+      "match": true
+    },
+    "nodata": {
+      "baseline": -99999.0,
+      "current": -99999.0,
+      "match": true
+    },
+    "bounds_match": true,
+    "dtype": {
+      "baseline": "float32",
+      "current": "float32"
+    },
+    "aligned": true
+  }
+}

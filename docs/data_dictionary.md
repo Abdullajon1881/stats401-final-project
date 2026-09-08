@@ -186,7 +186,38 @@ accessibility figure is derived from it.
 | `siat_population` | integer | Official SIAT persons, 2026-Q2. |
 | `ratio_2020_to_siat` | float | `worldpop_2020 / siat_population`. |
 | `ratio_2026_to_siat` | float | `worldpop_2026 / siat_population`. |
-| `scaling_2020_to_2026` | float | `worldpop_2026 / worldpop_2020`. A near-constant value across districts means the 2026 layer is a uniform rescaling and carries no new spatial detail. |
+| `scaling_2020_to_2026` | float | `worldpop_2026 / worldpop_2020` for the district total. A near-constant value across districts shows the two layers keep the same *between-district* split. It says nothing about whether population moved between cells *inside* a district — that is what `worldpop_temporal_diagnostic.json` tests. |
+
+---
+
+## `worldpop_temporal_diagnostic.json`
+
+**A diagnostic, not a project result.** Written by
+`python scripts/audit_population_surface.py`. Tests whether the WorldPop 2026
+raster is simply the 2020 raster rescaled, at the **raster-cell** level over the
+union of the 12 SIAT districts. District totals cannot answer this, because a
+district total survives any reshuffle of cells inside it.
+
+| Field | Notes |
+|---|---|
+| `years` | `[2020, 2026]` — the two WorldPop layers compared. |
+| `grid_aligned` | `true` only if both rasters share one pixel grid. The script aborts otherwise. |
+| `grid_compatibility` | Per-property CRS, dimensions, transform, nodata and bounds comparison, each with a `match` flag. |
+| `positive_cell_threshold_persons` | Baseline cells at or below this (0.05 persons) are excluded from ratio statistics, so near-empty cells cannot manufacture huge ratios. Percentiles are stable for thresholds from 0 to 1.0. |
+| `cells.in_masked_window` | Cells in the cropped window around the districts. |
+| `cells.valid_in_both` | Cells with data in both years — the comparison set. |
+| `cells.valid_only_in_baseline` / `valid_only_in_current` | Cells whose nodata status changed, i.e. settlement-footprint change. |
+| `cells.zero_in_both`, `zero_to_positive`, `positive_to_zero` | Occupancy transitions. |
+| `cells.above_ratio_threshold` | Cells used for the ratio statistics. |
+| `totals` | Summed population per year over the comparison set, plus the population and share held by newly-valid cells. |
+| `pearson_correlation_cell_values` | Correlation of 2020 vs 2026 cell values. |
+| `scaling_factor.least_squares` / `.total_ratio` / `.median_of_cell_ratios` | Three estimates of a single multiplier relating the years. |
+| `ratio_percentiles` | min, p1, p5, median, p95, p99, max of `2026 / 2020` per cell. |
+| `residuals_after_least_squares_scaling` | Mean, median and max absolute residual in persons/cell after applying the fitted scalar, plus `normalized_rmse` and `sum_absolute_over_total`. |
+| `fraction_of_cells_matching_scalar` | Share of cells within 0.1 / 0.5 / 1 / 5 / 10 % of a pure scalar multiple. |
+| `redistribution` | Counts of cells with ratio above 1.5, above 2, below 1, and the share of the 2026 total those fast-growing cells hold. |
+| `is_pure_scalar_multiple` | Computed verdict. **Currently `false`.** |
+| `mass_share_explained_by_scalar` | `1 − sum_absolute_over_total`; the share of 2026 population reproduced by scaling 2020. |
 
 ---
 

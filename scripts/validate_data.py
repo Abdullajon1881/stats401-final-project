@@ -559,6 +559,79 @@ def validate_walk_graph(layers, *, required: bool) -> None:
           critical=False)
 
 
+def validate_temporal_diagnostic() -> None:
+    """Check the committed WorldPop 2020-vs-2026 cell-level diagnostic.
+
+    The docs draw a methodological conclusion from this file, so it has to be
+    present, internally consistent, and built on aligned rasters.
+    """
+    section("9. WorldPop temporal diagnostic")
+    path = cfg.WORLDPOP_TEMPORAL_FILE
+    if not check(path.exists(), f"{path.name} exists "
+                                f"(run: python scripts/audit_population_surface.py)"):
+        return
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        check(False, f"{path.name} is valid JSON ({error})")
+        return
+    check(True, f"{path.name} is valid JSON")
+
+    check(data.get("years") == [2020, 2026],
+          f"diagnostic compares 2020 and 2026 (got {data.get('years')})")
+    check(bool(data.get("grid_aligned")),
+          "rasters were confirmed to share one pixel grid")
+
+    grid = data.get("grid_compatibility", {})
+    for key in ("crs", "dimensions", "transform", "nodata"):
+        check(bool(grid.get(key, {}).get("match")),
+              f"raster {key} matched between years")
+    check(bool(grid.get("bounds_match")), "raster bounds matched between years")
+
+    # Every reported metric must be a finite number; a NaN would silently
+    # invalidate the conclusion drawn in docs/data_sources.md.
+    def finite_leaves(node, trail=""):
+        bad = []
+        if isinstance(node, dict):
+            for key, value in node.items():
+                bad += finite_leaves(value, f"{trail}.{key}" if trail else key)
+        elif isinstance(node, (int, float)) and not isinstance(node, bool):
+            if not math.isfinite(node):
+                bad.append(trail)
+        return bad
+
+    for group in ("cells", "totals", "scaling_factor", "ratio_percentiles",
+                  "residuals_after_least_squares_scaling",
+                  "fraction_of_cells_matching_scalar", "redistribution"):
+        bad = finite_leaves(data.get(group, {}), group)
+        check(not bad, f"{group}: all metrics finite (bad: {bad or 'none'})")
+
+    correlation = data.get("pearson_correlation_cell_values")
+    check(isinstance(correlation, float) and math.isfinite(correlation)
+          and -1.0 <= correlation <= 1.0,
+          f"cell-level correlation is a finite value in [-1, 1] ({correlation})")
+
+    cells = data.get("cells", {})
+    check(cells.get("valid_in_both", 0) > 0,
+          f"cells were actually compared ({cells.get('valid_in_both'):,})")
+
+    verdict = data.get("is_pure_scalar_multiple")
+    check(isinstance(verdict, bool), f"verdict is recorded ({verdict})")
+    print(f"    correlation                : {correlation}")
+    print(f"    fitted scalar (LS)         : "
+          f"{data.get('scaling_factor', {}).get('least_squares')}")
+    print(f"    pure scalar multiple       : {verdict}")
+    print(f"    mass explained by scalar   : "
+          f"{data.get('mass_share_explained_by_scalar')}")
+    if verdict is False:
+        check(
+            True,
+            "2026 is NOT a pure rescaling of 2020; docs must not claim "
+            "'no new spatial detail' (see docs/data_sources.md)",
+        )
+
+
 def preliminary_worldpop_vs_siat(districts, population) -> None:
     """INTERNAL VALIDATION EXPERIMENT - not a project result.
 
@@ -566,7 +639,7 @@ def preliminary_worldpop_vs_siat(districts, population) -> None:
     and that the magnitudes are comparable. No rescaling or calibration is
     applied; that belongs to the Week 4 analysis milestone.
     """
-    section("9. PRELIMINARY integration check (WorldPop vs SIAT) - NOT A RESULT")
+    section("10. PRELIMINARY integration check (WorldPop vs SIAT) - NOT A RESULT")
     if districts is None or population is None or not cfg.WORLDPOP_RASTER.exists():
         print("    skipped (missing raster, districts or population)")
         return
@@ -671,6 +744,7 @@ def main() -> int:
     validate_manifest_counts(layers, population)
     validate_worldpop(layers, required=full)
     validate_walk_graph(layers, required=full)
+    validate_temporal_diagnostic()
     preliminary_worldpop_vs_siat(districts, population)
 
     section("Summary")

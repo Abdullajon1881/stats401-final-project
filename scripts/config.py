@@ -113,6 +113,7 @@ BAZAARS_FILE = PROCESSED_DIR / "bazaars.geojson"
 SIAT_POPULATION_FILE = PROCESSED_DIR / "siat_district_population.csv"
 DISTRICT_NAME_MAP_FILE = PROCESSED_DIR / "district_name_crosswalk.csv"
 WORLDPOP_DIAGNOSTIC_FILE = PROCESSED_DIR / "worldpop_siat_diagnostic.csv"
+WORLDPOP_TEMPORAL_FILE = PROCESSED_DIR / "worldpop_temporal_diagnostic.json"
 WALK_GRAPH_FILE = EXTERNAL_DIR / "tashkent_walk_network.graphml"
 WORLDPOP_RASTER = EXTERNAL_DIR / WORLDPOP_FILENAME
 
