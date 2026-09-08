@@ -27,13 +27,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config as cfg  # noqa: E402
 import osm_features as osmf  # noqa: E402
 from pipeline_utils import (  # noqa: E402
-    NOTES,
+    add_note,
     http_get,
+    last_overpass_endpoint,
     local_file_record,
     log,
     normalise_name,
+    notes_for,
     overpass_failover,
     overpass_post,
+    reset_notes,
     step,
     utc_now,
     write_geojson,
@@ -43,7 +46,16 @@ MANIFEST: dict[str, dict] = {}
 
 
 def record_source(key: str, **fields) -> None:
-    MANIFEST[key] = {"acquired_at_utc": utc_now(), **fields}
+    """Store a source record, including the notes this run produced for it.
+
+    Notes live inside the source record so that re-running a source replaces its
+    notes wholesale, rather than appending a second, contradictory copy.
+    """
+    record = {"acquired_at_utc": utc_now(), **fields}
+    notes = notes_for(key)
+    if notes:
+        record["notes"] = notes
+    MANIFEST[key] = record
 
 
 # ---------------------------------------------------------------------------
@@ -194,11 +206,14 @@ def acquire_boundary_and_districts() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame
         raise RuntimeError(
             f"expected {cfg.EXPECTED_ANALYSIS_DISTRICTS} SIAT-matched districts, got {matched}"
         )
+    reset_notes("osm_boundaries")
     for _, row in districts[~districts.in_siat].iterrows():
-        NOTES.append(
+        add_note(
+            "osm_boundaries",
+            f"district_without_siat_row_{row.osm_id}",
             f"OSM district '{row.osm_name}' (relation {row.osm_id}, "
             f"start_date={row.osm_start_date}, {row.area_km2:.0f} km2) is a member of the "
-            f"Tashkent city relation but has no SIAT population row. Kept with in_siat=False."
+            f"Tashkent city relation but has no SIAT population row. Kept with in_siat=False.",
         )
 
     write_geojson(city, cfg.BOUNDARY_FILE, ["osm_type", "osm_id", "name", "area_km2"])
@@ -242,6 +257,7 @@ def acquire_boundary_and_districts() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame
             "districts_total": int(len(districts)),
             "districts_matched_to_siat": matched,
         },
+        overpass_endpoint=last_overpass_endpoint(),
     )
     return city, districts
 
@@ -316,6 +332,7 @@ def acquire_walk_network(city: gpd.GeoDataFrame) -> dict:
         storage="data/external (gitignored, rebuilt by this script)",
         outputs=[local_file_record(cfg.WALK_GRAPH_FILE)],
         feature_counts={"nodes": n_nodes, "edges": n_edges},
+        overpass_endpoint=last_overpass_endpoint(),
     )
     return stats
 
@@ -425,13 +442,23 @@ def acquire_siat_population() -> pd.DataFrame:
         dataset_id=cfg.SIAT_DATASET_ID,
         dataset_code="2.01.02.0056",
         dataset_title="Permanent population (city)",
-        licence="unclear",
-        licence_note=(
-            "No explicit licence statement found on the SIAT dataset page or portal "
-            "footer. Treated as official public statistics used with attribution; "
-            "FLAGGED FOR REVIEW before publication."
+        licence="Creative Commons Attribution 4.0 International (CC BY 4.0)",
+        licence_url="https://creativecommons.org/licenses/by/4.0/",
+        licence_status="verified",
+        licence_evidence=(
+            "The SIAT dataset page itself carries the footer "
+            "\"Manba: Oʻzbekiston Respublikasi Statistika agentligi · "
+            "Litsenziya: CC BY 4.0\" (Source: Statistics Agency of the Republic of "
+            "Uzbekistan · Licence: CC BY 4.0), linking to "
+            "https://creativecommons.org/licenses/by/4.0/. The parent site stat.uz "
+            "states independently: \"All site materials are available under license: "
+            "Creative Commons Attribution 4.0 International\"."
         ),
-        licence_status="unclear",
+        attribution_required=(
+            "Statistics Agency under the President of the Republic of Uzbekistan; "
+            "stat.uz asks that a link to www.stat.uz be provided when referencing "
+            "its information."
+        ),
         method="HTTP GET of the portal CSV download endpoint, then the CSV it points to",
         reference_period=period,
         source_units=cfg.SIAT_UNITS,
@@ -504,6 +531,8 @@ def acquire_worldpop() -> dict:
         doi=cfg.WORLDPOP_DOI,
         product=cfg.WORLDPOP_PRODUCT,
         release=cfg.WORLDPOP_RELEASE,
+        release_status=cfg.WORLDPOP_RELEASE_STATUS,
+        release_statement_url=cfg.WORLDPOP_RELEASE_STATEMENT_URL,
         product_year=cfg.WORLDPOP_YEAR,
         licence="Creative Commons Attribution 4.0 International (CC BY 4.0)",
         licence_url=cfg.WORLDPOP_LICENCE_URL,
@@ -545,10 +574,15 @@ def write_manifest(crs_info: dict, extra: dict) -> None:
         log(f"  carried forward {len(carried)} source record(s) from a previous run: "
             f"{', '.join(sorted(carried))}")
 
-    notes = list(previous.get("notes", []))
-    for note in NOTES:
-        if note not in notes:
-            notes.append(note)
+    # The top-level list is *derived* from the merged source records on every
+    # write, never appended to. That is what makes stale notes impossible: a
+    # source that reran contributes only its current notes, and a source that
+    # was skipped contributes the notes stored with its carried-forward record.
+    notes = [
+        {"source": key, "id": note["id"], "text": note["text"]}
+        for key in sorted(sources)
+        for note in sources[key].get("notes", [])
+    ]
 
     merged_extra = {
         k: v for k, v in previous.items()
@@ -619,8 +653,9 @@ def main() -> int:
     write_manifest(crs_info, extra)
 
     step("Acquisition complete")
-    for note in NOTES:
-        log(f"  NOTE: {note}")
+    manifest = json.loads(cfg.MANIFEST_PATH.read_text(encoding="utf-8"))
+    for note in manifest.get("notes", []):
+        log(f"  NOTE [{note['source']}/{note['id']}]: {note['text']}")
     log(f"\n  processed outputs in {cfg.PROCESSED_DIR.relative_to(cfg.REPO_ROOT)}:")
     for path in sorted(cfg.PROCESSED_DIR.glob("*")):
         log(f"    {path.name:38s} {cfg.human_size(cfg.file_size_bytes(path)):>10s}")

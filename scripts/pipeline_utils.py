@@ -13,9 +13,32 @@ import requests
 
 import config as cfg
 
-# Free-text notes about data-quality issues, surfaced at the end of a run and
-# written into data/source_manifest.json.
-NOTES: list[str] = []
+# Data-quality notes, scoped to the source that produced them and keyed by a
+# stable id.
+#
+# An earlier design appended free text to one global list and de-duplicated by
+# string equality. Because these notes embed live counts ("231 of 2163 bus
+# stops..."), a changed count produced a *different* string, so a partial rerun
+# left the stale note sitting next to the new one and the manifest contradicted
+# itself. Keying by (source, note_id) means a rerun of a source replaces its
+# notes outright, while sources that were genuinely skipped keep theirs.
+SOURCE_NOTES: dict[str, dict[str, str]] = {}
+
+
+def add_note(source_key: str, note_id: str, text: str) -> None:
+    """Record a data-quality note for `source_key` under a stable `note_id`."""
+    SOURCE_NOTES.setdefault(source_key, {})[note_id] = text
+
+
+def notes_for(source_key: str) -> list[dict[str, str]]:
+    """Return this run's notes for one source, ordered by note id."""
+    notes = SOURCE_NOTES.get(source_key, {})
+    return [{"id": nid, "text": notes[nid]} for nid in sorted(notes)]
+
+
+def reset_notes(source_key: str) -> None:
+    """Drop any notes already collected for a source before it re-extracts."""
+    SOURCE_NOTES.pop(source_key, None)
 
 
 def log(message: str) -> None:
@@ -53,6 +76,18 @@ def http_get(url: str, *, stream: bool = False) -> requests.Response:
     raise RuntimeError(f"could not download {url}") from last_error
 
 
+# Which mirror answered each Overpass query. Mirrors replicate OSM at slightly
+# different lags, so two runs minutes apart can legitimately return different
+# counts depending on who served them. Recording the endpoint makes a count
+# difference between runs explainable instead of mysterious.
+OVERPASS_LOG: list[dict[str, str]] = []
+
+
+def last_overpass_endpoint() -> str | None:
+    """The endpoint that served the most recent Overpass query."""
+    return OVERPASS_LOG[-1]["endpoint"] if OVERPASS_LOG else None
+
+
 def overpass_failover(operation, description: str):
     """Run `operation(endpoint)` against each Overpass mirror until one succeeds.
 
@@ -64,7 +99,11 @@ def overpass_failover(operation, description: str):
         for endpoint in cfg.OVERPASS_ENDPOINTS:
             try:
                 log(f"    [overpass] {description} via {endpoint} (round {round_number})")
-                return operation(endpoint)
+                result = operation(endpoint)
+                OVERPASS_LOG.append(
+                    {"description": description, "endpoint": endpoint, "at_utc": utc_now()}
+                )
+                return result
             except Exception as error:  # noqa: BLE001 - re-raised once rounds run out
                 last_error = error
                 log(f"    [overpass] {endpoint} failed: {type(error).__name__}: {error}")

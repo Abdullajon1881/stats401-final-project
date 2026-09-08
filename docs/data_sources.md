@@ -37,7 +37,17 @@ Boundaries and the walk graph are fetched with **OSMnx**; the point layers use
 written out in full in the source so the tag rules can be audited, and a small
 explicit query completes in seconds where OSMnx's slot-polling against the busy
 public instance repeatedly stalled. Three Overpass mirrors are tried in order,
-because the main instance returns 429/504 under load often enough to break a run.
+over up to three rounds, because the main instance returns 429/504 under load
+often enough to break a run.
+
+**Mirrors do not all serve the same snapshot.** Two runs minutes apart returned
+3,801 and 3,678 raw bus-stop candidates because different mirrors answered, and
+they replicate OSM at slightly different lags. That is a 3% swing with no edit
+activity to explain it. The manifest therefore records, per source, which
+endpoint served the query (`overpass_endpoint`), so a count difference between
+runs is explainable rather than mysterious. Committed outputs and the manifest
+counts always come from the same run, and `validate_data.py` enforces that they
+agree.
 
 Point queries use the city **bounding box** and are then clipped to the exact
 boundary. The Tashkent boundary polygon has thousands of vertices; embedding it
@@ -172,10 +182,23 @@ no target count to hit.
 SIAT portal, dataset **3890** (code 2.01.02.0056), "Permanent population (city)".
 Landing page: <https://siat.stat.uz/data/3890/?lang=en>
 
-**Licence: unclear.** No licence statement appears on the dataset page or the
-portal footer. We treat it as official public statistics used with attribution
-and have flagged it in the manifest for review before publication. We did not
-claim a licence we could not verify.
+**Licence: CC BY 4.0 (verified).** This was left as "unclear" in the first pass
+because the licence is not in the page source; it is rendered by the portal's
+JavaScript. Rendering the dataset page shows the footer:
+
+> Manba: Oʻzbekiston Respublikasi Statistika agentligi · Litsenziya: CC BY 4.0
+
+("Source: Statistics Agency of the Republic of Uzbekistan · Licence: CC BY 4.0"),
+linking to <https://creativecommons.org/licenses/by/4.0/>. That is a statement on
+the dataset page we actually use, not an inference from elsewhere.
+
+The parent site <https://stat.uz/> states the same thing independently in its
+footer: "All site materials are available under license: Creative Commons
+Attribution 4.0 International", together with "When referencing information, a
+link to www.stat.uz should be provided."
+
+**Attribution we owe:** Statistics Agency under the President of the Republic of
+Uzbekistan, with a link to www.stat.uz.
 
 **Acquisition.** The portal's `download_format=csv` endpoint returns JSON metadata
 pointing at the real CSV, so the script follows that pointer and downloads the
@@ -206,6 +229,24 @@ individual countries, 100 m, Uzbekistan, **2026**.
 **DOI:** [10.5258/SOTON/WP00839](https://doi.org/10.5258/SOTON/WP00839)
 **Licence:** Creative Commons Attribution 4.0 International (CC BY 4.0) — verified at <https://hub.worldpop.org/data/licence.txt>.
 
+**Release status: alpha.** WorldPop's own release statement
+([Global2_Release_Statement_R2025A_v1.pdf](https://data.worldpop.org/repo/prj/Global_2015_2030/R2025A/doc/Global2_Release_Statement_R2025A_v1.pdf),
+worldpop.org, September 2025) says:
+
+> The dataset currently represents an alpha version (R2025A) public release
+> product and may change over the coming year as improvements are made.
+
+So this raster is **not validated ground truth** and we do not describe it that
+way anywhere. The division of labour we carry into Week 4 is:
+
+* **SIAT** — official district population totals. The authority for *how many*
+  people are in each district.
+* **WorldPop** — candidate *within-district* spatial weights. A hypothesis about
+  *where* inside a district those people are.
+* Whether those weights are good enough for the final accessibility estimate is
+  an open question for Week 4 calibration and sensitivity testing, not something
+  this milestone settles.
+
 The 2026 layer was chosen because it aligns with the SIAT 2026-Q2 reference
 period. R2025A is the current release; R2024B is the older beta. The exact URL
 came from the WorldPop REST API rather than being guessed.
@@ -229,13 +270,15 @@ This is the most important finding of the milestone, so it is stated plainly.
 Aggregating the raster over the 12 district polygons and comparing with the
 official totals gives:
 
-| | WorldPop 2026 | SIAT 2026-Q2 | ratio |
-|---|---|---|---|
-| City total | 2,381,987 | 3,212,200 | 0.74 |
-| Bektemir | 245,092 | 73,600 | **3.33** |
-| Yakkasaray | 281,045 | 147,000 | 1.91 |
-| Chilanzar | 85,243 | 277,600 | **0.31** |
-| Sergeli | 57,933 | 182,500 | 0.32 |
+| | WorldPop 2020 | WorldPop 2026 | SIAT 2026-Q2 | 2026/SIAT |
+|---|---|---|---|---|
+| City total | 2,119,257 | 2,381,987 | 3,212,200 | 0.74 |
+| Bektemir | 218,038 | 245,092 | 73,600 | **3.33** |
+| Yakkasaray | 250,045 | 281,045 | 147,000 | 1.91 |
+| Chilanzar | 75,841 | 85,243 | 277,600 | **0.31** |
+| Sergeli | 51,543 | 57,933 | 182,500 | 0.32 |
+
+(Full 12-row table: [`worldpop_siat_diagnostic.csv`](../data/processed/worldpop_siat_diagnostic.csv).)
 
 The per-district ratio spans **0.31 to 3.33 — a 10.8x spread** — and the
 correlation between WorldPop and SIAT district totals is **−0.077**, i.e. no
@@ -243,12 +286,27 @@ relationship at all. WorldPop puts more people in industrial Bektemir
 (6,866/km²) than in Chilanzar (2,809/km²), which is Tashkent's densest Soviet
 mikrorayon housing. That ordering is clearly wrong.
 
-We checked whether this is an artifact of the 2026 projection by downloading the
-2020 layer of the same product and repeating the aggregation. It is not:
+We checked whether this is an artifact of the 2026 projection by aggregating the
+2020 layer of the same product and repeating the comparison. It is not:
 
-* every district scales by **exactly 1.12** from 2020 to 2026, so the 2026 layer
-  is a uniform rescaling of the 2020 surface and adds no new spatial detail;
-* the correlation with SIAT is **−0.077 in 2020 as well**.
+* every district scales by **1.124** from 2020 to 2026 (spread across the 12
+  districts: 0.0002), so the 2026 layer is a uniform rescaling of the 2020
+  surface and adds no new spatial detail for Tashkent;
+* the correlation with SIAT is **−0.077 in 2020 as well** — identical to 2026.
+
+This is reproducible, not a one-off manual check. Run:
+
+```bash
+python scripts/audit_population_surface.py
+```
+
+It downloads and caches both rasters in `data/external/` (gitignored), aggregates
+each over the 12 district polygons, and writes
+[`data/processed/worldpop_siat_diagnostic.csv`](../data/processed/worldpop_siat_diagnostic.csv)
+with per-district WorldPop 2020, WorldPop 2026, SIAT population, both ratios, and
+the 2020→2026 scaling factor. Every number quoted in this section comes from that
+CSV. Both rasters are recorded under `diagnostic_sources` in the manifest, kept
+separate from the sources the analysis actually depends on.
 
 So the disagreement is inherent to WorldPop's constrained surface for Tashkent,
 not to the year we picked. We verified our own aggregation independently with
@@ -268,15 +326,29 @@ it falls below 0.5, so the problem cannot quietly disappear.
 
 ## 4. Transport open data — attempted, not available
 
-`https://data.egov.uz/` is cited in the proposal. **It could not be reached from
-our network at all**: HTTPS and HTTP both fail to connect (not a 403 or a 404 —
-the TCP connection is refused/times out), and `https://data.gov.uz/` behaves the
-same way. We could not confirm whether this is a geographic block, a temporary
-outage, or a decommissioned portal.
+`https://data.egov.uz/` is cited in the proposal.
+
+**The portal exists.** It is Uzbekistan's national open-data portal and is
+referenced by egov.uz and by third-party portal directories. We are not claiming
+it is down or discontinued.
+
+**We could not reach it from this execution environment.** DNS resolves
+(195.158.28.138) but every connection attempt over both HTTPS and HTTP is refused
+or times out — not a 403 or a 404. `https://data.gov.uz/` behaves identically. We
+cannot tell from here whether that is a geographic restriction, an outage, or
+something about this network; we only know our own attempts failed, and that is
+all we assert.
+
+We also checked the Ministry of Transport's open-data page,
+<https://mintrans.uz/en/openfiles>, which **is** reachable. It publishes datasets
+in Excel/CSV/XML/JSON including "Information on newly opened city routes" and
+"Information about auto stations". Neither is a bus-stop *location* dataset, so
+neither replaces OSM for this project.
 
 Consequence: **no open-data bus layer was acquired**, and bus stops rest on OSM
-alone. This is a real gap in the proposal's plan and is recorded here rather than
-glossed over. Week 4 should retry the portal, ideally from a different network.
+alone for Week 3. We did not fabricate or hand-enter any bus data. Week 4 should
+retry the portal from a different network before drawing conclusions about bus
+coverage.
 
 **Yandex Maps was not scraped.** The proposal mentions collecting bus data from
 Yandex, but automated extraction is not clearly permitted by its terms, so no
@@ -291,29 +363,36 @@ from a source we are entitled to use.
 * `data/external/` and `data/raw/` are gitignored. Nothing in them is required to
   read the processed outputs, and everything in them is rebuilt by the script.
 * OSM is edited continuously, so re-running gives *current* data, not identical
-  data. Between two runs minutes apart we already saw the raw bus candidate count
-  move by one and one marketplace appear and disappear. The manifest stores the
-  acquisition timestamp and the counts for the run that produced the committed
-  files.
+  data. Mirror replication lag adds a second source of variation (see above). The
+  manifest stores the acquisition timestamp, the serving endpoint, and the counts
+  for the run that produced the committed files; the validator fails if the
+  committed files and the manifest ever disagree.
 * Overpass mirrors fail intermittently; the client retries across three of them
   and prints which one answered.
 
 ## Known limitations
 
-1. `data.egov.uz` unreachable — no independent bus source, OSM is unvalidated
-   against an official list.
+1. `data.egov.uz` could not be reached **from this execution environment**, so
+   there is no independent bus source and OSM is unvalidated against an official
+   list. The portal itself exists; we make no claim about its global status.
 2. Yangi Toshkent district exists in OSM but not in SIAT; the analysis set of 12
    districts covers 437.72 km² of the 633.89 km² OSM city boundary.
-3. Bus stops are OSM-only and noisy; 231 of 2,163 have no name.
+3. Bus stops are OSM-only and noisy, and a meaningful share have no name tag.
+   The exact counts for the committed run are in the manifest, which is checked
+   against the files on every validation.
 4. Bazaar coverage is incomplete by nature; 83 marketplaces is a lower bound,
    and 7 of them are unnamed.
 5. Ten of the 50 metro stations have no mapped entrance nearby — these are mostly surface
    and elevated Circle Line stations, where `railway=subway_entrance` is not the
    right tag. Week 4 should fall back to the station point for those.
-6. SIAT licensing is unverified.
+6. WorldPop R2025A is an **alpha** release by WorldPop's own statement and may
+   change; it is treated as candidate within-district weights, not truth.
 7. WorldPop disagrees with SIAT at district level (correlation −0.077, ratios
    0.31–3.33). Per-district calibration is mandatory in Week 4; a single
    city-wide scale factor would be wrong.
-8. 64 of 2,163 bus stops sit exactly on a district border, because Tashkent's
+8. A number of bus stops sit exactly on a district border, because Tashkent's
    district lines follow major roads. They are assigned to the nearest district
    and flagged `district_assignment = boundary_nearest`.
+9. Overpass mirrors replicate OSM at different lags, so raw candidate counts vary
+   by a few percent between runs depending on which mirror answers. The serving
+   endpoint is recorded per source in the manifest.

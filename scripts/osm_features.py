@@ -20,11 +20,13 @@ import pandas as pd
 import config as cfg
 import overpass_client
 from pipeline_utils import (
-    NOTES,
+    add_note,
     is_latin_name,
+    last_overpass_endpoint,
     log,
     name_key,
     normalise_name,
+    reset_notes,
     step,
     tag_series,
     to_points,
@@ -171,6 +173,7 @@ def _attach_district(gdf: gpd.GeoDataFrame, districts: gpd.GeoDataFrame) -> gpd.
 # ---------------------------------------------------------------------------
 def extract_metro(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, dict]:
     log("\n-- Metro stations and entrances --")
+    reset_notes("osm_metro")
     selectors = [
         ("railway", "station"),
         ("railway", "halt"),
@@ -180,6 +183,7 @@ def extract_metro(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFrame, 
         ("public_transport", "station"),
     ]
     raw = _download(bbox, selectors, "metro candidates")
+    served_by = last_overpass_endpoint()
     log(f"    raw metro-related OSM objects returned: {len(raw)}")
     if raw.empty:
         raise RuntimeError("Overpass returned no metro candidates for Tashkent")
@@ -266,7 +270,8 @@ def extract_metro(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFrame, 
 
     unnamed = int(stations["name"].isna().sum())
     if unnamed:
-        NOTES.append(f"{unnamed} metro station(s) have no name tag in OSM.")
+        add_note("osm_metro", "stations_without_name",
+                 f"{unnamed} of {len(stations)} metro stations have no name tag in OSM.")
 
     station_cols = [
         "osm_element", "osm_id", "name", "name_en", "name_ru", "line", "network",
@@ -282,6 +287,7 @@ def extract_metro(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFrame, 
         f"{cfg.METRO_ENTRANCES_FILE.name} ({len(entrances)})")
 
     stats = {
+        "overpass_endpoint": served_by,
         "raw_candidates": int(len(raw)),
         "classified_stations": int(len(stations_raw)),
         "classified_entrances": int(len(entrances_raw)),
@@ -301,6 +307,7 @@ def extract_metro(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFrame, 
 # ---------------------------------------------------------------------------
 def extract_bus_stops(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFrame, dict]:
     log("\n-- Bus stops --")
+    reset_notes("osm_bus_stops")
     selectors = [
         ("highway", "bus_stop"),
         ("public_transport", "platform"),
@@ -308,6 +315,7 @@ def extract_bus_stops(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFra
         ("bus", "yes"),
     ]
     raw = _download(bbox, selectors, "bus-stop candidates")
+    served_by = last_overpass_endpoint()
     log(f"    raw candidate objects returned: {len(raw)}")
     if raw.empty:
         raise RuntimeError("Overpass returned no bus-stop candidates for Tashkent")
@@ -400,9 +408,11 @@ def extract_bus_stops(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFra
     unnamed = int(stops["name"].isna().sum())
     log(f"    final bus stops: {len(stops)}  ({unnamed} without a name tag)")
     if unnamed:
-        NOTES.append(
+        add_note(
+            "osm_bus_stops",
+            "stops_without_name",
             f"{unnamed} of {len(stops)} bus stops have no name tag in OSM; they are kept "
-            f"because an unnamed stop is still a physical access point."
+            f"because an unnamed stop is still a physical access point.",
         )
 
     write_geojson(
@@ -414,6 +424,7 @@ def extract_bus_stops(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFra
     log(f"    wrote {cfg.BUS_STOPS_FILE.name}")
 
     stats = {
+        "overpass_endpoint": served_by,
         "raw_candidates": int(len(raw)),
         "classified_as_bus": int(len(candidates)),
         "inside_city": before_dedupe,
@@ -430,11 +441,15 @@ def extract_bus_stops(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFra
 # ---------------------------------------------------------------------------
 def extract_bazaars(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFrame, dict]:
     log("\n-- Bazaars / marketplaces --")
+    reset_notes("osm_bazaars")
     raw = _download(bbox, [("amenity", "marketplace")], "marketplace candidates")
+    served_by = last_overpass_endpoint()
     log(f"    raw amenity=marketplace objects returned: {len(raw)}")
     if raw.empty:
-        NOTES.append("OSM returned no amenity=marketplace features for Tashkent.")
-        return raw, {"raw_candidates": 0, "final_bazaars": 0}
+        add_note("osm_bazaars", "no_features",
+                 "OSM returned no amenity=marketplace features for Tashkent.")
+        return raw, {"overpass_endpoint": served_by, "raw_candidates": 0,
+                     "final_bazaars": 0}
 
     element_counts = raw.get("osm_element", pd.Series(dtype=object)).value_counts().to_dict()
     log(f"    element types: {element_counts}")
@@ -463,9 +478,11 @@ def extract_bazaars(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFrame
     named = [n for n in bazaars["name"].dropna().tolist()]
     log(f"    names: {', '.join(named[:20])}{' ...' if len(named) > 20 else ''}")
 
-    NOTES.append(
-        "Bazaar coverage rests on amenity=marketplace only. Smaller informal markets "
-        "are very likely missing from OSM; the count is a lower bound, not a census."
+    add_note(
+        "osm_bazaars",
+        "coverage_lower_bound",
+        f"Bazaar coverage rests on amenity=marketplace only. Smaller informal markets "
+        f"are very likely missing from OSM; {len(bazaars)} is a lower bound, not a census.",
     )
 
     write_geojson(
@@ -477,6 +494,7 @@ def extract_bazaars(bbox, city_geom_metric, districts) -> tuple[gpd.GeoDataFrame
     log(f"    wrote {cfg.BAZAARS_FILE.name}")
 
     return bazaars, {
+        "overpass_endpoint": served_by,
         "raw_candidates": int(len(raw)),
         "duplicates_removed": removed,
         "final_bazaars": int(len(bazaars)),
@@ -509,9 +527,15 @@ def acquire_transit_and_poi(city, districts, record_source) -> dict:
         "url": "https://www.openstreetmap.org/",
         "crs": cfg.GEOGRAPHIC_CRS,
     }
+    # The serving endpoint is provenance about the query, not a feature count.
+    metro_endpoint = metro_stats.pop("overpass_endpoint", None)
+    bus_endpoint = bus_stats.pop("overpass_endpoint", None)
+    bazaar_endpoint = bazaar_stats.pop("overpass_endpoint", None)
+
     record_source(
         "osm_metro",
         **osm_licence,
+        overpass_endpoint=metro_endpoint,
         method="Overpass QL union query over the city bbox (out center), clipped to the city boundary",
         query_rule=(
             "Candidates: railway in (station, halt, subway_entrance), station=subway, "
@@ -539,6 +563,7 @@ def acquire_transit_and_poi(city, districts, record_source) -> dict:
     record_source(
         "osm_bus_stops",
         **osm_licence,
+        overpass_endpoint=bus_endpoint,
         method="Overpass QL union query over the city bbox (out center), clipped to the city boundary",
         query_rule=(
             "Candidates: highway=bus_stop, public_transport in (platform, "
@@ -559,6 +584,7 @@ def acquire_transit_and_poi(city, districts, record_source) -> dict:
     record_source(
         "osm_bazaars",
         **osm_licence,
+        overpass_endpoint=bazaar_endpoint,
         method="Overpass QL union query over the city bbox (out center), clipped to the city boundary",
         query_rule="amenity=marketplace only; no other tag is treated as a bazaar.",
         dedupe_rule=(

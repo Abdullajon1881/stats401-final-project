@@ -168,6 +168,28 @@ records**.
 
 ---
 
+## `worldpop_siat_diagnostic.csv`
+
+**A diagnostic, not a project result.** Produced by
+`python scripts/audit_population_surface.py`. 12 rows, one per SIAT district.
+It exists so the WorldPop claims in [data_sources.md](data_sources.md) can be
+reproduced instead of taken on trust. No calibration is applied and no
+accessibility figure is derived from it.
+
+| Field | Type | Notes |
+|---|---|---|
+| `district_name` | string | Canonical label. |
+| `area_km2` | float | District area, EPSG:32642. |
+| `worldpop_2020` | float | WorldPop R2025A constrained 2020, summed over the district. |
+| `worldpop_2026` | float | Same for 2026 — the layer the project uses. |
+| `siat_code` | string | SOATO code. |
+| `siat_population` | integer | Official SIAT persons, 2026-Q2. |
+| `ratio_2020_to_siat` | float | `worldpop_2020 / siat_population`. |
+| `ratio_2026_to_siat` | float | `worldpop_2026 / siat_population`. |
+| `scaling_2020_to_2026` | float | `worldpop_2026 / worldpop_2020`. A near-constant value across districts means the 2026 layer is a uniform rescaling and carries no new spatial detail. |
+
+---
+
 ## Not committed (rebuilt by `scripts/acquire_data.py`)
 
 | Path | What | Why not in git |
@@ -176,6 +198,7 @@ records**.
 | `data/external/uzb_pop_2026_CN_100m_R2025A_v1.tif` | WorldPop 2026 raster, 36 MB | Large, immutable, re-downloadable; SHA-256 recorded in the manifest. |
 | `data/external/osm_cache/` | OSMnx HTTP cache | Cache. |
 | `data/raw/siat_*.csv` | Untouched SIAT downloads | Reproducible; the processed CSV is committed instead. |
+| `data/external/uzb_pop_2020_CN_100m_R2025A_v1.tif` | WorldPop 2020 raster, used only by the diagnostic script | Large; re-downloadable. Checksum recorded under `diagnostic_sources` in the manifest. |
 
 ## Conventions
 
@@ -184,3 +207,19 @@ records**.
 * Names are whitespace-normalised only. Nothing is transliterated or translated.
 * Population is in persons.
 * No file contains a pandas index column; `validate_data.py` checks this.
+
+## Validating
+
+```bash
+python scripts/validate_data.py              # FULL: committed + external artifacts
+python scripts/validate_data.py --repo-only  # committed artifacts only
+```
+
+FULL is the default and is what the Week 3 test report uses. It requires the
+WorldPop raster and the walk graph to be present and to match the size, checksum
+and node/edge counts recorded in the manifest, so a missing or corrupt external
+artifact is a hard failure.
+
+`--repo-only` exists for a fresh clone, before `scripts/acquire_data.py` has run.
+It checks only what git carries and **cannot certify the foundation on its own**;
+it says so in its own output.
