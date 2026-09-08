@@ -1,0 +1,31 @@
+# --- Large / reproducible data (rebuilt by scripts/acquire_data.py) ---
+data/external/
+data/raw/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# --- Caches / tooling ---
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Secrets ---
+.env
+.env.*
+*.key
+*.pem
+secrets.json
