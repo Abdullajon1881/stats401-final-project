@@ -334,12 +334,12 @@ diverge. It then compares corresponding cells over the union of the 12 districts
 and writes
 [`data/processed/worldpop_temporal_diagnostic.json`](../data/processed/worldpop_temporal_diagnostic.json).
 
-**The answer is no — but the departure is small.**
+**The answer is no.**
 
 | Measure | Value |
 |---|---|
 | Cells valid in both years | 64,920 |
-| Cells valid only in 2026 (settlement footprint growth) | 249 |
+| Cells valid only in 2026 | 249 |
 | Cells valid only in 2020 | 0 |
 | Zero → positive | 5 |
 | Positive → zero | 0 |
@@ -347,30 +347,39 @@ and writes
 | Fitted scalar (least squares) | 1.1231 |
 | Ratio p5 / median / p95 | 1.100 / 1.124 / 1.152 |
 | Ratio p99 / max | 1.334 / 39.13 |
-| Cells within 1% of a pure scalar | 76.2% |
+| Cells within 1% of the fitted scalar | 76.2% |
 | Cells within 5% | 94.6% |
 | Normalized RMSE after scaling | 0.0144 |
-| Σ&#124;residual&#124; ÷ total | 0.0076 |
+| Relative L1 error, Σ&#124;B − kA&#124; ÷ ΣB | 0.0076 |
 
-So it is **not** a pure scalar multiple: 249 cells became populated that were
-nodata in 2020, 5 went from zero to positive, 406 cells grew by more than 50%
-(up to 39×), and roughly a quarter of cells depart from the fitted scalar by more
-than 1%.
+It is **not** a pure scalar multiple. 249 cells are nodata in 2020 but valid in
+2026, 5 go from zero to positive, 406 have a modelled value more than 50% higher
+(up to 39×), and roughly a quarter of compared cells depart from the fitted
+scalar by more than 1%.
 
-But the departure is small in population terms. Scaling the 2020 surface by
-1.1231 reproduces **99.24%** of the 2026 population mass; the fast-growing cells
-carry only **0.039%** of the total, and the newly-populated cells only 0.005%.
+The aggregate discrepancy is nevertheless small. After least-squares scaling by
+1.1231, **the total absolute cell-wise residual is 0.76% of the modelled 2026
+total** (that is the relative L1 error, Σ|B − kA| ÷ ΣB). The cells with the
+largest modelled increases hold 0.039% of the modelled total, and the cells valid
+only in 2026 hold 0.005%.
 
-**The honest statement is therefore:** the 2026 layer is *close to, but not
-exactly,* a uniform rescaling of 2020. It contains a modest amount of genuine new
-spatial information — a slightly expanded settlement footprint and a few hundred
-rapidly-growing cells — on top of an essentially unchanged 2020 pattern.
+**These are differences between two runs of a modelled product, not
+measurements.** WorldPop R2025A is an alpha release, and a difference between its
+2020 and 2026 layers may reflect model updates, changes to the constrained
+settlement mask, changed covariates, projected population change, real
+development, or some combination. Nothing here should be read as an observation
+of construction, migration or settlement growth in Tashkent.
 
-**Why this matters for Week 4.** The within-district weights we would take from
-the 2026 layer are, to within about 1%, the 2020 weights. Six years of Tashkent
-construction are represented by a handful of cells carrying 0.04% of the
-population. Any sensitivity test should treat the within-district distribution as
-2020-vintage rather than current.
+**The defensible statement is:** the 2020 and 2026 modelled cell patterns are
+highly similar overall, but they are not identical. About 76% of compared cells
+fall within 1% of the fitted scalar and about 95% within 5%. This temporal
+similarity does **not** validate the accuracy of the 2026 within-district
+distribution — two runs of the same model agreeing with each other is not
+evidence that either is right.
+
+The comparison is also computed across the union of the 12 districts. It does not
+show that any individual district's normalised within-district weights are
+accurate or current. That question belongs to Week 4 sensitivity analysis.
 
 **What this means for Week 4.** Calibration is not a cosmetic step. WorldPop
 cannot be used to distribute population *between* districts; it can only supply
@@ -455,7 +464,8 @@ from a source we are entitled to use.
 9. Overpass mirrors replicate OSM at different lags, so raw candidate counts vary
    by a few percent between runs depending on which mirror answers. The serving
    endpoint is recorded per source in the manifest.
-10. The WorldPop 2026 within-district pattern is, to within about 1%, the 2020
-    pattern (cell-level correlation 0.9998; a single 1.1231 scalar reproduces
-    99.24% of the 2026 mass). Treat the within-district weights as 2020-vintage,
-    not current.
+10. The WorldPop 2020 and 2026 modelled cell patterns are highly similar but not
+    identical (cell-level correlation 0.9998; 76% of cells within 1% of the
+    fitted 1.1231 scalar, 95% within 5%; relative L1 error 0.76%). That
+    similarity is between two runs of the same model and does not validate the
+    accuracy of the 2026 within-district distribution.
