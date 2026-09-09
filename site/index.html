@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tashkent Transit &amp; Walkability — who can reach the metro in ten minutes?</title>
+<meta name="description" content="An interim interactive prototype: modelled 10-minute walking access to the Tashkent metro, by district.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a class="skip-link" href="#map-heading">Skip to the map</a>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">STATS&nbsp;401 · Interim prototype · Week&nbsp;5</p>
+    <h1>Tashkent Transit &amp;&nbsp;Walkability</h1>
+    <p class="standfirst">What share of the city can walk to the metro in ten&nbsp;minutes?</p>
+    <p class="lede">
+      An estimated <strong data-bind="metro_pct">&mdash;</strong> of the analysed population
+      lives within a modelled <strong data-bind="walk_minutes">&mdash;</strong> walk of a metro
+      access point, assuming a <strong data-bind="walk_speed">&mdash;</strong> walking speed and
+      routing along the real pedestrian network &mdash; a
+      <strong data-bind="budget">&mdash;</strong> distance budget.
+    </p>
+    <p class="lede-caveat">
+      These are model estimates, not observed walking behaviour, and they measure physical
+      walking access only &mdash; not service frequency, span, transfers, in-vehicle time,
+      reliability, crowding or fare.
+    </p>
+  </header>
+
+  <div id="load-error" class="load-error" role="alert" hidden>
+    <h2>The prototype could not load its data</h2>
+    <p id="load-error-detail"></p>
+    <p class="load-error-hint">
+      This page reads JSON with <code>fetch</code>, which browsers block on
+      <code>file://</code>. Serve it over HTTP:
+      <code>python -m http.server 8000 -d site</code>, then open
+      <code>http://localhost:8000</code>.
+    </p>
+  </div>
+
+  <main id="app" hidden>
+
+    <!-- ── headline estimates ─────────────────────────────────────────── -->
+    <section class="summary" aria-labelledby="summary-heading">
+      <h2 id="summary-heading" class="visually-hidden">Headline access estimates</h2>
+      <ol class="summary-row">
+        <li class="stat stat--metro">
+          <p class="stat-value" data-bind="metro_pct">&mdash;</p>
+          <h3 class="stat-label">Metro access</h3>
+          <p class="stat-people"><span data-bind="metro_people">&mdash;</span> people</p>
+          <p class="stat-note">Within a 10-minute network walk of a metro access point.</p>
+        </li>
+        <li class="stat stat--bus">
+          <p class="stat-value" data-bind="bus_only_pct">&mdash;</p>
+          <h3 class="stat-label">Bus-only</h3>
+          <p class="stat-people"><span data-bind="bus_only_people">&mdash;</span> people</p>
+          <p class="stat-note">Outside 10-minute metro access, but within a 10-minute walk of a mapped bus stop.</p>
+        </li>
+        <li class="stat stat--under">
+          <p class="stat-value" data-bind="underserved_pct">&mdash;</p>
+          <h3 class="stat-label">Underserved</h3>
+          <p class="stat-people"><span data-bind="underserved_people">&mdash;</span> people</p>
+          <p class="stat-note">Outside the 10-minute walking threshold of both mapped metro access and mapped bus stops.</p>
+        </li>
+      </ol>
+      <p class="summary-denominator">
+        Denominator: <strong data-bind="analysis_population">&mdash;</strong> residents across the
+        12 districts with official statistics, <span data-bind="reference_period">&mdash;</span>.
+        The three categories are mutually exclusive and sum to 100%.
+      </p>
+    </section>
+
+    <!-- ── map + district detail ──────────────────────────────────────── -->
+    <section class="map-section" aria-labelledby="map-heading">
+      <div class="map-block">
+        <div class="section-head">
+          <h2 id="map-heading">Where the ten-minute metro walk reaches</h2>
+          <p class="section-sub">
+            Hover a district to compare it; select one to pin it across both views.
+          </p>
+        </div>
+
+        <div class="toolbar" role="group" aria-label="Map layers">
+          <span class="toolbar-label" id="layers-label">Layers</span>
+          <div class="toolbar-buttons" aria-labelledby="layers-label">
+            <button type="button" class="chip" data-layer="density" aria-pressed="true">
+              <span class="chip-swatch chip-swatch--density" aria-hidden="true"></span>Population
+            </button>
+            <button type="button" class="chip" data-layer="isochrone" aria-pressed="true">
+              <span class="chip-swatch chip-swatch--metro-area" aria-hidden="true"></span>Metro access
+            </button>
+            <button type="button" class="chip" data-layer="access" aria-pressed="true">
+              <span class="chip-swatch chip-swatch--metro-point" aria-hidden="true"></span>Metro points
+            </button>
+            <button type="button" class="chip" data-layer="stations" aria-pressed="false">
+              <span class="chip-swatch chip-swatch--station" aria-hidden="true"></span>Stations
+            </button>
+            <button type="button" class="chip" data-layer="bus" aria-pressed="false">
+              <span class="chip-swatch chip-swatch--bus" aria-hidden="true"></span>Bus stops
+            </button>
+            <button type="button" class="chip" data-layer="bazaars" aria-pressed="false">
+              <span class="chip-swatch chip-swatch--bazaar" aria-hidden="true"></span>Bazaars
+            </button>
+          </div>
+        </div>
+
+        <figure class="map-figure">
+          <div id="map" class="map-canvas"></div>
+          <figcaption class="map-caption">
+            <div class="legend" id="density-legend" aria-label="Population density legend">
+              <span class="legend-title">People per km²</span>
+              <div class="legend-ramp" id="density-ramp"></div>
+              <div class="legend-scale" id="density-scale"></div>
+            </div>
+            <p class="map-note">
+              Access shading is a display layer. Population estimates use pedestrian-network
+              distance, not polygon intersection.
+            </p>
+          </figcaption>
+        </figure>
+      </div>
+
+      <aside class="detail" aria-labelledby="detail-heading" aria-live="polite">
+        <div class="section-head">
+          <h2 id="detail-heading">District detail</h2>
+          <button type="button" id="reset-selection" class="reset" hidden>Clear selection</button>
+        </div>
+        <div id="detail-body">
+          <p class="detail-empty">
+            Select a district on the map or in the ranking below to see its figures here.
+          </p>
+        </div>
+      </aside>
+    </section>
+
+    <!-- ── ranked dot plot ────────────────────────────────────────────── -->
+    <section class="ranking-section" aria-labelledby="ranking-heading">
+      <div class="section-head">
+        <h2 id="ranking-heading">Metro access by district</h2>
+        <p class="section-sub">
+          Share of each district&rsquo;s population within a modelled 10-minute walk of metro
+          access, ranked. Linked to the map above.
+        </p>
+      </div>
+      <div id="dotplot" class="dotplot-canvas"></div>
+    </section>
+
+    <!-- ── method ─────────────────────────────────────────────────────── -->
+    <footer class="method">
+      <h2>Method and uncertainty</h2>
+      <div class="method-grid">
+        <div>
+          <h3>What is measured</h3>
+          <p>
+            Population is modelled at roughly 100&nbsp;m cells, calibrated district by district to
+            official <span data-bind="reference_period">&mdash;</span> totals, then classified by
+            walking distance along the OpenStreetMap pedestrian network to the nearest metro access
+            point and to the nearest mapped bus stop.
+          </p>
+        </div>
+        <div>
+          <h3>What is not measured</h3>
+          <p>
+            Physical walking access only. Nothing here reflects how often a service runs, how long
+            it operates, transfers, in-vehicle time, reliability, crowding, fare, or whether a
+            route goes anywhere useful.
+          </p>
+        </div>
+        <div>
+          <h3>Known limits</h3>
+          <p>
+            The link from a cell centre to the network is a straight line to the nearest mapped
+            walkable edge and may not be physically walkable, so its effect on individual cells is
+            uncertain. Within-district population weights come from WorldPop R2025A, an alpha
+            product of unverified within-district accuracy. Bus stops are OpenStreetMap only.
+          </p>
+        </div>
+      </div>
+      <p class="method-foot">
+        Analysis version <span data-bind="analysis_version">&mdash;</span>, snapping method
+        <span data-bind="snapping_method">&mdash;</span>. Display layers &mdash; the access shading,
+        the population grid and every point layer &mdash; are drawn for context and drive no
+        reported percentage.
+      </p>
+    </footer>
+
+  </main>
+</div>
+
+<div id="tooltip" class="tooltip" role="tooltip" aria-hidden="true"></div>
+<p id="live-region" class="visually-hidden" aria-live="polite"></p>
+
+<script src="vendor/d3.v7.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
