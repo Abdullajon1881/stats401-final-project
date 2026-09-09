@@ -25,6 +25,7 @@ byte-identical output.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -161,6 +162,22 @@ def write_json(path: Path, payload: dict) -> int:
 
 def write_geojson(path: Path, features: list[dict]) -> int:
     return write_json(path, {"type": "FeatureCollection", "features": features})
+
+
+# Text sources are hashed with newlines normalised to LF. Git stores these files
+# with LF but checks them out with CRLF on Windows, so a raw byte hash would
+# differ between a Windows and a Linux clone of the same commit and the
+# "sources unchanged" check would fail on content that never changed. Binary
+# sources are hashed as-is.
+TEXT_SUFFIXES = {".json", ".csv", ".geojson", ".txt", ".md"}
+
+
+def content_hash(path: Path) -> str:
+    """SHA-256 of a source, independent of how the checkout wrote its newlines."""
+    if path.suffix.lower() not in TEXT_SUFFIXES:
+        return cfg.sha256_file(path)
+    data = path.read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
 
 
 def short_label(district_name: str) -> str:
@@ -625,7 +642,7 @@ def main() -> int:
             "files": {
                 name: {
                     "path": str(path.relative_to(cfg.REPO_ROOT)).replace("\\", "/"),
-                    "sha256": cfg.sha256_file(path),
+                    "sha256_lf_normalised": content_hash(path),
                 }
                 for name, path in sorted(paths.items())
             },

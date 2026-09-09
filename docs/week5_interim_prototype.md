@@ -1,273 +1,286 @@
 # Week 5 — interim interactive prototype
 
-A working, demonstrable prototype of the final visualisation: an interactive
-geographic access map and a linked ranked district dot plot, sharing one
-selection.
+A spatial-analysis workspace for the audited Week 4 result: a real pan/zoom map
+of Tashkent with the 10-minute metro access area, the metro network, population
+and transit layers, beside a linked D3 ranking of the twelve districts.
 
-This milestone adds **no analysis**. Every number it shows is copied from the
-audited Week 4 result. Method for those numbers:
+This milestone adds **no analysis**. Every figure it shows is copied from the
+audited Week 4 outputs. Method for those numbers:
 [analysis_methodology.md](analysis_methodology.md); figures:
 [week4_analysis_summary.md](week4_analysis_summary.md).
 
 ## Purpose
 
-Week 5 in the submitted timeline is an interim prototype, not the finished
-interface. It exists to prove three things:
+Week 5 in the submitted timeline is an interim prototype. It exists to prove:
 
-1. the audited analysis can drive a real interactive interface;
-2. the two central visual idioms — a geographic access map and a ranked district
-   dot plot — work and are genuinely linked;
-3. the code is arranged so Week 6 can add the remaining three views without
-   rebuilding anything.
+1. the audited analysis can drive a genuine interactive spatial tool;
+2. the two central idioms — a geographic access map and a ranked district dot
+   plot — work and are truly linked through one selection;
+3. the shell is arranged so Week 6 can add the remaining three views without a
+   second redesign.
 
-Three of the five planned views are deliberately **not** built yet: the 100%
-stacked access-composition bars, the density-vs-access scatterplot, and the
+Three of the five planned views are deliberately **not** built: the 100% stacked
+access-composition bars, the density-vs-access scatterplot and the
 parallel-coordinates comparison. The district features already carry every field
-those charts need.
+those charts need, and the sidebar is structured to take them.
 
 ## How to run it
-
-The page loads JSON with `fetch`, which browsers block on `file://`. Serve it
-over HTTP:
 
 ```bash
 python -m http.server 8000 -d site
 ```
 
-Then open <http://localhost:8000>. D3 v7.9.0 is vendored at
-`site/vendor/d3.v7.min.js`, so the prototype needs no network access.
+Then <http://localhost:8000>. The page reads JSON with `fetch` and loads ES
+modules, both of which browsers block on `file://`, so the server is required.
+Basemap tiles come from OpenFreeMap over the network; everything else is local.
 
-## Data flow
+## Why MapLibre for the map and D3 for the charts
 
-```
-data/processed/*            (audited Week 4 outputs, unchanged)
-data/analysis_manifest.json
-data/external/population_cells.parquet
-            │
-            ▼
-scripts/build_web_data.py   deterministic, no timestamps
-            │
-            ▼
-site/data/*.json|geojson    compact web artifacts
-            │
-            ▼
-site/app.js                 D3 reads them at runtime
-```
+The first prototype drew the map as a static D3 SVG projection. That cannot pan
+or zoom through scales, has no basemap, and put 2,163 bus stops into the DOM as
+individual nodes. Those are not D3's problems to solve.
 
-`scripts/build_web_data.py` never writes outside `site/`, and
-`scripts/validate_prototype.py` re-hashes every source it consumed to prove the
-audited analysis was not touched.
+The two libraries now do what each is good at:
 
-### Consumed
-
-| Audited input | Used for |
+| | |
 |---|---|
-| `data/processed/city_access_summary.json` | the three headline estimates |
-| `data/processed/district_access_metrics.csv` | every district figure |
-| `data/processed/tashkent_districts.geojson` | district geometry (12 SIAT districts) |
-| `data/processed/metro_isochrone_10min.geojson` | the access-shading display layer |
-| `data/processed/metro_access_points.csv` | 154 metro access points |
-| `data/processed/metro_stations.geojson` | 50 station centres |
-| `data/processed/bus_stops.geojson` | 2,163 bus stops |
-| `data/processed/bazaars.geojson` | 83 marketplaces |
-| `data/analysis_manifest.json` | reference period and provenance |
-| `data/external/population_cells.parquet` | the display population grid |
+| **MapLibre GL JS 5.24.0** | vector basemap, camera, WebGL rendering, clustering, zoom-driven layer rules, geographic hit-testing, feature-state |
+| **D3 7.9.0** | the ranked dot plot, its scales and axis, and every analytical chart Week 6 adds |
 
-### Generated
+D3 remains the analytical visualisation layer, which is what the course project
+is about. It simply stopped doing the job a map engine does better.
 
-| File | Role | Features | Size |
-|---|---|---:|---:|
-| `city_summary.json` | analytical | — | 1.6 KB |
-| `districts.geojson` | analytical | 12 | 120 KB |
-| `metro_isochrone_10min.geojson` | display only | 1 | 148 KB |
-| `metro_access_points.geojson` | display only | 154 | 42 KB |
-| `metro_stations.geojson` | display only | 50 | 9.7 KB |
-| `bus_stops.geojson` | display only | 2,163 | 281 KB |
-| `bazaars.geojson` | display only | 83 | 16 KB |
-| `population_density.geojson` | display only | 1,855 | 463 KB |
-| `manifest.json` | provenance | — | 4.2 KB |
+**MapLibre 5.24.0 was pinned deliberately.** At the time of writing npm's
+`latest` was 6.9.0, released that same day, and the v6 line was seven weeks old
+with eleven releases — still stabilising. Everything used here (feature-state,
+clustering, `fitBounds`/`flyTo`, expressions) has been present since v2. Both
+libraries are vendored under `site/vendor/` with their upstream licence notices:
+D3 is ISC, MapLibre is BSD-3-Clause.
 
-Roughly 1.1 MB in total, plus 280 KB of vendored D3.
+## Basemap
 
-Coordinates are written at five decimal places (~1.1 m). Polygons go through
-GEOS precision reduction rather than naive rounding, because rounding alone
-collapsed a small ring in the service area below three distinct points and made
-it invalid.
+**OpenFreeMap**, `dark` style — verified live before use, not assumed: the style
+is MapLibre style spec v8 with 47 layers over an OpenMapTiles vector source, and
+tiles were confirmed to carry real data over Tashkent at z9, z11, z12 and z14.
 
-## Analytical and display data are kept apart
+OpenFreeMap requires no API key, no registration and no cookies, and states no
+limit on views or requests. **Attribution is required and is not suppressed**:
+the source TileJSON carries it and MapLibre renders it via an
+`AttributionControl` that the validator checks is present. The map shows
+*OpenFreeMap © OpenMapTiles Data from OpenStreetMap* at the bottom right.
 
-This separation is the point of the whole project, so the prototype enforces it
-in three places.
+The style's background, water, park and building colours are nudged onto this
+application's ground so the overlays sit on a surface rather than on an
+unrelated black.
 
-* **Analytical** — `city_summary.json` and `districts.geojson` carry values
-  copied at full precision from the audited files. The validator compares every
-  one of them back against `data/processed/`.
-* **Display only** — the service-area polygon, the population grid and every
-  point layer are labelled `display_only` in `manifest.json` and in their own
-  feature properties. None of them produces a number the interface reports.
-* The page itself carries the caveat: *"Access shading is a display layer.
-  Population estimates use pedestrian-network distance, not polygon
-  intersection."* Week 4 measured that difference: counting by polygon would
-  give 14.71% rather than 13.56%.
+## Layout
 
-## The display population grid
+At 1200 px and wider the whole experience fits one viewport:
 
-The proposal asks for population density on the map. Drawing 65,169 individual
-cells would be both slow and unreadable, so the audited per-cell table is
-aggregated for display:
+```
+┌───────────────────────────── 64px header ─────────────────────────────┐
+│ Tashkent Transit & Walkability   question        Overview Districts Method │
+├──────────────────────────────────────┬────────────────────────────────┤
+│  MAP                        ~63%     │  SIDEBAR              ~37%     │
+│  search · layers · zoom · reset      │  Tashkent at a glance          │
+│  legend · scale · attribution        │    3 stats + composition strip │
+│                                      │  ─────────────────────────────  │
+│                                      │  Metro access by district (D3) │
+└──────────────────────────────────────┴────────────────────────────────┘
+```
 
-* projected to EPSG:32642;
-* summed into **500 m** square bins;
-* clipped to the union of the 12 SIAT districts;
-* density computed as population ÷ **clipped** area, so an edge bin is not
-  diluted by the part of it outside the study area;
-* zero-population bins dropped;
-* reprojected to EPSG:4326, ordered by (row, column) for a stable file.
+The sidebar is 400 px, narrowing to 320 px by 1180 px. The context panel shows
+**either** the city overview **or** the selected district — one slot, so
+selecting a district never leaves an empty box, and the ranking stays visible
+underneath at all times. Ranking rows size themselves to fill the panel, so
+there is no dead band under the chart at any height.
 
-That yields **1,855 bins** holding all 3,212,200 people. It is context, not
-evidence: no access percentage depends on it.
+Below 940 px the map goes full width at 62 vh with the analysis stacked beneath
+it; below 620 px the header wraps, the legend compacts, and the map takes 56 vh.
+Verified with no horizontal overflow at **1920, 1440, 1366, 1024, 768 and 390**.
 
-## Map
+## Map layers
 
-D3 `geoMercator`, fitted to the 12 districts, drawn as SVG. Layers bottom to top:
+Bottom to top:
 
-| Layer | Default | Notes |
-|---|---|---|
-| Population density | on | sequential teal, low opacity, `people/km²` legend |
-| Metro 10-minute access area | on | the audited display isochrone |
-| Bus stops | off | 2,163 points; off by default because they dominate |
-| Bazaars | off | 83 marketplaces |
-| District outlines | always | the interactive layer |
-| Metro stations | off | 50 station centres, opt-in |
-| Metro access points | on | 154 points |
+| # | Layer | Default | Notes |
+|---|---|---|---|
+| 1 | Population density | **on** | 500 m bins, neutral dark ramp, fades out by z15.4 |
+| 2 | District fill | always | invisible until hovered or selected |
+| 3 | 10-minute metro access | **on** | audited isochrone; fill recedes with zoom, outline firms up |
+| 4 | Metro lines | **on** | OSM route geometry, real line colours |
+| 5 | District boundaries | always | plus a heavier stroke for hover and selection |
+| 6 | Outside-area mask | always | dims everything beyond the 12 districts |
+| 7 | Bus stops | off | clustered; individual points only when zoomed in |
+| 8 | Bazaars | off | from z11 |
+| 9 | Metro access points | **on** | entrances filled, station fallbacks hollow, from z11.5 |
+| 10 | Stations + labels | **on** | labels from z12.4 |
+| 11 | Searched-station ring | — | while a station is selected |
 
-Bus stops and bazaars sit below the district outlines so the interactive layer is
-never blocked; metro points sit above it because they carry their own tooltips.
+The mask sits **above** the whole basemap rather than under its first symbol
+layer, because OpenFreeMap draws roads and place labels after that anchor — a
+mask placed there left the surrounding road network at full brightness.
 
-**Metro entrances and station fallbacks are drawn differently** — a filled circle
-for the 144 mapped entrances, a larger hollow ring for the 10 station fallbacks —
-so the distinction survives without relying on colour. Their tooltips say which
-is which, and a fallback's says why: *"No mapped entrance within 400 m."*
+### Zoom-dependent detail
 
-## Ranked dot plot
+Tuned by looking at the map at each scale, not guessed:
 
-The second idiom: all 12 districts ranked by modelled metro access, highest at
-the top. A leader rule runs from the axis to the dot, with the value beside it.
-A dot plot rather than a bar chart, as the proposal specifies.
+* **z9–11 city** — population, access area, metro lines, districts, stations. No
+  access outline (at that size it is only noise), no access points, no bus stops.
+* **z11.5–13.5 district** — access points appear, the access outline firms up,
+  station labels from z12.4, bazaars from z11, bus clusters if enabled.
+* **z14+ street** — population fades out entirely (500 m squares are honest at
+  city scale and merely blocky over individual buildings), the access fill
+  recedes to a hint while its outline carries the boundary, individual bus stops
+  replace clusters, and the basemap's own street detail takes over.
 
-**The order is derived from the data at runtime**, never hard-coded. Label
-gutters are measured from the rendered text rather than estimated, because a
-fixed estimate clipped "Shaykhantakhur" at phone width.
+### Population
 
-## Linked interaction
+The audited 500 m display bins are kept — no smoothing, no invented sub-grid
+precision — but rendered with a **deliberately dark, neutral ramp**. An earlier
+pass used a light ramp and the city became one grey mass that buried both the
+access area and the district boundaries. Population is the backdrop; it is never
+the loudest layer, and it carries a `people/km²` legend.
 
-One shared state object; both views read from it.
+### Metro lines
+
+New display data, acquired once by `scripts/acquire_metro_lines.py` from
+OpenStreetMap `route=subway` relations and frozen into `data/display/` with full
+provenance — the exact Overpass query, the relations returned and their tags.
+The web build reads that snapshot, so it stays offline and deterministic.
+
+Four lines, each with a colour every one of its route relations agrees on:
+Chilonzor (red), Oʻzbekiston (blue), Yunusobod (green), Circle (`#9933FF`). The
+named colours are tuned for a dark ground; **a line whose relations disagreed
+would carry no colour and be drawn in a neutral network grey rather than a
+guessed one**. No geometry is synthesised.
+
+The snapshot records `mapped_track_length_km`, not route length: OSM maps part of
+each line as one shared way and part as separate per-direction tracks, so the
+merged geometry is roughly twice the route length on the split sections. It is
+recorded for provenance and never shown as a line length.
+
+**This layer is drawn, never measured.** The audited access result is computed
+from metro entrances and station points and is unaffected by it.
+
+## Interaction
+
+One state object; both views read from it and neither owns it.
 
 ```js
-state = { selectedDistrict, hoveredDistrict, layers }
+state = { selectedDistrict, hoveredDistrict, selectedStation, searchQuery, view, layers, mapReady }
 ```
 
 | Action | Effect |
 |---|---|
-| Hover a district on the map | emphasises it on the map, emphasises its dot-plot row, shows a tooltip |
-| Hover a dot-plot row | same, in reverse |
-| Click either | pins the district: it stays highlighted in both views and fills the detail panel |
-| Click the pinned district again | clears the pin |
-| Click empty map space | clears the pin |
-| "Clear selection" button, or Escape | clears the pin |
+| Hover a district on the map | ranking row highlights, tooltip |
+| Hover a ranking row | map district highlights via feature-state, tooltip |
+| Click either | pins the district in both views and fills the detail panel |
+| Click the pinned district again | releases it |
+| Click empty map | releases it |
+| Escape, or **Clear** | releases it |
+| Search a district | selects it and fits the map to it |
+| Search a station | flies to it at z14.4 and rings it |
+| **Overview** | clears the selection and refits the city |
+| **Districts** | scrolls to and focuses the ranking |
+| **Method** | opens the method dialog |
+| +, −, ⤢ | zoom in, zoom out, refit Tashkent |
 
-A pinned district also dims bus stops outside it, so the pin reads on that layer
-too. The detail panel shows population, the three access shares with populations,
-density, and counts of metro stations, access points, bus stops and bazaars.
+Camera: fitted to the twelve districts on load (≈ z10.5), `minZoom` 8.5,
+`maxZoom` 17.5, and `maxBounds` 0.55° around the districts so the city cannot be
+lost. Rotation is disabled — it adds nothing to a north-up analytical map.
 
 ### The zero-access note
 
-A district can only report 0% metro access because no analysed cell fell inside
-the budget. When the nearest one missed by a very small margin, that is a
-knife-edge result rather than a robust finding, and the panel says so:
+A district can only report 0% because no analysed cell fell inside the budget.
+When the nearest missed by a small margin that is a knife-edge result, and the
+panel says so, using the district's own audited numbers. No district is named in
+the code; today only Uchtepa triggers it, at 819.7 m against an 800 m budget.
 
-> No analysed population cell falls within the 800 m metro budget. The nearest is
-> 819.7 m — only about 20 m outside the threshold, so this result is sensitive to
-> mapping and walking assumptions.
+## Security
 
-Both the rule and the wording are derived from the district's own audited
-numbers, so no district is named in the code. Today only Uchtepa triggers it.
+Every label the interface shows can come from OpenStreetMap, which is
+world-editable. The previous implementation built tooltip and detail markup as
+HTML strings and assigned them with `innerHTML` — anything a mapper typed into a
+name tag would have executed.
 
-## Visual encoding
+All DOM construction now goes through `site/js/dom.js`, which only ever assigns
+through `textContent`; map popups use `setDOMContent`, not `setHTML`. The
+validator fails on any `innerHTML`/`outerHTML` assignment, `insertAdjacentHTML`,
+`document.write`, `d3.html()` or `setHTML(` in the application source.
 
-Editorial, not dashboard. Warm paper ground, hairline rules, a serif for
-headings, tabular figures wherever numbers are compared.
-
-| Meaning | Colour |
-|---|---|
-| Metro | indigo `#2b4a8b` |
-| Bus-only | amber `#b4762a` |
-| Underserved | warm grey `#8a8681` |
-| Population density | single-hue teal ramp, sequential, low opacity |
-
-Text uses darker variants of the same hues so the amber and grey keep enough
-contrast on paper. Selection never relies on colour alone: a pinned district also
-gets a thicker stroke, a white halo, a bolder dot-plot label and a larger dot.
-
-Headline copy is careful. "An estimated 13.6% of the analysed population lives
-within a modelled 10-minute walk of a metro access point" — with the speed, the
-time and the distance budget stated immediately beside it, and a note that these
-are model estimates rather than observed walking behaviour.
-
-## Responsive behaviour
-
-Verified in a browser at 1440, 1024, 768 and 390 px: no horizontal overflow, no
-clipped labels, no value labels outside the plot.
-
-* ≥ 1080 px — map and detail panel side by side, panel 310 px, sticky.
-* 900–1080 px — same, narrower panel.
-* < 900 px — single column, panel below the map, not sticky.
-* < 660 px — headline figures stack, layer chips wrap.
-
-A debounced `ResizeObserver` re-renders both charts only when their width
-actually changes.
+Verified, not asserted: rendering `<img src=x onerror="window.__xss_test=1">`
+through the same path used for every OSM label produces the literal text, no
+`<img>` element, and no execution.
 
 ## Accessibility
 
-* Semantic headings, a skip link, and landmark elements.
-* Layer toggles are real `<button>`s with `aria-pressed`, not clickable divs.
-* District shapes and dot-plot rows are keyboard focusable with `role="button"`
-  and descriptive `aria-label`s; Enter or Space pins, Escape clears.
-* Visible focus outlines throughout.
-* A polite live region announces each selection change.
-* Tooltips are never the only route to a figure — the detail panel carries the
-  same numbers, and every mark's `aria-label` states its values.
-* Both SVGs carry `role="img"` and a describing label.
+The previous version put `role="img"` on SVG roots that contained
+`role="button"` descendants, which hides the very controls it exposes. The chart
+root is now `role="list"`, rows are `listitem`, and each row carries a focusable
+`role="button"` with a descriptive label. `role="application"` is not used.
+
+The map canvas is wrapped in a titled section; every control is a real
+`<button>` or `<input>`; the search results are a keyboard-navigable listbox with
+arrow-key and Enter support; a polite live region announces each selection; and
+every district figure is available in the sidebar and the ranking, so nothing is
+reachable only by hovering the canvas.
+
+## Data
+
+`scripts/build_web_data.py` builds `site/data/` from the audited outputs. It
+never writes outside `site/`, and the validator re-hashes every source it
+consumed to prove the analysis was untouched.
+
+| File | Role | Features |
+|---|---|---:|
+| `city_summary.json` | analytical | — |
+| `districts.geojson` | analytical | 12 |
+| `metro_isochrone_10min.geojson` | display only | 1 |
+| `metro_lines.geojson` | display only | 4 |
+| `metro_access_points.geojson` | display only | 154 |
+| `metro_stations.geojson` | display only | 50 |
+| `bus_stops.geojson` | display only | 2,163 |
+| `bazaars.geojson` | display only | 83 |
+| `population_density.geojson` | display only | 1,855 |
+| `analysis_mask.geojson` | display only | 1 |
+| `manifest.json` | provenance | — |
+
+No timestamp is written anywhere, ordering and rounding are fixed, and sources
+are identified by content hash, so consecutive builds are byte-identical.
 
 ## Known limitations
 
-1. **Interim scope.** Three of the five planned views are not built yet.
-2. **SVG at this scale.** With every layer on, the map holds roughly 4,300 SVG
-   nodes. It is smooth here, but a canvas layer for bus stops is the obvious
-   move if Week 6 adds more marks.
-3. **The bus layer is 281 KB.** Fine locally, worth converting to TopoJSON or
-   quantised coordinates before any public deployment.
-4. **No basemap.** Districts, the network layers and the population grid supply
-   the geographic context; there are no streets or labels underneath.
-5. **The display grid is not the analysis.** 500 m bins are far coarser than the
-   ~100 m cells the classification used.
-6. **Everything Week 4 could not measure still applies** — frequency, span,
+1. **Interim scope** — three of the five planned views are not built.
+2. **Basemap needs the network.** Tiles come from OpenFreeMap; the application
+   code and all analytical data are local, but the map background is not.
+3. **The 500 m display grid is far coarser** than the ~100 m cells the
+   classification used, and is switched off entirely at street zoom.
+4. **Metro line geometry is a frozen OSM snapshot**, refreshed only by running
+   the acquisition script deliberately.
+5. Everything Week 4 could not measure still applies — frequency, span,
    transfers, in-vehicle time, reliability, crowding, fare — plus the uncertain
    off-network connectors and the unverified within-district WorldPop weights.
-7. **Not deployed.** No GitHub Pages, no publishing; the prototype runs locally.
+6. **Not deployed.** No GitHub Pages, no repository settings changed.
 
 ## Verification
 
 ```bash
-python scripts/build_web_data.py     # deterministic; run twice, byte-identical
-python scripts/validate_prototype.py # 135 checks, 0 warnings, 0 critical
-node --check site/app.js             # syntax
+python scripts/build_web_data.py       # deterministic; run twice, byte-identical
+python scripts/validate_prototype.py   # 193 checks, 0 warnings, 0 critical
 ```
 
-`scripts/validate_prototype.py` checks that the web figures equal the audited
-ones, that there are exactly 12 analytical districts and no Yangi Toshkent, that
-each district's three shares partition 100%, that every numeric field is a JSON
-number rather than a string, that the display layers carry the right counts and
-are labelled display-only, that the manifest counts match the files, and that
-neither `app.js` nor `index.html` hard-codes a city or district metric instead of
-reading it from JSON.
+Beyond the analytical equality checks, the validator asserts the architecture:
+MapLibre and D3 are both present and used for their stated jobs, the map
+container and every control exist and are wired, attribution is added rather
+than suppressed, the map and the ranking share one selection state, search is
+built from the loaded data with no external geocoder, both vendored licences are
+present, no city or district metric appears as a literal in the source, there is
+no markup-from-string path, and the chart carries list semantics rather than a
+contradictory `role="img"`.
+
+Browser testing was performed with headless Chrome driven over the DevTools
+protocol, waiting for a genuinely rendered map rather than a timer, at six
+viewports and four map zooms, exercising selection in both directions, search,
+all six layer toggles, zoom, reset, keyboard interaction and the hostile-string
+regression.
