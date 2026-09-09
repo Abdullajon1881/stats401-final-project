@@ -41,7 +41,7 @@
     "median_absolute": 0.13043684573866543,
     "max_absolute": 8.352396408818706,
     "normalized_rmse": 0.014423796310515186,
-    "relative_l1_error": 0.007584027036616472
+    "relative_l1_error_common_valid": 0.007584027036616472
   },
   "fraction_of_cells_matching_scalar": {
     "within_0.1pct": 0.10456264957924805,
@@ -57,7 +57,6 @@
     "share_of_current_total_in_cells_above_1_5": 0.00039408469621037527
   },
   "is_pure_scalar_multiple": false,
-  "one_minus_relative_l1_error": 0.9924159729633836,
   "grid_compatibility": {
     "baseline_year": 2020,
     "current_year": 2026,

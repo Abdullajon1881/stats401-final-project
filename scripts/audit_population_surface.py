@@ -167,11 +167,13 @@ def cell_level_comparison(rasters: dict[int, Path], districts: gpd.GeoDataFrame)
     zero_to_pos = int(((A == 0) & (B > 0)).sum())
     pos_to_zero = int(((A > 0) & (B == 0)).sum())
 
-    # Ratios explode when the baseline cell is essentially empty. 0.05 persons
-    # per 100 m cell is the cut: below that a cell is model noise, not a place
-    # where anyone lives. It removes only a handful of cells and no measurable
-    # population, and the percentiles below are stable across thresholds from
-    # 0 to 1.0 person per cell.
+    # Ratio statistics exclude baseline cells at or below 0.05 modelled persons
+    # because B/A becomes numerically unstable as the denominator approaches
+    # zero and produces extreme, uninformative ratios. This is a numerical
+    # choice only: it carries no demographic or settlement meaning (a small
+    # modelled value is not evidence that nobody lives there), and it applies
+    # only to the ratio summaries. The correlation, the fitted scalar and the
+    # residual statistics use every cell valid in both years.
     threshold = 0.05
     ratio_mask = A > threshold
     ratios = B[ratio_mask] / A[ratio_mask]
@@ -233,9 +235,12 @@ def cell_level_comparison(rasters: dict[int, Path], districts: gpd.GeoDataFrame)
             "median_absolute": float(np.median(abs_residual)),
             "max_absolute": float(abs_residual.max()),
             "normalized_rmse": float(np.sqrt((residual**2).mean()) / B.mean()),
-            # sum|B - k*A| / sum(B). A relative L1 error, nothing more: it is not
-            # variance explained, accuracy, or "population reproduced".
-            "relative_l1_error": float(abs_residual.sum() / B.sum()),
+            # sum|B - k*A| / sum(B) over cells valid in BOTH years only. A
+            # relative L1 error on that common-valid set, nothing more: it is
+            # not variance explained, accuracy, or "population reproduced".
+            # Cells valid in only one year are excluded here and reported
+            # separately under `cells`; nodata is never treated as zero.
+            "relative_l1_error_common_valid": float(abs_residual.sum() / B.sum()),
         },
         "fraction_of_cells_matching_scalar": within,
         # Differences between two modelled surfaces. These are changes in model
@@ -271,7 +276,8 @@ def cell_level_comparison(rasters: dict[int, Path], districts: gpd.GeoDataFrame)
     log(f"    median |resid| : {res['median_absolute']:.6f} persons/cell")
     log(f"    max |resid|    : {res['max_absolute']:.4f} persons/cell")
     log(f"    normalized RMSE: {res['normalized_rmse']:.6f}")
-    log(f"    relative L1 error (sum|B-kA| / sum B): {res['relative_l1_error']:.6f}")
+    log(f"    relative L1 error, common-valid cells (sum|B-kA| / sum B): "
+        f"{res['relative_l1_error_common_valid']:.6f}")
     log("\n  share of cells within tolerance of a pure scalar multiple:")
     for name, value in within.items():
         log(f"    {name:>16}: {value:.4f}")
@@ -285,7 +291,6 @@ def cell_level_comparison(rasters: dict[int, Path], districts: gpd.GeoDataFrame)
         and result["modelled_differences"]["cells_ratio_above_1_5"] == 0
     )
     result["is_pure_scalar_multiple"] = pure_scalar
-    result["one_minus_relative_l1_error"] = 1.0 - res["relative_l1_error"]
 
     log("")
     if pure_scalar:
@@ -294,18 +299,21 @@ def cell_level_comparison(rasters: dict[int, Path], districts: gpd.GeoDataFrame)
     else:
         log(f"  VERDICT: the {current} modelled surface is NOT a pure scalar multiple of "
             f"{baseline}.")
-        log(f"           After least-squares scaling by {k_least_squares:.4f}, the total "
-            f"absolute cell-wise")
-        log(f"           residual is {res['relative_l1_error']:.2%} of the modelled "
-            f"{current} total. Differences:")
-        log(f"           {cells['valid_only_in_current']:,} cells are nodata in {baseline} "
-            f"but valid in {current},")
+        log(f"           Among the {cells['valid_in_both']:,} cells valid in both years, "
+            f"the total absolute")
+        log(f"           cell-wise residual after least-squares scaling by "
+            f"{k_least_squares:.4f} is")
+        log(f"           {res['relative_l1_error_common_valid']:.2%} of the modelled "
+            f"{current} population in that common-valid set.")
+        log(f"           Reported separately: {cells['valid_only_in_current']:,} cells are "
+            f"nodata in {baseline} but valid in {current}")
+        log("           (excluded from the residual; nodata is not treated as zero),")
         log(f"           {cells['zero_to_positive']:,} go from zero to positive, and "
             f"{result['modelled_differences']['cells_ratio_above_1_5']:,} cells have a "
             f"modelled value")
         log(f"           more than 50% higher. Those cells hold "
             f"{result['modelled_differences']['share_of_current_total_in_cells_above_1_5']:.4%} "
-            f"of the modelled total.")
+            f"of the common-valid modelled {current} total.")
         log(f"           {tight:.1%} of compared cells fall within 1% of the fitted scalar "
             f"and {within['within_5pct']:.1%} within 5%.")
     log("")

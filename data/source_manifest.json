@@ -342,7 +342,7 @@
   },
   "diagnostic_sources": {
     "worldpop_year_comparison": {
-      "acquired_at_utc": "2026-09-09T00:32:11+00:00",
+      "acquired_at_utc": "2026-09-09T02:37:09+00:00",
       "purpose": "Reproduces the WorldPop-vs-SIAT claims in docs/data_sources.md. Diagnostic only - not an input to the accessibility analysis.",
       "produced_by": "scripts/audit_population_surface.py",
       "source": "WorldPop, University of Southampton",
