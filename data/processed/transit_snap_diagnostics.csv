@@ -1,0 +1,4 @@
+label,measures,count,min_m,mean_m,median_m,p95_m,p99_m,max_m,augmented_nodes_reachable,augmented_nodes_total,role,endpoint_tolerance_m,inserted_in_edge_interior,effectively_at_an_endpoint,distinct_edges_containing_sources,max_sources_on_one_edge
+metro,straight-line distance to the nearest walkable edge,154,0.0,2.0830121047337826,0.0,14.519724195850394,25.68660642104446,42.77376360510424,110917.0,111515.0,transit_source,1.0,128.0,26.0,151.0,2.0
+bus,straight-line distance to the nearest walkable edge,2163,0.0,1.3704514380019506,0.0,8.319727553647017,16.485532224798867,244.05903070972957,113427.0,113510.0,transit_source,1.0,2119.0,44.0,2090.0,4.0
+population_cells,straight-line distance to the nearest walkable edge,65169,0.00018901213129313125,33.37007669246777,16.476063502795675,122.33229776327798,324.26486488569384,899.8919382402229,,,population_query,,,,,
