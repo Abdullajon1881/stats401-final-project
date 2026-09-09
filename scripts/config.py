@@ -144,6 +144,58 @@ UNMATCHED_OSM_DISTRICTS = {17389398: "Yangi Toshkent Tumani"}
 EXPECTED_OSM_DISTRICTS = EXPECTED_ANALYSIS_DISTRICTS + len(UNMATCHED_OSM_DISTRICTS)
 
 
+# ---------------------------------------------------------------------------
+# Week 4 - accessibility analysis
+# ---------------------------------------------------------------------------
+# The research question is a 10-minute walk. 4.8 km/h is the headline speed;
+# the other two are sensitivity scenarios, not alternative questions.
+MAIN_WALK_SPEED_KMH = 4.8
+WALK_SPEED_SCENARIOS_KMH = (4.0, 4.8, 5.6)
+WALK_TIME_LIMIT_MINUTES = 10
+WALK_TIME_LIMIT_SECONDS = WALK_TIME_LIMIT_MINUTES * 60
+
+
+def kmh_to_ms(kmh: float) -> float:
+    """4.8 km/h -> 1.3333... m/s."""
+    return kmh * 1000.0 / 3600.0
+
+
+# Distance budget in metres for a given speed at the 10-minute threshold.
+def walk_budget_m(kmh: float) -> float:
+    return kmh_to_ms(kmh) * WALK_TIME_LIMIT_SECONDS
+
+
+# A station is treated as having a mapped entrance when an entrance lies within
+# this projected distance of it. Beyond it the station point itself becomes the
+# access point, and the fallback is recorded.
+ENTRANCE_ASSOCIATION_RADIUS_M = 400.0
+
+# Half-width used when buffering reachable network geometry into a display
+# service area, and the tolerance used to simplify it for the web.
+ISOCHRONE_BUFFER_M = 40.0
+ISOCHRONE_SIMPLIFY_M = 10.0
+
+# Week 4 outputs
+ANALYSIS_BOUNDARY_FILE = PROCESSED_DIR / "analysis_boundary.geojson"
+METRO_ACCESS_POINTS_FILE = PROCESSED_DIR / "metro_access_points.csv"
+TRANSIT_SNAP_DIAGNOSTICS_FILE = PROCESSED_DIR / "transit_snap_diagnostics.csv"
+DISTRICT_ACCESS_METRICS_FILE = PROCESSED_DIR / "district_access_metrics.csv"
+CITY_ACCESS_SUMMARY_FILE = PROCESSED_DIR / "city_access_summary.json"
+WALK_SPEED_SENSITIVITY_FILE = PROCESSED_DIR / "walking_speed_sensitivity.csv"
+POPULATION_SURFACE_SENSITIVITY_FILE = PROCESSED_DIR / "population_surface_sensitivity.csv"
+METRO_ISOCHRONE_FILE = PROCESSED_DIR / "metro_isochrone_10min.geojson"
+BUS_ISOCHRONE_FILE = PROCESSED_DIR / "bus_isochrone_10min.geojson"
+ANALYSIS_MANIFEST_PATH = DATA_DIR / "analysis_manifest.json"
+# Full per-cell table is large and reproducible: kept out of git.
+POPULATION_CELLS_CACHE = EXTERNAL_DIR / "population_cells.parquet"
+
+WORLDPOP_BASELINE_YEAR = 2020
+
+
+def worldpop_raster_path(year: int) -> Path:
+    return EXTERNAL_DIR / f"uzb_pop_{year}_CN_100m_{WORLDPOP_RELEASE}_v1.tif"
+
+
 def sha256_file(path: Path, chunk_size: int = 1 << 20) -> str:
     """Return the SHA-256 hex digest of a file, read in chunks."""
     digest = hashlib.sha256()
