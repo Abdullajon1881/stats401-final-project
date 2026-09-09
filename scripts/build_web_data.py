@@ -43,6 +43,12 @@ from pipeline_utils import log, step  # noqa: E402
 SITE_DIR = cfg.REPO_ROOT / "site"
 WEB_DATA_DIR = SITE_DIR / "data"
 
+# Display-only source, acquired deliberately by scripts/acquire_metro_lines.py.
+# It lives outside data/processed so the analytical boundary is structural.
+DISPLAY_DIR = cfg.DATA_DIR / "display"
+METRO_LINES_SNAPSHOT = DISPLAY_DIR / "metro_lines_osm.geojson"
+METRO_LINES_PROVENANCE = DISPLAY_DIR / "metro_lines_provenance.json"
+
 # ~1.1 m at this latitude: far finer than any mark the map draws, and it keeps
 # shared district borders identical on both sides because both round the same.
 COORD_PRECISION = 5
@@ -61,6 +67,8 @@ WEB_FILES = {
     "bus_stops": "bus_stops.geojson",
     "bazaars": "bazaars.geojson",
     "population_density": "population_density.geojson",
+    "metro_lines": "metro_lines.geojson",
+    "analysis_mask": "analysis_mask.geojson",
     "manifest": "manifest.json",
 }
 
@@ -184,6 +192,8 @@ def load_inputs() -> dict:
         "bus_stops": require(cfg.BUS_STOPS_FILE),
         "bazaars": require(cfg.BAZAARS_FILE),
         "population_cells": cfg.POPULATION_CELLS_CACHE,
+        "metro_lines_snapshot": require(METRO_LINES_SNAPSHOT),
+        "metro_lines_provenance": require(METRO_LINES_PROVENANCE),
     }
     if not paths["population_cells"].exists():
         raise FileNotFoundError(
@@ -360,6 +370,75 @@ def build_isochrone(paths: dict) -> tuple[int, int, float]:
     return len(features), size, area_km2
 
 
+def build_analysis_mask(districts: gpd.GeoDataFrame) -> tuple[int, int]:
+    """Everything outside the 12 analysis districts, as one polygon (DISPLAY ONLY).
+
+    The map dims the world beyond the study area so the eye goes to the ground the
+    analysis actually covers. It is a cartographic device and nothing more: it
+    carries no value, and the districts it masks around are the same twelve the
+    audited result is computed over.
+    """
+    step("STEP 3b  Analysis-area mask (DISPLAY ONLY)")
+    union = districts.to_crs(cfg.GEOGRAPHIC_CRS).union_all()
+    world = box(-180.0, -85.0, 180.0, 85.0)
+    mask = world.difference(union)
+    features = [feature(mask, {"role": "display_only", "purpose": "dim outside the study area"})]
+    size = write_geojson(WEB_DATA_DIR / WEB_FILES["analysis_mask"], features)
+    log("    world minus the union of the 12 SIAT districts")
+    return 1, size
+
+
+def build_metro_lines(paths: dict) -> tuple[int, int, dict]:
+    """Copy the metro route lines through to the web, unchanged (DISPLAY ONLY).
+
+    These lines make the network legible on the map. They are never measured:
+    the audited access result comes from entrances and station points, and this
+    layer cannot move it. Each line's colour is the value OSM carries on its
+    route relations - the interface tunes that named colour for a dark ground
+    but never invents one for a line that has none.
+    """
+    step("STEP 4b  Metro route lines (DISPLAY ONLY)")
+    snapshot = json.loads(paths["metro_lines_snapshot"].read_text(encoding="utf-8"))
+    provenance = json.loads(paths["metro_lines_provenance"].read_text(encoding="utf-8"))
+
+    features = []
+    for source in snapshot["features"]:
+        p = source["properties"]
+        features.append({
+            "type": "Feature",
+            "properties": {
+                "ref": p["ref"],
+                "line_name": p.get("line_name"),
+                "colour": p.get("colour"),
+                "role": "display_only",
+            },
+            "geometry": source["geometry"],
+        })
+    features.sort(key=lambda f: (len(f["properties"]["ref"]), f["properties"]["ref"]))
+
+    size = write_geojson(WEB_DATA_DIR / WEB_FILES["metro_lines"], features)
+    info = {
+        "lines": len(features),
+        "source": "OpenStreetMap route=subway relations",
+        "snapshot": str(paths["metro_lines_snapshot"].relative_to(cfg.REPO_ROOT)).replace("\\", "/"),
+        # The acquisition timestamp lives in the provenance file, not here: a
+        # timestamp in the web manifest would break the build's byte-determinism.
+        "provenance": str(
+            paths["metro_lines_provenance"].relative_to(cfg.REPO_ROOT)
+        ).replace("\\", "/"),
+        "licence": provenance.get("licence"),
+        "colours_from_osm": [f["properties"]["colour"] for f in features],
+        "note": (
+            "display only; the audited access result is computed from metro entrances "
+            "and station points and is unaffected by this layer"
+        ),
+    }
+    for f in features:
+        p = f["properties"]
+        log(f"    ref {p['ref']}  {str(p['line_name'])[:26]:26s} colour={p['colour']}")
+    return len(features), size, info
+
+
 def build_metro_access_points(paths: dict) -> tuple[int, int, dict]:
     step("STEP 5  Metro access points")
     table = pd.read_csv(paths["metro_access_points"])
@@ -504,6 +583,8 @@ def main() -> int:
     counts["metro_isochrone"], sizes["metro_isochrone"], iso_area = build_isochrone(paths)
     counts["metro_access_points"], sizes["metro_access_points"], access_counts = \
         build_metro_access_points(paths)
+    counts["metro_lines"], sizes["metro_lines"], metro_line_info = build_metro_lines(paths)
+    counts["analysis_mask"], sizes["analysis_mask"] = build_analysis_mask(districts)
 
     step("STEP 7  Remaining point layers")
     counts["metro_stations"], sizes["metro_stations"] = build_point_layer(
@@ -604,6 +685,18 @@ def main() -> int:
                 "file": WEB_FILES["bazaars"], "role": "display_only",
                 "features": counts["bazaars"], "bytes": sizes["bazaars"],
                 "source": "data/processed/bazaars.geojson",
+            },
+            "metro_lines": {
+                "file": WEB_FILES["metro_lines"], "role": "display_only",
+                "features": counts["metro_lines"], "bytes": sizes["metro_lines"],
+                "source": "data/display/metro_lines_osm.geojson",
+                **metro_line_info,
+            },
+            "analysis_mask": {
+                "file": WEB_FILES["analysis_mask"], "role": "display_only",
+                "features": counts["analysis_mask"], "bytes": sizes["analysis_mask"],
+                "source": "derived from the 12 SIAT district polygons",
+                "note": "dims the map outside the study area; carries no value",
             },
             "population_density": {
                 "file": WEB_FILES["population_density"], "role": "display_only",
