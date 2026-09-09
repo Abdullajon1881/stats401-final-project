@@ -1,0 +1,33 @@
+{
+  "status": "PRELIMINARY - pending independent audit",
+  "analysis_population": 3212200.0,
+  "official_population": 3212200.0,
+  "metro_access_population": 419055.17420923605,
+  "metro_access_pct": 13.045737320504205,
+  "bus_only_population": 2284774.0031814897,
+  "bus_only_pct": 71.1280120534677,
+  "underserved_population": 508370.8226092742,
+  "underserved_pct": 15.826250626028084,
+  "combined_walk_access_population": 2703829.177390726,
+  "combined_walk_access_pct": 84.1737493739719,
+  "walking_speed_kmh": 4.8,
+  "walking_speed_ms": 1.3333333333333333,
+  "walking_time_minutes": 10,
+  "walking_time_seconds": 600,
+  "distance_budget_m": 800.0,
+  "analysis_district_count": 12,
+  "analysis_boundary_area_km2": 437.7219,
+  "measures": "physical walking access only",
+  "does_not_measure": [
+    "route frequency",
+    "service span",
+    "transfers",
+    "in-vehicle travel time",
+    "reliability",
+    "crowding",
+    "fare",
+    "destination usefulness"
+  ],
+  "analysis_version": "week4.1",
+  "generated_at_utc": "2026-09-09T03:53:52+00:00"
+}

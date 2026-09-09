@@ -1,0 +1,260 @@
+{
+  "analysis": "Week 4 - geospatial accessibility engine",
+  "status": "PRELIMINARY - pending independent audit",
+  "analysis_version": "week4.1",
+  "started_at_utc": "2026-09-09T03:46:35+00:00",
+  "generated_at_utc": "2026-09-09T03:53:52+00:00",
+  "generated_by": "scripts/analyze_accessibility.py",
+  "source_manifest": {
+    "path": "data/source_manifest.json",
+    "sha256": "756f8c99a98b668a5ae8cacb547dfb57b5fd5ff700f6c3556c02104f29cc41c4"
+  },
+  "analysis_boundary": {
+    "definition": "union of the 12 SIAT-matched district polygons",
+    "district_count": 12,
+    "area_km2": 437.7219,
+    "excluded": {
+      "district": "Yangi Toshkent Tumani",
+      "reason": "no SIAT population row, so no official total to calibrate against"
+    },
+    "file": "data/processed/analysis_boundary.geojson"
+  },
+  "siat": {
+    "reference_period": "2026-Q2",
+    "official_population_total": 3212200.0
+  },
+  "worldpop": {
+    "product": "Global_2015_2030 constrained, 100m, individual countries",
+    "release": "R2025A",
+    "release_status": "alpha. The official release statement (worldpop.org, September 2025) says: \"The dataset currently represents an alpha version (R2025A) public release product and may change over the coming year as improvements are made.\" Treat as candidate within-district spatial weights, not validated truth.",
+    "main_year": 2026,
+    "sensitivity_year": 2020,
+    "raster_2026": {
+      "raster": "uzb_pop_2026_CN_100m_R2025A_v1.tif",
+      "raster_crs": "EPSG:4326",
+      "nodata": -99999.0,
+      "window_shape": [
+        311,
+        427
+      ],
+      "cells_in_window": 132797,
+      "cells_included": 65169,
+      "inclusion_rule": "cell centre inside exactly one SIAT district polygon (rasterize all_touched=False), value not nodata and finite"
+    },
+    "raster_2020": {
+      "raster": "uzb_pop_2020_CN_100m_R2025A_v1.tif",
+      "raster_crs": "EPSG:4326",
+      "nodata": -99999.0,
+      "window_shape": [
+        311,
+        427
+      ],
+      "cells_in_window": 132797,
+      "cells_included": 64920,
+      "inclusion_rule": "cell centre inside exactly one SIAT district polygon (rasterize all_touched=False), value not nodata and finite"
+    }
+  },
+  "graph": {
+    "source": "data/external/tashkent_walk_network.graphml",
+    "stored_crs": "EPSG:4326",
+    "analysis_crs": "EPSG:32642",
+    "nodes": 111386,
+    "undirected_edges": 308272
+  },
+  "walking_model": {
+    "main_speed_kmh": 4.8,
+    "main_speed_ms": 1.3333333333333333,
+    "sensitivity_speeds_kmh": [
+      4.0,
+      4.8,
+      5.6
+    ],
+    "threshold_seconds": 600,
+    "threshold_minutes": 10,
+    "main_budget_m": 800.0
+  },
+  "metro_sources": {
+    "stations_total": 50,
+    "entrances_total": 144,
+    "association_radius_m": 400.0,
+    "stations_with_entrance": 40,
+    "stations_fallback": 10,
+    "fallback_station_names": [
+      "Chinor",
+      "Choshtepa",
+      "Matonat",
+      "Olmos",
+      "O‘zgarish",
+      "Qipchok",
+      "Rohat",
+      "Turon",
+      "Tuzel",
+      "Yangihayot"
+    ],
+    "access_points_total": 154
+  },
+  "bus_sources": {
+    "stops_used": 2163
+  },
+  "transit_snap_diagnostics": [
+    {
+      "label": "metro",
+      "count": 154,
+      "min_m": 0.0,
+      "median_m": 6.735626682651045,
+      "p95_m": 39.67485813540728,
+      "p99_m": 50.05681186934007,
+      "max_m": 55.43674100999557,
+      "mean_m": 10.450278642471764,
+      "nodes_reachable": 110788,
+      "nodes_total": 111386
+    },
+    {
+      "label": "bus",
+      "count": 2163,
+      "min_m": 0.0,
+      "median_m": 20.472698356708985,
+      "p95_m": 50.58484221531513,
+      "p99_m": 70.12662238505543,
+      "max_m": 244.05903070972957,
+      "mean_m": 23.82135996679996,
+      "nodes_reachable": 111303,
+      "nodes_total": 111386
+    }
+  ],
+  "population_cells": {
+    "count": 65169,
+    "snap_diagnostics": {
+      "label": "population_cells",
+      "count": 65169,
+      "min_m": 0.07445260921994136,
+      "median_m": 39.58162328881152,
+      "p95_m": 175.64205952019722,
+      "p99_m": 367.48193049002447,
+      "max_m": 905.9111424730596,
+      "mean_m": 59.05432392222464
+    },
+    "population_without_metro_source": 13096.49052044215,
+    "population_without_bus_source": 5.227949115012769
+  },
+  "calibration_factors": [
+    {
+      "district_name": "Almazar district",
+      "worldpop_raw_sum": 222639.4138052464,
+      "official_population": 421300,
+      "calibration_factor": 1.8922974724,
+      "calibrated_population": 421300.0
+    },
+    {
+      "district_name": "Bektemir district",
+      "worldpop_raw_sum": 245092.4831855148,
+      "official_population": 73600,
+      "calibration_factor": 0.3002948073,
+      "calibrated_population": 73600.0
+    },
+    {
+      "district_name": "Chilanzar district",
+      "worldpop_raw_sum": 85242.9011714906,
+      "official_population": 277600,
+      "calibration_factor": 3.2565761628,
+      "calibrated_population": 277600.0
+    },
+    {
+      "district_name": "Mirabad district",
+      "worldpop_raw_sum": 250550.6516051292,
+      "official_population": 157500,
+      "calibration_factor": 0.6286154077,
+      "calibrated_population": 157500.0
+    },
+    {
+      "district_name": "Mirzo Ulugbek district",
+      "worldpop_raw_sum": 139664.6941515179,
+      "official_population": 345300,
+      "calibration_factor": 2.4723499528,
+      "calibrated_population": 345300.0
+    },
+    {
+      "district_name": "Sergeli district",
+      "worldpop_raw_sum": 57933.1110582268,
+      "official_population": 182500,
+      "calibration_factor": 3.1501846986,
+      "calibrated_population": 182500.0
+    },
+    {
+      "district_name": "Shaykhantakhur district",
+      "worldpop_raw_sum": 239309.4162659645,
+      "official_population": 375000,
+      "calibration_factor": 1.5670089621,
+      "calibrated_population": 375000.0
+    },
+    {
+      "district_name": "Uchtepa district",
+      "worldpop_raw_sum": 225428.0173511505,
+      "official_population": 308100,
+      "calibration_factor": 1.3667333973,
+      "calibrated_population": 308100.0
+    },
+    {
+      "district_name": "Yakkasaray district",
+      "worldpop_raw_sum": 281045.4234189987,
+      "official_population": 147000,
+      "calibration_factor": 0.5230471225,
+      "calibrated_population": 147000.0
+    },
+    {
+      "district_name": "Yangikhayot district",
+      "worldpop_raw_sum": 218192.3240202367,
+      "official_population": 205200,
+      "calibration_factor": 0.9404547155,
+      "calibrated_population": 205200.0
+    },
+    {
+      "district_name": "Yashnabad district",
+      "worldpop_raw_sum": 180163.6873137429,
+      "official_population": 322300,
+      "calibration_factor": 1.7889287503,
+      "calibrated_population": 322300.0
+    },
+    {
+      "district_name": "Yunusabad district",
+      "worldpop_raw_sum": 236725.1929974928,
+      "official_population": 396800,
+      "calibration_factor": 1.6762052022,
+      "calibrated_population": 396800.0
+    }
+  ],
+  "calibrated_total": 3212200.0,
+  "service_areas": {
+    "method": "reachable network edges within the budget, buffered by 40 m in EPSG:32642, dissolved, simplified at 10 m, written as WGS84. Partially reachable edges are cut at the budget by linear interpolation along the straight segment between their nodes.",
+    "purpose": "visualisation only; not used by the population classification",
+    "metro_area_km2": 47.7835,
+    "bus_area_km2": 282.8513
+  },
+  "outputs": [
+    "data/processed/analysis_boundary.geojson",
+    "data/processed/metro_access_points.csv",
+    "data/processed/transit_snap_diagnostics.csv",
+    "data/processed/district_access_metrics.csv",
+    "data/processed/city_access_summary.json",
+    "data/processed/walking_speed_sensitivity.csv",
+    "data/processed/population_surface_sensitivity.csv",
+    "data/processed/metro_isochrone_10min.geojson",
+    "data/processed/bus_isochrone_10min.geojson"
+  ],
+  "output_counts": {
+    "district_rows": 12,
+    "walking_speed_sensitivity_rows": 39,
+    "population_surface_sensitivity_rows": 13,
+    "metro_access_point_rows": 154,
+    "transit_snap_rows": 2
+  },
+  "limitations": [
+    "Physical walking access only: no frequency, span, transfers, in-vehicle time, reliability, crowding, fare or destination usefulness.",
+    "The link from a raster-cell centre to the pedestrian network, and from a transit access point to the network, is a straight-line approximation.",
+    "WorldPop R2025A is an alpha product; it supplies within-district weights only, and its within-district accuracy is unverified.",
+    "Bus stops come from OSM alone; no official open-data bus layer was reachable in Week 3.",
+    "Metro entrances are used where mapped; stations without a mapped entrance fall back to the station point, which flatters deep stations slightly.",
+    "Yangi Toshkent district is outside the population denominator.",
+    "The service-area polygons are for display and play no part in the population classification."
+  ]
+}
