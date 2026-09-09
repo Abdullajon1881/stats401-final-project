@@ -1,0 +1,11 @@
+# Week 3 data foundation - pinned to the versions this pipeline was verified with.
+geopandas==1.1.4
+osmnx==2.1.1
+shapely==2.1.2
+pyproj==3.8.0
+rasterio==1.5.1
+rasterstats==0.21.0
+pandas==3.0.2
+numpy==2.4.3
+networkx==3.6.1
+requests==2.33.1
