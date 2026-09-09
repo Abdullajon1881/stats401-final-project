@@ -1,0 +1,637 @@
+"""Week 5: build the compact web artifacts the D3 prototype consumes.
+
+    python scripts/build_web_data.py
+
+This script CONSUMES the audited Week 4 analysis. It does not recompute network
+accessibility, and it never writes to `data/processed/` or `data/`. Every
+analytical number in `site/data/` is copied from an audited artifact at full
+precision; only display geometry is derived here.
+
+Analytical vs display, which the prototype must not blur:
+
+  ANALYTICAL (copied, never recomputed)
+    data/processed/city_access_summary.json
+    data/processed/district_access_metrics.csv
+
+  DISPLAY ONLY (derived here, drives no percentage)
+    the metro service-area polygon, copied and rounded
+    the population-density bins, aggregated from the audited per-cell table
+    every point layer
+
+The build is deterministic: no timestamps are written, ordering is stable, and
+coordinates are rounded to a fixed precision. Running it twice produces
+byte-identical output.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+import shapely
+from shapely.geometry import box, mapping
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import config as cfg  # noqa: E402
+from pipeline_utils import log, step  # noqa: E402
+
+SITE_DIR = cfg.REPO_ROOT / "site"
+WEB_DATA_DIR = SITE_DIR / "data"
+
+# ~1.1 m at this latitude: far finer than any mark the map draws, and it keeps
+# shared district borders identical on both sides because both round the same.
+COORD_PRECISION = 5
+
+# Display-only aggregation for the population layer. 500 m squares over a
+# 437.7 km2 study area give roughly two thousand cells: enough to read the
+# built-up pattern, few enough to stay light in the browser.
+DENSITY_BIN_M = 500.0
+
+WEB_FILES = {
+    "city_summary": "city_summary.json",
+    "districts": "districts.geojson",
+    "metro_isochrone": "metro_isochrone_10min.geojson",
+    "metro_access_points": "metro_access_points.geojson",
+    "metro_stations": "metro_stations.geojson",
+    "bus_stops": "bus_stops.geojson",
+    "bazaars": "bazaars.geojson",
+    "population_density": "population_density.geojson",
+    "manifest": "manifest.json",
+}
+
+
+# ---------------------------------------------------------------------------
+# deterministic GeoJSON writing
+# ---------------------------------------------------------------------------
+def _round_coords(value, precision: int):
+    if isinstance(value, (list, tuple)):
+        if value and isinstance(value[0], (int, float)):
+            return [round(float(v), precision) for v in value]
+        return [_round_coords(v, precision) for v in value]
+    return value
+
+
+def _clean(value):
+    """JSON-safe scalar. NaN and pandas NA become null, numpy types unwrap.
+
+    Numbers must survive as JSON numbers. bool is checked before int because
+    it subclasses it, and plain Python int before float for the same reason -
+    a number that fell through to str() here would reach the browser quoted.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    if isinstance(value, (float, np.floating)):
+        number = float(value)
+        return number if np.isfinite(number) else None
+    if value is pd.NA:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    text = str(value)
+    return None if text in ("nan", "None", "<NA>", "") else text
+
+
+def reduce_precision(geometry, precision: int = COORD_PRECISION):
+    """Snap a geometry to the output coordinate grid, keeping it valid.
+
+    Rounding coordinates naively can collapse a tiny ring below three distinct
+    points and produce an invalid polygon - which is exactly what happened to
+    the metro service area, whose source geometry is valid. GEOS precision
+    reduction snaps to the same grid but repairs the topology as it goes, and
+    identical input coordinates still snap identically, so shared district
+    borders stay shared.
+    """
+    if geometry.geom_type not in ("Polygon", "MultiPolygon"):
+        return geometry
+    reduced = shapely.set_precision(geometry, 10.0 ** -precision)
+    if reduced.is_empty:
+        return geometry
+    if not reduced.is_valid:
+        reduced = shapely.make_valid(reduced)
+    return reduced
+
+
+def feature(geometry, properties: dict, precision: int = COORD_PRECISION) -> dict:
+    geom = mapping(reduce_precision(geometry, precision))
+    return {
+        "type": "Feature",
+        "properties": {k: _clean(v) for k, v in properties.items()},
+        "geometry": {
+            "type": geom["type"],
+            "coordinates": _round_coords(geom["coordinates"], precision),
+        },
+    }
+
+
+def write_json(path: Path, payload: dict) -> int:
+    """Write compact, deterministic JSON. No timestamps anywhere.
+
+    Newlines are forced to LF. Without that, Python translates them on Windows
+    and every file lands one byte larger in the working tree than in the commit,
+    so the byte counts recorded in the manifest would not survive a checkout on
+    a platform that does not translate.
+    """
+    text = json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n"
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+    size = path.stat().st_size
+    log(f"    wrote {path.relative_to(cfg.REPO_ROOT)}  ({cfg.human_size(size)})")
+    return size
+
+
+def write_geojson(path: Path, features: list[dict]) -> int:
+    return write_json(path, {"type": "FeatureCollection", "features": features})
+
+
+def short_label(district_name: str) -> str:
+    """'Mirzo Ulugbek district' -> 'Mirzo Ulugbek', for chart axes."""
+    return district_name.removesuffix(" district")
+
+
+# ---------------------------------------------------------------------------
+# inputs
+# ---------------------------------------------------------------------------
+def require(path: Path) -> Path:
+    if not path.exists():
+        raise FileNotFoundError(
+            f"required audited input missing: {path.relative_to(cfg.REPO_ROOT)}"
+        )
+    return path
+
+
+def load_inputs() -> dict:
+    step("STEP 1  Audited inputs")
+    paths = {
+        "city_access_summary": require(cfg.CITY_ACCESS_SUMMARY_FILE),
+        "district_access_metrics": require(cfg.DISTRICT_ACCESS_METRICS_FILE),
+        "analysis_manifest": require(cfg.ANALYSIS_MANIFEST_PATH),
+        "districts": require(cfg.DISTRICTS_FILE),
+        "metro_isochrone": require(cfg.METRO_ISOCHRONE_FILE),
+        "metro_access_points": require(cfg.METRO_ACCESS_POINTS_FILE),
+        "metro_stations": require(cfg.METRO_STATIONS_FILE),
+        "bus_stops": require(cfg.BUS_STOPS_FILE),
+        "bazaars": require(cfg.BAZAARS_FILE),
+        "population_cells": cfg.POPULATION_CELLS_CACHE,
+    }
+    if not paths["population_cells"].exists():
+        raise FileNotFoundError(
+            f"{paths['population_cells']} is missing. It is the audited Week 4 per-cell "
+            f"table and the only legitimate source for the display population-density "
+            f"layer. Regenerate it with `python scripts/analyze_accessibility.py` rather "
+            f"than substituting another surface."
+        )
+    for name, path in paths.items():
+        log(f"    {name:26s} {path.relative_to(cfg.REPO_ROOT)}")
+    return paths
+
+
+# ---------------------------------------------------------------------------
+# city summary
+# ---------------------------------------------------------------------------
+def build_city_summary(paths: dict) -> tuple[dict, int]:
+    step("STEP 2  City summary (analytical, copied at full precision)")
+    audited = json.loads(paths["city_access_summary"].read_text(encoding="utf-8"))
+    manifest = json.loads(paths["analysis_manifest"].read_text(encoding="utf-8"))
+
+    payload = {
+        "analysis_population": audited["analysis_population"],
+        "official_population": audited["official_population"],
+        "metro_access_population": audited["metro_access_population"],
+        "metro_access_pct": audited["metro_access_pct"],
+        "bus_only_population": audited["bus_only_population"],
+        "bus_only_pct": audited["bus_only_pct"],
+        "underserved_population": audited["underserved_population"],
+        "underserved_pct": audited["underserved_pct"],
+        "combined_walk_access_population": audited["combined_walk_access_population"],
+        "combined_walk_access_pct": audited["combined_walk_access_pct"],
+        "walking_speed_kmh": audited["walking_speed_kmh"],
+        "walking_time_minutes": audited["walking_time_minutes"],
+        "walking_time_seconds": audited["walking_time_seconds"],
+        "distance_budget_m": audited["distance_budget_m"],
+        "analysis_district_count": audited["analysis_district_count"],
+        "analysis_boundary_area_km2": audited["analysis_boundary_area_km2"],
+        "snapping_method": audited["snapping_method"],
+        "analysis_version": audited["analysis_version"],
+        "reference_period": manifest["siat"]["reference_period"],
+        "measures": audited["measures"],
+        "does_not_measure": audited["does_not_measure"],
+        "definitions": {
+            "metro_access": (
+                "Modelled walking distance along the pedestrian network from a "
+                "population-cell centre to a metro access point is within the "
+                "10-minute budget."
+            ),
+            "bus_only": (
+                "Outside 10-minute metro access, but within 10-minute walking access "
+                "of a mapped bus stop."
+            ),
+            "underserved": (
+                "Outside the 10-minute walking threshold of both mapped metro access "
+                "and mapped bus stops."
+            ),
+        },
+        "estimate_note": (
+            "These are model estimates from a pedestrian-network routing model, not "
+            "observed walking behaviour. They assume a 4.8 km/h walking speed and a "
+            "10-minute budget, and measure physical walking access only."
+        ),
+        "display_layer_note": (
+            "Access shading is a display layer. Population estimates use "
+            "pedestrian-network distance, not polygon intersection."
+        ),
+    }
+    log(f"    metro {payload['metro_access_pct']:.4f}%   "
+        f"bus-only {payload['bus_only_pct']:.4f}%   "
+        f"underserved {payload['underserved_pct']:.4f}%")
+    size = write_json(WEB_DATA_DIR / WEB_FILES["city_summary"], payload)
+    return payload, size
+
+
+# ---------------------------------------------------------------------------
+# districts
+# ---------------------------------------------------------------------------
+DISTRICT_FIELDS = [
+    "official_population",
+    "calibrated_population",
+    "metro_access_population",
+    "metro_access_pct",
+    "bus_only_population",
+    "bus_only_pct",
+    "underserved_population",
+    "underserved_pct",
+    "combined_walk_access_population",
+    "combined_walk_access_pct",
+    "min_cell_metro_distance_m",
+    "min_cell_metro_margin_m",
+    "area_km2",
+    "population_density_per_km2",
+    "metro_stations_in_district",
+    "metro_access_points_in_district",
+    "bus_stops_in_district",
+    "bazaars_in_district",
+]
+
+
+def build_districts(paths: dict) -> tuple[gpd.GeoDataFrame, int, int]:
+    """The 12 SIAT analysis districts with their audited metrics joined in.
+
+    Yangi Toshkent is deliberately absent: it has no SIAT population row, so it
+    has no analysed population result and must not be drawn as though it did.
+    """
+    step("STEP 3  District features (analytical metrics joined, 12 SIAT districts)")
+    districts = gpd.read_file(paths["districts"])
+    analysis = districts[districts.in_siat.astype(str).str.lower() == "true"].copy()
+    analysis = analysis.sort_values("district_name").reset_index(drop=True)
+    if len(analysis) != cfg.EXPECTED_ANALYSIS_DISTRICTS:
+        raise ValueError(
+            f"expected {cfg.EXPECTED_ANALYSIS_DISTRICTS} SIAT districts, got {len(analysis)}"
+        )
+    excluded = sorted(set(districts.district_name) - set(analysis.district_name))
+    log(f"    excluded from the analytical layer: {excluded}")
+
+    metrics = pd.read_csv(paths["district_access_metrics"])
+    missing = sorted(set(analysis.district_name) - set(metrics.district_name))
+    if missing:
+        raise ValueError(f"districts with no audited metrics: {missing}")
+
+    # Keep only identity and geometry from the boundary file. Every metric,
+    # `area_km2` included, comes from the audited table so the two sources
+    # cannot silently disagree.
+    identity = analysis[["district_name", "siat_code", "osm_id", "geometry"]]
+    joined = identity.merge(metrics, on="district_name", how="left", validate="one_to_one")
+    if joined[DISTRICT_FIELDS].isna().any().any():
+        bad = joined.loc[joined[DISTRICT_FIELDS].isna().any(axis=1), "district_name"].tolist()
+        raise ValueError(f"districts with missing metric values: {bad}")
+
+    features = []
+    for _, row in joined.iterrows():
+        properties = {
+            "district_name": row.district_name,
+            "label": short_label(row.district_name),
+            "siat_code": row.siat_code,
+            "osm_id": row.osm_id,
+        }
+        for field in DISTRICT_FIELDS:
+            properties[field] = row[field]
+        features.append(feature(row.geometry, properties))
+
+    size = write_geojson(WEB_DATA_DIR / WEB_FILES["districts"], features)
+    ranked = joined.sort_values("metro_access_pct", ascending=False)
+    log(f"    {len(features)} districts, metro access "
+        f"{ranked.metro_access_pct.iloc[0]:.2f}% ({ranked.district_name.iloc[0]}) down to "
+        f"{ranked.metro_access_pct.iloc[-1]:.2f}% ({ranked.district_name.iloc[-1]})")
+    return joined, len(features), size
+
+
+# ---------------------------------------------------------------------------
+# display layers
+# ---------------------------------------------------------------------------
+def build_isochrone(paths: dict) -> tuple[int, int, float]:
+    step("STEP 4  Metro service area (DISPLAY ONLY)")
+    iso = gpd.read_file(paths["metro_isochrone"])
+    area_km2 = float(iso.to_crs(cfg.METRIC_CRS).area.sum() / 1e6)
+    features = [
+        feature(row.geometry, {
+            "budget_m": row.budget_m,
+            "buffer_m": row.buffer_m,
+            "area_km2": round(area_km2, 4),
+            "role": "display_only",
+            "note": (
+                "Access shading is a display layer. Population estimates use "
+                "pedestrian-network distance, not polygon intersection."
+            ),
+        })
+        for _, row in iso.iterrows()
+    ]
+    size = write_geojson(WEB_DATA_DIR / WEB_FILES["metro_isochrone"], features)
+    log(f"    {len(features)} feature(s), {area_km2:,.2f} km2 — drives no percentage")
+    return len(features), size, area_km2
+
+
+def build_metro_access_points(paths: dict) -> tuple[int, int, dict]:
+    step("STEP 5  Metro access points")
+    table = pd.read_csv(paths["metro_access_points"])
+    points = gpd.GeoSeries(
+        gpd.points_from_xy(table.x_m, table.y_m), crs=cfg.METRIC_CRS
+    ).to_crs(cfg.GEOGRAPHIC_CRS)
+
+    table = table.assign(_geom=points.to_numpy())
+    table = table.sort_values(["access_type", "access_id"]).reset_index(drop=True)
+
+    features = []
+    for _, row in table.iterrows():
+        is_fallback = row.access_type == "station_fallback"
+        features.append(feature(row._geom, {
+            "access_id": row.access_id,
+            "access_type": row.access_type,
+            "name": row["name"],
+            "district_name": row.district_name,
+            "kind_label": "Station fallback" if is_fallback else "Metro entrance",
+            "detail": (
+                f"No mapped entrance within "
+                f"{cfg.ENTRANCE_ASSOCIATION_RADIUS_M:.0f} m "
+                f"(nearest {row.nearest_entrance_distance_m:.0f} m)"
+                if is_fallback else "Mapped subway entrance"
+            ),
+        }))
+
+    counts = table.access_type.value_counts().to_dict()
+    size = write_geojson(WEB_DATA_DIR / WEB_FILES["metro_access_points"], features)
+    log(f"    {len(features)} access points: {counts}")
+    return len(features), size, {k: int(v) for k, v in counts.items()}
+
+
+def build_point_layer(path: Path, out_name: str, label: str, fields: dict) -> tuple[int, int]:
+    gdf = gpd.read_file(path).to_crs(cfg.GEOGRAPHIC_CRS)
+    sort_key = "osm_id" if "osm_id" in gdf.columns else gdf.columns[0]
+    gdf = gdf.sort_values(sort_key).reset_index(drop=True)
+    features = [
+        feature(row.geometry, {out_key: row.get(src) for out_key, src in fields.items()})
+        for _, row in gdf.iterrows()
+    ]
+    size = write_geojson(WEB_DATA_DIR / out_name, features)
+    log(f"    {label}: {len(features)} features")
+    return len(features), size
+
+
+# ---------------------------------------------------------------------------
+# population density (display only)
+# ---------------------------------------------------------------------------
+def build_population_density(paths: dict, districts: gpd.GeoDataFrame) -> tuple[int, int, dict]:
+    """Aggregate the audited per-cell population into 500 m display bins.
+
+    DISPLAY ONLY. This layer exists so the map can show where people are. It
+    drives no access percentage: every reported share comes from the Week 4
+    network-distance classification, cell by cell, not from these bins.
+
+    Each ~100 m population cell is assigned to the 500 m square containing its
+    projected centre, populations are summed, the squares are clipped to the
+    12-district analysis boundary, and density uses the CLIPPED area so an edge
+    bin is not diluted by the part of it that lies outside the study area.
+    """
+    step("STEP 6  Population density bins (DISPLAY ONLY)")
+    cells = pd.read_parquet(paths["population_cells"])
+    total = float(cells.population.sum())
+    log(f"    audited per-cell table: {len(cells):,} cells, {total:,.1f} people")
+
+    x = cells.x_m.to_numpy()
+    y = cells.y_m.to_numpy()
+    col = np.floor(x / DENSITY_BIN_M).astype(np.int64)
+    row = np.floor(y / DENSITY_BIN_M).astype(np.int64)
+
+    binned = (
+        pd.DataFrame({"bin_col": col, "bin_row": row, "population": cells.population.to_numpy()})
+        .groupby(["bin_row", "bin_col"], sort=True, as_index=False)["population"]
+        .sum()
+    )
+    binned = binned[binned.population > 0].reset_index(drop=True)
+    log(f"    {DENSITY_BIN_M:.0f} m bins with population: {len(binned):,}")
+
+    squares = [
+        box(c * DENSITY_BIN_M, r * DENSITY_BIN_M,
+            (c + 1) * DENSITY_BIN_M, (r + 1) * DENSITY_BIN_M)
+        for r, c in zip(binned.bin_row, binned.bin_col)
+    ]
+    grid = gpd.GeoDataFrame(binned, geometry=squares, crs=cfg.METRIC_CRS)
+
+    boundary = districts.to_crs(cfg.METRIC_CRS).union_all()
+    grid["geometry"] = grid.geometry.intersection(boundary)
+    grid = grid[~grid.geometry.is_empty & grid.geometry.notna()].copy()
+    grid["clipped_area_km2"] = grid.geometry.area / 1e6
+    grid = grid[grid.clipped_area_km2 > 0].copy()
+    grid["density_per_km2"] = grid.population / grid.clipped_area_km2
+
+    grid = grid.sort_values(["bin_row", "bin_col"]).reset_index(drop=True)
+    retained = float(grid.population.sum())
+
+    web = grid.to_crs(cfg.GEOGRAPHIC_CRS)
+    features = [
+        feature(row.geometry, {
+            "population": round(float(row.population), 3),
+            "density_per_km2": round(float(row.density_per_km2), 2),
+            "area_km2": round(float(row.clipped_area_km2), 6),
+        })
+        for _, row in web.iterrows()
+    ]
+    size = write_geojson(WEB_DATA_DIR / WEB_FILES["population_density"], features)
+
+    stats = {
+        "bin_size_m": DENSITY_BIN_M,
+        "features": len(features),
+        "source_cells": int(len(cells)),
+        "population_in_bins": round(retained, 6),
+        "population_in_source_cells": round(total, 6),
+        "population_retained_pct": round(retained / total * 100.0, 6),
+        "density_min_per_km2": round(float(grid.density_per_km2.min()), 4),
+        "density_median_per_km2": round(float(grid.density_per_km2.median()), 4),
+        "density_max_per_km2": round(float(grid.density_per_km2.max()), 4),
+        "role": "display_only",
+    }
+    log(f"    kept {len(features):,} bins, {retained:,.1f} people "
+        f"({stats['population_retained_pct']:.4f}% of the audited total)")
+    log(f"    density per km2: min {stats['density_min_per_km2']:,.0f}  "
+        f"median {stats['density_median_per_km2']:,.0f}  "
+        f"max {stats['density_max_per_km2']:,.0f}")
+    log("    DISPLAY ONLY: this layer drives no access percentage")
+    return len(features), size, stats
+
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+def main() -> int:
+    SITE_DIR.mkdir(parents=True, exist_ok=True)
+    WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    paths = load_inputs()
+    sizes: dict[str, int] = {}
+    counts: dict[str, int] = {}
+
+    city, sizes["city_summary"] = build_city_summary(paths)
+    districts, counts["districts"], sizes["districts"] = build_districts(paths)
+    counts["metro_isochrone"], sizes["metro_isochrone"], iso_area = build_isochrone(paths)
+    counts["metro_access_points"], sizes["metro_access_points"], access_counts = \
+        build_metro_access_points(paths)
+
+    step("STEP 7  Remaining point layers")
+    counts["metro_stations"], sizes["metro_stations"] = build_point_layer(
+        paths["metro_stations"], WEB_FILES["metro_stations"], "metro stations",
+        {"osm_id": "osm_id", "name": "name", "name_en": "name_en",
+         "district_name": "district_name"},
+    )
+    # Bus stops carry only their district. The layer exists to show spatial
+    # coverage, not to be hovered stop by stop, so per-stop names would add
+    # weight the interface never reads.
+    counts["bus_stops"], sizes["bus_stops"] = build_point_layer(
+        paths["bus_stops"], WEB_FILES["bus_stops"], "bus stops",
+        {"district_name": "district_name"},
+    )
+    counts["bazaars"], sizes["bazaars"] = build_point_layer(
+        paths["bazaars"], WEB_FILES["bazaars"], "bazaars",
+        {"name": "name", "name_ru": "name_ru", "district_name": "district_name"},
+    )
+
+    counts["population_density"], sizes["population_density"], density_stats = \
+        build_population_density(paths, districts)
+
+    step("STEP 8  Web data manifest")
+    manifest = {
+        "milestone": "Week 5 - interim interactive prototype",
+        "generated_by": "scripts/build_web_data.py",
+        "deterministic": (
+            "No timestamp is recorded. Ordering, rounding and precision are fixed, so "
+            "repeated runs are byte-identical."
+        ),
+        "analysis_source": {
+            "analysis_version": city["analysis_version"],
+            "snapping_method": city["snapping_method"],
+            "note": (
+                "Identified by content hash rather than a commit SHA so the build stays "
+                "byte-deterministic and cannot go stale against its own inputs."
+            ),
+            "files": {
+                name: {
+                    "path": str(path.relative_to(cfg.REPO_ROOT)).replace("\\", "/"),
+                    "sha256": cfg.sha256_file(path),
+                }
+                for name, path in sorted(paths.items())
+            },
+        },
+        "analysis_parameters": {
+            "analysis_population": city["analysis_population"],
+            "walking_speed_kmh": city["walking_speed_kmh"],
+            "walking_time_minutes": city["walking_time_minutes"],
+            "walking_time_seconds": city["walking_time_seconds"],
+            "distance_budget_m": city["distance_budget_m"],
+            "district_count": city["analysis_district_count"],
+            "snapping_method": city["snapping_method"],
+        },
+        "coordinate_reference_system": cfg.GEOGRAPHIC_CRS,
+        "coordinate_precision_decimals": COORD_PRECISION,
+        "layers": {
+            "city_summary": {
+                "file": WEB_FILES["city_summary"], "role": "analytical",
+                "features": None, "bytes": sizes["city_summary"],
+                "source": "data/processed/city_access_summary.json",
+                "note": "copied at full precision; not recomputed",
+            },
+            "districts": {
+                "file": WEB_FILES["districts"], "role": "analytical",
+                "features": counts["districts"], "bytes": sizes["districts"],
+                "source": ("data/processed/tashkent_districts.geojson + "
+                           "data/processed/district_access_metrics.csv"),
+                "note": ("the 12 SIAT analysis districts only; Yangi Toshkent has no SIAT "
+                         "population row and is therefore absent from the analytical layer"),
+            },
+            "metro_isochrone": {
+                "file": WEB_FILES["metro_isochrone"], "role": "display_only",
+                "features": counts["metro_isochrone"], "bytes": sizes["metro_isochrone"],
+                "source": "data/processed/metro_isochrone_10min.geojson",
+                "area_km2": round(iso_area, 4),
+                "note": ("Access shading is a display layer. Population estimates use "
+                         "pedestrian-network distance, not polygon intersection."),
+            },
+            "metro_access_points": {
+                "file": WEB_FILES["metro_access_points"], "role": "display_only",
+                "features": counts["metro_access_points"],
+                "bytes": sizes["metro_access_points"],
+                "source": "data/processed/metro_access_points.csv",
+                "by_access_type": access_counts,
+            },
+            "metro_stations": {
+                "file": WEB_FILES["metro_stations"], "role": "display_only",
+                "features": counts["metro_stations"], "bytes": sizes["metro_stations"],
+                "source": "data/processed/metro_stations.geojson",
+            },
+            "bus_stops": {
+                "file": WEB_FILES["bus_stops"], "role": "display_only",
+                "features": counts["bus_stops"], "bytes": sizes["bus_stops"],
+                "source": "data/processed/bus_stops.geojson",
+            },
+            "bazaars": {
+                "file": WEB_FILES["bazaars"], "role": "display_only",
+                "features": counts["bazaars"], "bytes": sizes["bazaars"],
+                "source": "data/processed/bazaars.geojson",
+            },
+            "population_density": {
+                "file": WEB_FILES["population_density"], "role": "display_only",
+                "features": counts["population_density"],
+                "bytes": sizes["population_density"],
+                "source": "data/external/population_cells.parquet (audited Week 4 run)",
+                **density_stats,
+                "note": ("visual context only; every reported access share comes from the "
+                         "Week 4 per-cell network-distance classification, never from "
+                         "these bins"),
+            },
+        },
+        "not_recomputed": [
+            "network accessibility", "population calibration",
+            "district access metrics", "city access summary",
+        ],
+    }
+    write_json(WEB_DATA_DIR / WEB_FILES["manifest"], manifest)
+
+    step("Web data build complete")
+    total_bytes = sum(p.stat().st_size for p in WEB_DATA_DIR.glob("*"))
+    for name in sorted(WEB_FILES.values()):
+        path = WEB_DATA_DIR / name
+        log(f"    {name:34s} {cfg.human_size(path.stat().st_size):>10s}")
+    log(f"    {'TOTAL':34s} {cfg.human_size(total_bytes):>10s}")
+    log("  Next: python scripts/validate_prototype.py")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
