@@ -175,6 +175,13 @@ ENTRANCE_ASSOCIATION_RADIUS_M = 400.0
 ISOCHRONE_BUFFER_M = 40.0
 ISOCHRONE_SIMPLIFY_M = 10.0
 
+# A source whose snapped position lies within this distance of one of its
+# edge's endpoints reuses that endpoint instead of splitting the edge, so the
+# endpoint case behaves exactly like ordinary graph routing. Only a reporting
+# and bookkeeping threshold: it never changes a walking distance by more than
+# its own value, which is 1 m against an 800 m budget.
+EDGE_ENDPOINT_TOLERANCE_M = 1.0
+
 # Week 4 outputs
 ANALYSIS_BOUNDARY_FILE = PROCESSED_DIR / "analysis_boundary.geojson"
 METRO_ACCESS_POINTS_FILE = PROCESSED_DIR / "metro_access_points.csv"

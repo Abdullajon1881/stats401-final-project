@@ -1,10 +1,16 @@
 {
   "analysis": "Week 4 - geospatial accessibility engine",
   "status": "PRELIMINARY - pending independent audit",
-  "analysis_version": "week4.1",
-  "started_at_utc": "2026-09-09T03:46:35+00:00",
-  "generated_at_utc": "2026-09-09T03:53:52+00:00",
+  "analysis_version": "week4.2-edge-aware",
+  "snapping_method": "edge-aware",
+  "started_at_utc": "2026-09-09T10:57:12+00:00",
+  "generated_at_utc": "2026-09-09T11:01:17+00:00",
   "generated_by": "scripts/analyze_accessibility.py",
+  "correction": {
+    "supersedes": "week4.1 nearest-graph-node snapping",
+    "reason": "Independent review found that nearest-node snapping on the simplified OSM pedestrian graph could add hundreds of metres to some population cells simply because no graph vertex existed near the middle of a long edge. Population-cell vertex offsets ran to a median of 39.6 m, a 99th percentile of 367.5 m and a maximum of 905.9 m against an 800 m budget. Before any Week 4 result was merged, the analysis was recomputed using edge-aware network snapping.",
+    "regression_tests": "scripts/test_accessibility_utils.py"
+  },
   "source_manifest": {
     "path": "data/source_manifest.json",
     "sha256": "756f8c99a98b668a5ae8cacb547dfb57b5fd5ff700f6c3556c02104f29cc41c4"
@@ -52,14 +58,58 @@
       "cells_in_window": 132797,
       "cells_included": 64920,
       "inclusion_rule": "cell centre inside exactly one SIAT district polygon (rasterize all_touched=False), value not nodata and finite"
-    }
+    },
+    "sensitivity_note": "both surfaces are calibrated to the SAME SIAT 2026-Q2 district totals, so the comparison isolates sensitivity to WITHIN-district weights and says nothing about which surface is closer to the truth"
   },
-  "graph": {
+  "network": {
     "source": "data/external/tashkent_walk_network.graphml",
     "stored_crs": "EPSG:4326",
     "analysis_crs": "EPSG:32642",
     "nodes": 111386,
-    "undirected_edges": 308272
+    "graph_file": "tashkent_walk_network.graphml",
+    "graph_attributes": {
+      "created_with": "OSMnx 2.1.1",
+      "crs": "epsg:4326",
+      "simplified": "True"
+    },
+    "stored_edge_records": 308272,
+    "usable_edge_records": 308272,
+    "dropped_edge_records_bad_length": 0,
+    "canonical_routing_edges": 154133,
+    "canonical_self_loop_edges": 350,
+    "distinct_node_pairs": 152736,
+    "node_pairs_with_parallel_edges": 1380,
+    "max_canonical_edges_on_one_pair": 3,
+    "records_per_canonical_edge": {
+      "2": 154130,
+      "4": 3
+    },
+    "canonical_edges_with_degenerate_geometry": 0,
+    "edge_cost_m": {
+      "min": 0.03349887501606152,
+      "median": 44.1829618245337,
+      "max": 6845.854742744848,
+      "over_800m": 336
+    },
+    "projected_geometry_over_routing_length": {
+      "min": 0.9983650318979355,
+      "median": 1.00029431227296,
+      "max": 1.0022057518392087
+    },
+    "canonicalisation": "each stored record re-oriented to u <= v (reversing its geometry with it), then deduplicated on (u, v, length, geometry); parallel ways between the same node pair are kept as separate canonical edges, each with its own geometry and its own routing cost"
+  },
+  "routing_model": {
+    "snapping_method": "edge-aware",
+    "edge_snap_method": "shapely STRtree nearest canonical edge geometry, then line_locate_point for the position along that edge",
+    "position_units": "fraction along the projected edge geometry, converted to routing metres with the SAME edge's cost: cost_to_u = fraction * edge_cost, cost_to_v = (1 - fraction) * edge_cost",
+    "source_insertion_method": "canonical edges are split at the snapped source positions, in order along the edge, producing an augmented graph in which every transit source is a real vertex",
+    "population_edge_query_method": "a cell's position is bracketed by the two consecutive breaks of its own edge; the segment interior holds no vertex and no source, so d(cell) = min(d(a) + cost(a->cell), d(b) + cost(cell->b)) is exact",
+    "same_edge_handling": "a source in the interior of a cell's own edge is one of that cell's bracketing breaks, so the walk is measured directly along the edge and never forced out to an endpoint and back",
+    "self_loop_handling": "a self-loop's two breaks are the same vertex, so the same formula returns min(d(u) + f*L, d(u) + (1-f)*L): round the loop the short way",
+    "directional_duplicate_handling": "removed during canonicalisation; the sparse matrix additionally collapses any repeated node pair to its minimum weight, because coo_matrix sums duplicates and would otherwise double a walking cost",
+    "unreachable": "+inf for components holding no source of that mode",
+    "shortest_path_passes": 2,
+    "shortest_path_note": "one multi-source Dijkstra per mode over the augmented graph; walking-speed sensitivity reuses those distances and recomputes no path"
   },
   "walking_model": {
     "main_speed_kmh": 4.8,
@@ -91,51 +141,111 @@
       "Tuzel",
       "Yangihayot"
     ],
-    "access_points_total": 154
+    "access_points_total": 154,
+    "placement": {
+      "count": 154,
+      "endpoint_tolerance_m": 1.0,
+      "inserted_in_edge_interior": 128,
+      "effectively_at_an_endpoint": 26,
+      "distinct_edges_containing_sources": 151,
+      "max_sources_on_one_edge": 2
+    },
+    "augmentation": {
+      "sources": 154,
+      "augmented_nodes_added": 129,
+      "sources_inserted_in_edge_interior": 129,
+      "sources_reusing_an_existing_endpoint": 25,
+      "sources_merged_onto_a_coincident_position": 0,
+      "augmented_nodes_total": 111515,
+      "augmented_routing_edges": 154262,
+      "canonical_routing_edges": 154133,
+      "position_epsilon_m": 1e-06
+    }
   },
   "bus_sources": {
-    "stops_used": 2163
+    "stops_used": 2163,
+    "placement": {
+      "count": 2163,
+      "endpoint_tolerance_m": 1.0,
+      "inserted_in_edge_interior": 2119,
+      "effectively_at_an_endpoint": 44,
+      "distinct_edges_containing_sources": 2090,
+      "max_sources_on_one_edge": 4
+    },
+    "augmentation": {
+      "sources": 2163,
+      "augmented_nodes_added": 2124,
+      "sources_inserted_in_edge_interior": 2124,
+      "sources_reusing_an_existing_endpoint": 38,
+      "sources_merged_onto_a_coincident_position": 1,
+      "augmented_nodes_total": 113510,
+      "augmented_routing_edges": 156257,
+      "canonical_routing_edges": 154133,
+      "position_epsilon_m": 1e-06
+    }
   },
-  "transit_snap_diagnostics": [
-    {
+  "connector_diagnostics": {
+    "definition": "straight-line distance from the point to the nearest walkable EDGE (not to the nearest graph vertex)",
+    "interpretation": "Off-network connectors are straight-line approximations to the nearest mapped walkable edge. They may not represent a physically walkable connection in every case, so their effect on individual cells is uncertain. A connector may cross a fence, a parcel boundary, a building, a railway, a canal, private land or another unmapped barrier; the model does not know.",
+    "metro": {
       "label": "metro",
       "count": 154,
       "min_m": 0.0,
-      "median_m": 6.735626682651045,
-      "p95_m": 39.67485813540728,
-      "p99_m": 50.05681186934007,
-      "max_m": 55.43674100999557,
-      "mean_m": 10.450278642471764,
-      "nodes_reachable": 110788,
-      "nodes_total": 111386
+      "mean_m": 2.0830121047337826,
+      "median_m": 0.0,
+      "p95_m": 14.519724195850394,
+      "p99_m": 25.68660642104446,
+      "max_m": 42.77376360510424,
+      "augmented_nodes_reachable": 110917,
+      "augmented_nodes_total": 111515
     },
-    {
+    "bus": {
       "label": "bus",
       "count": 2163,
       "min_m": 0.0,
-      "median_m": 20.472698356708985,
-      "p95_m": 50.58484221531513,
-      "p99_m": 70.12662238505543,
+      "mean_m": 1.3704514380019506,
+      "median_m": 0.0,
+      "p95_m": 8.319727553647017,
+      "p99_m": 16.485532224798867,
       "max_m": 244.05903070972957,
-      "mean_m": 23.82135996679996,
-      "nodes_reachable": 111303,
-      "nodes_total": 111386
-    }
-  ],
-  "population_cells": {
-    "count": 65169,
-    "snap_diagnostics": {
+      "augmented_nodes_reachable": 113427,
+      "augmented_nodes_total": 113510
+    },
+    "population_cells": {
       "label": "population_cells",
       "count": 65169,
-      "min_m": 0.07445260921994136,
-      "median_m": 39.58162328881152,
-      "p95_m": 175.64205952019722,
-      "p99_m": 367.48193049002447,
-      "max_m": 905.9111424730596,
-      "mean_m": 59.05432392222464
+      "min_m": 0.00018901213129313125,
+      "mean_m": 33.37007669246777,
+      "median_m": 16.476063502795675,
+      "p95_m": 122.33229776327798,
+      "p99_m": 324.26486488569384,
+      "max_m": 899.8919382402229
     },
-    "population_without_metro_source": 13096.49052044215,
-    "population_without_bus_source": 5.227949115012769
+    "population_cells_2020_surface": {
+      "label": "population_cells",
+      "count": 64920,
+      "min_m": 0.00018901213129313125,
+      "mean_m": 32.99315459884075,
+      "median_m": 16.388351732666063,
+      "p95_m": 119.1367800137182,
+      "p99_m": 323.3015020297413,
+      "max_m": 899.8919382402229
+    }
+  },
+  "population_cells": {
+    "count": 65169,
+    "connector_diagnostics": {
+      "label": "population_cells",
+      "count": 65169,
+      "min_m": 0.00018901213129313125,
+      "mean_m": 33.37007669246777,
+      "median_m": 16.476063502795675,
+      "p95_m": 122.33229776327798,
+      "p99_m": 324.26486488569384,
+      "max_m": 899.8919382402229
+    },
+    "population_without_metro_source": 13091.262571327135,
+    "population_without_bus_source": 0.0
   },
   "calibration_factors": [
     {
@@ -224,11 +334,399 @@
     }
   ],
   "calibrated_total": 3212200.0,
+  "district_focus": {
+    "Almazar district": {
+      "calibrated_population": 421300.0,
+      "metro_access_population": 29044.600632,
+      "metro_access_pct": 6.894042,
+      "nearest_cell": {
+        "cell_id": "r107c116",
+        "lon": 69.218749003125,
+        "lat": 41.332916837334984,
+        "total_walking_distance_to_metro_m": 35.403329499609896,
+        "margin_against_budget_m": -764.5966705003901,
+        "off_network_connector_m": 0.7672035254535504,
+        "canonical_edge_index": 79513,
+        "fraction_along_edge": 0.9060309960504885,
+        "cell_population": 81.15193187456991
+      },
+      "nearest_metro_access_point": {
+        "access_id": "entrance:1770328542",
+        "access_type": "entrance",
+        "name": null,
+        "district_name": "Almazar district",
+        "off_network_connector_m": 0.0,
+        "distance_from_traced_entry_point_m": 0.00024876803979008796
+      },
+      "access_path_leaves_the_district": false,
+      "access_path_nodes": 3,
+      "metro_access_pct_by_speed": {
+        "4.0": 4.645362,
+        "4.8": 6.894042,
+        "5.6": 9.00758
+      }
+    },
+    "Bektemir district": {
+      "calibrated_population": 73600.0,
+      "metro_access_population": 1810.10449,
+      "metro_access_pct": 2.459381,
+      "nearest_cell": {
+        "cell_id": "r221c247",
+        "lon": 69.327915669355,
+        "lat": 41.23791683771499,
+        "total_walking_distance_to_metro_m": 55.65160837422448,
+        "margin_against_budget_m": -744.3483916257755,
+        "off_network_connector_m": 2.264753186069485,
+        "canonical_edge_index": 93138,
+        "fraction_along_edge": 0.14581162254662958,
+        "cell_population": 13.96834222190735
+      },
+      "nearest_metro_access_point": {
+        "access_id": "entrance:7997001764",
+        "access_type": "entrance",
+        "name": null,
+        "district_name": "Bektemir district",
+        "off_network_connector_m": 0.0,
+        "distance_from_traced_entry_point_m": 0.0004175017456181337
+      },
+      "access_path_leaves_the_district": false,
+      "access_path_nodes": 3,
+      "metro_access_pct_by_speed": {
+        "4.0": 1.630381,
+        "4.8": 2.459381,
+        "5.6": 3.704598
+      }
+    },
+    "Chilanzar district": {
+      "calibrated_population": 277600.0,
+      "metro_access_population": 64048.843302,
+      "metro_access_pct": 23.07235,
+      "nearest_cell": {
+        "cell_id": "r155c122",
+        "lon": 69.223749003105,
+        "lat": 41.292916837494985,
+        "total_walking_distance_to_metro_m": 16.868404344583446,
+        "margin_against_budget_m": -783.1315956554165,
+        "off_network_connector_m": 2.8876445183295814,
+        "canonical_edge_index": 36885,
+        "fraction_along_edge": 0.25724505809374454,
+        "cell_population": 64.25562521640303
+      },
+      "nearest_metro_access_point": {
+        "access_id": "entrance:1636108224",
+        "access_type": "entrance",
+        "name": "Novza",
+        "district_name": "Chilanzar district",
+        "off_network_connector_m": 0.0,
+        "distance_from_traced_entry_point_m": 0.0004811312976869861
+      },
+      "access_path_leaves_the_district": false,
+      "access_path_nodes": 1,
+      "metro_access_pct_by_speed": {
+        "4.0": 17.376319,
+        "4.8": 23.07235,
+        "5.6": 29.929185
+      }
+    },
+    "Mirabad district": {
+      "calibrated_population": 157500.0,
+      "metro_access_population": 39198.72126,
+      "metro_access_pct": 24.888077,
+      "nearest_cell": {
+        "cell_id": "r156c196",
+        "lon": 69.285415669525,
+        "lat": 41.292083504164985,
+        "total_walking_distance_to_metro_m": 4.729422940843832,
+        "margin_against_budget_m": -795.2705770591562,
+        "off_network_connector_m": 0.862532057967659,
+        "canonical_edge_index": 35327,
+        "fraction_along_edge": 0.8903713048270111,
+        "cell_population": 71.45715337955421
+      },
+      "nearest_metro_access_point": {
+        "access_id": "entrance:1765136913",
+        "access_type": "entrance",
+        "name": "Toshkent",
+        "district_name": "Mirabad district",
+        "off_network_connector_m": 0.0,
+        "distance_from_traced_entry_point_m": 0.0006092309201485716
+      },
+      "access_path_leaves_the_district": false,
+      "access_path_nodes": 1,
+      "metro_access_pct_by_speed": {
+        "4.0": 19.18718,
+        "4.8": 24.888077,
+        "5.6": 29.729199
+      }
+    },
+    "Mirzo Ulugbek district": {
+      "calibrated_population": 345300.0,
+      "metro_access_population": 39168.47776,
+      "metro_access_pct": 11.343318,
+      "nearest_cell": {
+        "cell_id": "r115c247",
+        "lon": 69.327915669355,
+        "lat": 41.32625017069499,
+        "total_walking_distance_to_metro_m": 8.709474449485059,
+        "margin_against_budget_m": -791.290525550515,
+        "off_network_connector_m": 1.7401228670861166,
+        "canonical_edge_index": 59524,
+        "fraction_along_edge": 0.08387934809061995,
+        "cell_population": 67.82837262253746
+      },
+      "nearest_metro_access_point": {
+        "access_id": "entrance:4185804596",
+        "access_type": "entrance",
+        "name": "Buyuk Ipak Yo'li",
+        "district_name": "Mirzo Ulugbek district",
+        "off_network_connector_m": 0.0,
+        "distance_from_traced_entry_point_m": 0.00044906911870749925
+      },
+      "access_path_leaves_the_district": false,
+      "access_path_nodes": 1,
+      "metro_access_pct_by_speed": {
+        "4.0": 8.301646,
+        "4.8": 11.343318,
+        "5.6": 14.531299
+      }
+    },
+    "Sergeli district": {
+      "calibrated_population": 182500.0,
+      "metro_access_population": 25454.019267,
+      "metro_access_pct": 13.947408,
+      "nearest_cell": {
+        "cell_id": "r213c197",
+        "lon": 69.28624900285499,
+        "lat": 41.244583504354985,
+        "total_walking_distance_to_metro_m": 36.55988579578042,
+        "margin_against_budget_m": -763.4401142042195,
+        "off_network_connector_m": 5.71971284694396,
+        "canonical_edge_index": 11651,
+        "fraction_along_edge": 0.26375277572742695,
+        "cell_population": 23.79180076005505
+      },
+      "nearest_metro_access_point": {
+        "access_id": "entrance:13324929877",
+        "access_type": "entrance",
+        "name": null,
+        "district_name": "Sergeli district",
+        "off_network_connector_m": 5.6894,
+        "distance_from_traced_entry_point_m": 0.0004082567443001277
+      },
+      "access_path_leaves_the_district": false,
+      "access_path_nodes": 1,
+      "metro_access_pct_by_speed": {
+        "4.0": 9.590007,
+        "4.8": 13.947408,
+        "5.6": 18.934744
+      }
+    },
+    "Shaykhantakhur district": {
+      "calibrated_population": 375000.0,
+      "metro_access_population": 76700.413952,
+      "metro_access_pct": 20.453444,
+      "nearest_cell": {
+        "cell_id": "r115c139",
+        "lon": 69.237915669715,
+        "lat": 41.32625017069499,
+        "total_walking_distance_to_metro_m": 2.7880129930183597,
+        "margin_against_budget_m": -797.2119870069816,
+        "off_network_connector_m": 1.282487266833923,
+        "canonical_edge_index": 35232,
+        "fraction_along_edge": 0.03654957959706865,
+        "cell_population": 48.43836586110094
+      },
+      "nearest_metro_access_point": {
+        "access_id": "entrance:1577932476",
+        "access_type": "entrance",
+        "name": "Chorsu",
+        "district_name": "Shaykhantakhur district",
+        "off_network_connector_m": 0.0,
+        "distance_from_traced_entry_point_m": 0.0004423133793836866
+      },
+      "access_path_leaves_the_district": false,
+      "access_path_nodes": 1,
+      "metro_access_pct_by_speed": {
+        "4.0": 15.236312,
+        "4.8": 20.453444,
+        "5.6": 25.910184
+      }
+    },
+    "Uchtepa district": {
+      "calibrated_population": 308100.0,
+      "metro_access_population": 0.0,
+      "metro_access_pct": 0.0,
+      "nearest_cell": {
+        "cell_id": "r172c90",
+        "lon": 69.197082336545,
+        "lat": 41.27875017088499,
+        "total_walking_distance_to_metro_m": 819.6998848071081,
+        "margin_against_budget_m": 19.699884807108106,
+        "off_network_connector_m": 4.997437990370205,
+        "canonical_edge_index": 32101,
+        "fraction_along_edge": 0.5929418995446298,
+        "cell_population": 71.30102421927074
+      },
+      "nearest_metro_access_point": {
+        "access_id": "entrance:5431967358",
+        "access_type": "entrance",
+        "name": "Chilonzor",
+        "district_name": "Chilanzar district",
+        "off_network_connector_m": 0.0,
+        "distance_from_traced_entry_point_m": 0.00033884153925128885
+      },
+      "access_path_leaves_the_district": true,
+      "access_path_nodes": 19,
+      "metro_access_pct_by_speed": {
+        "4.0": 0.0,
+        "4.8": 0.0,
+        "5.6": 0.090915
+      }
+    },
+    "Yakkasaray district": {
+      "calibrated_population": 147000.0,
+      "metro_access_population": 11103.924173,
+      "metro_access_pct": 7.55369,
+      "nearest_cell": {
+        "cell_id": "r140c170",
+        "lon": 69.26374900294499,
+        "lat": 41.30541683744499,
+        "total_walking_distance_to_metro_m": 49.81939130082109,
+        "margin_against_budget_m": -750.180608699179,
+        "off_network_connector_m": 1.00434948886259,
+        "canonical_edge_index": 39330,
+        "fraction_along_edge": 0.4646636494608667,
+        "cell_population": 74.41489003717048
+      },
+      "nearest_metro_access_point": {
+        "access_id": "entrance:1775768065",
+        "access_type": "entrance",
+        "name": "Kosmonavtlar",
+        "district_name": "Yakkasaray district",
+        "off_network_connector_m": 0.0,
+        "distance_from_traced_entry_point_m": 0.00025821043446574483
+      },
+      "access_path_leaves_the_district": false,
+      "access_path_nodes": 1,
+      "metro_access_pct_by_speed": {
+        "4.0": 5.247318,
+        "4.8": 7.55369,
+        "5.6": 9.572126
+      }
+    },
+    "Yangikhayot district": {
+      "calibrated_population": 205200.0,
+      "metro_access_population": 25346.708266,
+      "metro_access_pct": 12.352197,
+      "nearest_cell": {
+        "cell_id": "r260c119",
+        "lon": 69.22124900311499,
+        "lat": 41.205416837844986,
+        "total_walking_distance_to_metro_m": 18.224590498612606,
+        "margin_against_budget_m": -781.7754095013873,
+        "off_network_connector_m": 6.035811584174384,
+        "canonical_edge_index": 121421,
+        "fraction_along_edge": 0.1505396750643421,
+        "cell_population": 60.1228935530202
+      },
+      "nearest_metro_access_point": {
+        "access_id": "station:11218653778",
+        "access_type": "station_fallback",
+        "name": "Qipchok",
+        "district_name": "Yangikhayot district",
+        "off_network_connector_m": 0.0,
+        "distance_from_traced_entry_point_m": 0.0005495289771067003
+      },
+      "access_path_leaves_the_district": false,
+      "access_path_nodes": 1,
+      "metro_access_pct_by_speed": {
+        "4.0": 9.154379,
+        "4.8": 12.352197,
+        "5.6": 16.289356
+      }
+    },
+    "Yashnabad district": {
+      "calibrated_population": 322300.0,
+      "metro_access_population": 32496.97917,
+      "metro_access_pct": 10.082836,
+      "nearest_cell": {
+        "cell_id": "r147c219",
+        "lon": 69.30458233611499,
+        "lat": 41.299583504134986,
+        "total_walking_distance_to_metro_m": 22.664710267295575,
+        "margin_against_budget_m": -777.3352897327044,
+        "off_network_connector_m": 5.680774808021722,
+        "canonical_edge_index": 76783,
+        "fraction_along_edge": 0.6442225832562185,
+        "cell_population": 31.539716576253053
+      },
+      "nearest_metro_access_point": {
+        "access_id": "entrance:1765132137",
+        "access_type": "entrance",
+        "name": "Mashinasozlar",
+        "district_name": "Yashnabad district",
+        "off_network_connector_m": 0.0,
+        "distance_from_traced_entry_point_m": 0.00028728203103173597
+      },
+      "access_path_leaves_the_district": false,
+      "access_path_nodes": 2,
+      "metro_access_pct_by_speed": {
+        "4.0": 6.917164,
+        "4.8": 10.082836,
+        "5.6": 13.658387
+      }
+    },
+    "Yunusabad district": {
+      "calibrated_population": 396800.0,
+      "metro_access_population": 91317.029585,
+      "metro_access_pct": 23.013364,
+      "nearest_cell": {
+        "cell_id": "r66c205",
+        "lon": 69.29291566949499,
+        "lat": 41.36708350386499,
+        "total_walking_distance_to_metro_m": 12.213561684152879,
+        "margin_against_budget_m": -787.7864383158471,
+        "off_network_connector_m": 11.303664138411932,
+        "canonical_edge_index": 68885,
+        "fraction_along_edge": 0.14639588785711777,
+        "cell_population": 63.84063305759216
+      },
+      "nearest_metro_access_point": {
+        "access_id": "entrance:7053509980",
+        "access_type": "entrance",
+        "name": "Yunusobod",
+        "district_name": "Yunusabad district",
+        "off_network_connector_m": 0.0,
+        "distance_from_traced_entry_point_m": 0.00027643920981545837
+      },
+      "access_path_leaves_the_district": false,
+      "access_path_nodes": 1,
+      "metro_access_pct_by_speed": {
+        "4.0": 17.278062,
+        "4.8": 23.013364,
+        "5.6": 28.070906
+      }
+    }
+  },
   "service_areas": {
-    "method": "reachable network edges within the budget, buffered by 40 m in EPSG:32642, dissolved, simplified at 10 m, written as WGS84. Partially reachable edges are cut at the budget by linear interpolation along the straight segment between their nodes.",
+    "method": "reachable AUGMENTED segments within the budget, cut along the real edge geometry where the budget runs out, buffered by 40 m in EPSG:32642, dissolved, simplified at 10 m, written as WGS84. Because sources are spliced into edge interiors, a stop in the middle of a long edge produces reachable geometry around itself even when both of that edge's original endpoints lie beyond the budget.",
     "purpose": "visualisation only; not used by the population classification",
-    "metro_area_km2": 47.7835,
-    "bus_area_km2": 282.8513
+    "metro_area_km2": 49.6774,
+    "bus_area_km2": 295.7395,
+    "metro": {
+      "segments_considered": 154262,
+      "segments_fully_reachable": 33445,
+      "segments_partially_reachable": 2400,
+      "segments_unreachable": 118417,
+      "reachable_network_length_km": 1674.9561
+    },
+    "bus": {
+      "segments_considered": 156257,
+      "segments_fully_reachable": 133797,
+      "segments_partially_reachable": 2620,
+      "segments_unreachable": 19840,
+      "reachable_network_length_km": 8102.0509
+    }
   },
   "outputs": [
     "data/processed/analysis_boundary.geojson",
@@ -246,11 +744,13 @@
     "walking_speed_sensitivity_rows": 39,
     "population_surface_sensitivity_rows": 13,
     "metro_access_point_rows": 154,
-    "transit_snap_rows": 2
+    "transit_snap_rows": 3
   },
   "limitations": [
     "Physical walking access only: no frequency, span, transfers, in-vehicle time, reliability, crowding, fare or destination usefulness.",
-    "The link from a raster-cell centre to the pedestrian network, and from a transit access point to the network, is a straight-line approximation.",
+    "The link from a raster-cell centre to the network, and from a transit access point to the network, is a straight-line off-network connector to the nearest mapped walkable edge. It may not represent a physically walkable connection in every case, so its effect on individual cells is uncertain in an unknown direction.",
+    "Routing runs on the SIMPLIFIED OSM walk graph. Positions along an edge are exact, but the edge's own shape is OSM's generalisation of the real path.",
+    "Parallel ways between the same node pair are kept as separate canonical edges, so a cell is costed against the way it actually stands beside; 1,380 node pairs carry such parallel edges here.",
     "WorldPop R2025A is an alpha product; it supplies within-district weights only, and its within-district accuracy is unverified.",
     "Bus stops come from OSM alone; no official open-data bus layer was reachable in Week 3.",
     "Metro entrances are used where mapped; stations without a mapped entrance fall back to the station point, which flatters deep stations slightly.",

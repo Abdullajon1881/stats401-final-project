@@ -6,11 +6,22 @@ Turns the validated Week 3 datasets into district and city access metrics:
 
   * analysis boundary = the union of the 12 SIAT-matched districts
   * metro access points = mapped entrances, with a documented station fallback
-  * one multi-source shortest-path pass per mode over the projected walk graph
+  * EDGE-AWARE network distances: transit sources are spliced into the walk
+    edges they stand beside, and population cells are queried at their own
+    positions along the edges they stand beside
   * WorldPop cells calibrated to official SIAT totals district by district
   * classification into metro / bus-only / underserved at 10 minutes
   * walking-speed and population-surface sensitivity
-  * a display-only service-area polygon
+  * a display-only service-area polygon, also edge-aware
+
+Why edge-aware. An earlier Week 4 implementation snapped both transit points
+and population cells to the nearest graph VERTEX. The OSM walk graph is
+simplified, so its vertices sit at intersections rather than continuously along
+every path: a cell beside the middle of a long edge was charged the walk to the
+end of that edge. On this graph the median cell was 39.6 m from a vertex but the
+99th percentile was 367.5 m and the worst was 905.9 m, against a headline budget
+of 800 m. That artefact could decide the 10-minute answer on its own, so the
+model was rebuilt before any result was merged.
 
 Results are PRELIMINARY until independently audited. This script measures
 physical walking access only - not frequency, span, transfers, in-vehicle time,
@@ -35,7 +46,8 @@ import accessibility_utils as au  # noqa: E402
 import config as cfg  # noqa: E402
 from pipeline_utils import log, step  # noqa: E402
 
-ANALYSIS_VERSION = "week4.1"
+ANALYSIS_VERSION = "week4.2-edge-aware"
+SNAPPING_METHOD = "edge-aware"
 
 
 def utc_now() -> str:
@@ -95,6 +107,9 @@ def build_metro_access_points() -> tuple[gpd.GeoDataFrame, pd.DataFrame, dict]:
     Entering the metro means walking to an entrance. Using every station centre
     as well would make deep stations artificially easy to reach, so a station
     contributes its own point only when no mapped entrance is associated with it.
+    The association radius is an assumption carried over unchanged from the
+    first implementation; the counts below are derived from the data, never
+    hard-coded.
     """
     step("STEP 2  Metro access points")
     stations = gpd.read_file(cfg.METRO_STATIONS_FILE).sort_values("osm_id").reset_index(drop=True)
@@ -151,7 +166,6 @@ def build_metro_access_points() -> tuple[gpd.GeoDataFrame, pd.DataFrame, dict]:
         })
 
     table = pd.DataFrame(records).sort_values(["access_type", "access_id"]).reset_index(drop=True)
-    table.to_csv(cfg.METRO_ACCESS_POINTS_FILE, index=False, encoding="utf-8")
 
     fallbacks = table[table.access_type == "station_fallback"]
     if len(fallbacks):
@@ -178,7 +192,6 @@ def build_metro_access_points() -> tuple[gpd.GeoDataFrame, pd.DataFrame, dict]:
     }
     log(f"  metro access points: {len(table)} "
         f"({stats['entrances_total']} entrances + {stats['stations_fallback']} fallback)")
-    log(f"  wrote {cfg.METRO_ACCESS_POINTS_FILE.name}")
     return points, table, stats
 
 
@@ -188,34 +201,60 @@ def load_bus_points() -> gpd.GeoDataFrame:
 
 
 # ---------------------------------------------------------------------------
-# Network distances
+# Edge-aware mode setup
 # ---------------------------------------------------------------------------
-def mode_node_distances(
-    graph: au.WalkGraph,
+def prepare_mode(
+    network: au.WalkNetwork,
+    tree,
     points: gpd.GeoDataFrame,
     label: str,
-) -> tuple[np.ndarray, dict]:
-    """Snap a mode's access points and run one multi-source shortest-path pass."""
+    *,
+    want_predecessors: bool = False,
+):
+    """Snap a mode's access points to edges, splice them in, run one Dijkstra."""
     xy = np.column_stack([points.geometry.x, points.geometry.y])
-    nodes, offsets = au.snap_points(graph, xy)
-    diagnostics = au.snap_diagnostics(label, offsets)
+    snap = au.snap_points_to_edges(network, xy, tree=tree)
+    diagnostics = au.connector_diagnostics(label, snap.connector_m)
+    placement = au.snap_placement_stats(
+        snap, network, endpoint_tol_m=cfg.EDGE_ENDPOINT_TOLERANCE_M
+    )
+
     log(f"  {label}: n={diagnostics['count']}  min={diagnostics['min_m']:.1f}  "
-        f"median={diagnostics['median_m']:.1f}  p95={diagnostics['p95_m']:.1f}  "
-        f"p99={diagnostics['p99_m']:.1f}  max={diagnostics['max_m']:.1f} m")
+        f"mean={diagnostics['mean_m']:.1f}  median={diagnostics['median_m']:.1f}  "
+        f"p95={diagnostics['p95_m']:.1f}  p99={diagnostics['p99_m']:.1f}  "
+        f"max={diagnostics['max_m']:.1f} m  (to the nearest walkable EDGE)")
 
-    worst = np.argsort(offsets)[-5:][::-1]
-    log(f"    largest {label} snap offsets:")
+    worst = np.argsort(snap.connector_m)[-5:][::-1]
+    log(f"    largest {label} off-network connectors:")
     for i in worst:
-        name = points.iloc[int(i)].get("name")
-        log(f"      {offsets[i]:8.1f} m  {str(name)[:40]}")
+        row = points.iloc[int(i)]
+        log(f"      {snap.connector_m[i]:8.1f} m  {str(row.get('name'))[:38]:38s} "
+            f"{str(row.get('district_name'))[:22]}")
 
-    distances = au.multi_source_distances(graph, nodes, offsets)
-    reachable = np.isfinite(distances)
-    log(f"    nodes reachable from {label}: {int(reachable.sum()):,} / {distances.size:,} "
-        f"({reachable.mean():.2%})")
-    diagnostics["nodes_reachable"] = int(reachable.sum())
-    diagnostics["nodes_total"] = int(distances.size)
-    return distances, diagnostics
+    aug = au.build_augmented_network(network, snap)
+    log(f"    spliced into the network: {placement['inserted_in_edge_interior']} in edge "
+        f"interiors, {placement['effectively_at_an_endpoint']} at existing endpoints, "
+        f"over {placement['distinct_edges_containing_sources']} distinct canonical edges")
+    log(f"    augmented nodes {aug.stats['augmented_nodes_total']:,} "
+        f"(+{aug.stats['augmented_nodes_added']:,})   "
+        f"routing segments {aug.stats['augmented_routing_edges']:,} "
+        f"(canonical edges {aug.stats['canonical_routing_edges']:,})")
+
+    result = au.multi_source_distances(
+        network, aug, snap.connector_m, return_predecessors=want_predecessors
+    )
+    if want_predecessors:
+        node_distance, predecessors, super_source = result
+    else:
+        node_distance, predecessors, super_source = result, None, None
+
+    reachable = np.isfinite(node_distance)
+    log(f"    augmented nodes reachable from {label}: {int(reachable.sum()):,} / "
+        f"{node_distance.size:,} ({reachable.mean():.2%})")
+    diagnostics["augmented_nodes_reachable"] = int(reachable.sum())
+    diagnostics["augmented_nodes_total"] = int(node_distance.size)
+
+    return snap, aug, node_distance, diagnostics, placement, predecessors, super_source
 
 
 # ---------------------------------------------------------------------------
@@ -276,10 +315,42 @@ def with_percentages(frame: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def attach_distances(
+    cells: pd.DataFrame,
+    network: au.WalkNetwork,
+    tree,
+    metro: tuple,
+    bus: tuple,
+) -> tuple[pd.DataFrame, dict]:
+    """Snap population cells to edges and read off both modes' distances.
+
+    The cell's own off-network connector is added once, on top of a network
+    distance that already contains the source's connector.
+    """
+    cell_xy = np.column_stack([cells.x_m.to_numpy(), cells.y_m.to_numpy()])
+    snap = au.snap_points_to_edges(network, cell_xy, tree=tree)
+    diagnostics = au.connector_diagnostics("population_cells", snap.connector_m)
+
+    metro_aug, metro_dist = metro
+    bus_aug, bus_dist = bus
+
+    out = cells.copy()
+    out["edge_index"] = snap.edge_index
+    out["edge_fraction"] = snap.fraction
+    out["edge_connector_m"] = snap.connector_m
+    out["metro_distance_m"] = snap.connector_m + au.query_positions(
+        metro_aug, metro_dist, snap.edge_index, snap.fraction
+    )
+    out["bus_distance_m"] = snap.connector_m + au.query_positions(
+        bus_aug, bus_dist, snap.edge_index, snap.fraction
+    )
+    return out, diagnostics
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def main() -> int:
+def main() -> int:  # noqa: PLR0915 - a linear pipeline reads better in one place
     cfg.ensure_directories()
     started = utc_now()
 
@@ -287,21 +358,45 @@ def main() -> int:
     boundary, boundary_area_km2 = write_analysis_boundary(districts)
     boundary_geom = districts.to_crs(cfg.METRIC_CRS).union_all()
 
-    step("STEP 3  Pedestrian network")
-    graph = au.load_walk_graph(cfg.WALK_GRAPH_FILE)
-    log(f"  matrix nodes: {graph.n_nodes:,}   undirected edges: {graph.n_edges:,}")
-    log(f"  graph CRS: {graph.crs}")
+    step("STEP 3  Canonical pedestrian network")
+    source_manifest = json.loads(cfg.MANIFEST_PATH.read_text(encoding="utf-8"))
+    recorded = source_manifest.get("walk_network", {})
+    network = au.load_walk_network(
+        cfg.WALK_GRAPH_FILE,
+        expected_nodes=recorded.get("nodes"),
+        expected_edge_records=recorded.get("edges"),
+    )
+    log(f"  matches the Week 3 snapshot: {recorded.get('nodes'):,} nodes, "
+        f"{recorded.get('edges'):,} stored edge records")
+    log(f"  network CRS: {network.crs}")
+    edge_tree = au.build_edge_index(network)
 
     metro_points, metro_table, metro_stats = build_metro_access_points()
     bus_points = load_bus_points()
 
-    step("STEP 4  Transit snapping and multi-source shortest paths")
-    metro_node_dist, metro_snap = mode_node_distances(graph, metro_points, "metro")
-    bus_node_dist, bus_snap = mode_node_distances(graph, bus_points, "bus")
+    step("STEP 4  Edge-aware transit snapping and multi-source shortest paths")
+    (metro_snap, metro_aug, metro_node_dist, metro_diag, metro_place,
+     metro_pred, metro_super) = prepare_mode(
+        network, edge_tree, metro_points, "metro", want_predecessors=True)
+    (bus_snap, bus_aug, bus_node_dist, bus_diag, bus_place,
+     _, _) = prepare_mode(network, edge_tree, bus_points, "bus")
 
-    snap_table = pd.DataFrame([metro_snap, bus_snap])
-    snap_table.to_csv(cfg.TRANSIT_SNAP_DIAGNOSTICS_FILE, index=False, encoding="utf-8")
-    log(f"  wrote {cfg.TRANSIT_SNAP_DIAGNOSTICS_FILE.name}")
+    # metro_access_points.csv gains the snapping columns, so the audit can see
+    # exactly where every access point entered the network.
+    metro_table = metro_table.copy()
+    metro_table["snap_edge_index"] = metro_snap.edge_index
+    metro_table["snap_edge_fraction"] = metro_snap.fraction.round(9)
+    metro_table["off_network_connector_m"] = metro_snap.connector_m.round(4)
+    metro_table["snap_cost_to_edge_u_m"] = metro_snap.cost_to_u.round(4)
+    metro_table["snap_cost_to_edge_v_m"] = metro_snap.cost_to_v.round(4)
+    metro_table["snapped_x_m"] = metro_snap.snapped_xy[:, 0].round(3)
+    metro_table["snapped_y_m"] = metro_snap.snapped_xy[:, 1].round(3)
+    metro_table["snapped_into_edge_interior"] = (
+        (metro_snap.cost_to_u > cfg.EDGE_ENDPOINT_TOLERANCE_M)
+        & (metro_snap.cost_to_v > cfg.EDGE_ENDPOINT_TOLERANCE_M)
+    )
+    metro_table.to_csv(cfg.METRO_ACCESS_POINTS_FILE, index=False, encoding="utf-8")
+    log(f"  wrote {cfg.METRO_ACCESS_POINTS_FILE.name}")
 
     step("STEP 5  Population cells and district calibration")
     raster_2026 = cfg.worldpop_raster_path(cfg.WORLDPOP_YEAR)
@@ -323,19 +418,30 @@ def main() -> int:
     if abs(calibrated_total - official_total) > 1.0:
         raise ValueError("calibrated population does not reproduce the official total")
 
-    step("STEP 6  Population-cell snapping")
-    cell_xy = np.column_stack([cells.x_m.to_numpy(), cells.y_m.to_numpy()])
-    cell_nodes, cell_offsets = au.snap_points(graph, cell_xy)
-    cell_snap = au.snap_diagnostics("population_cells", cell_offsets)
-    log(f"  cells: n={cell_snap['count']:,}  min={cell_snap['min_m']:.1f}  "
-        f"median={cell_snap['median_m']:.1f}  p95={cell_snap['p95_m']:.1f}  "
-        f"p99={cell_snap['p99_m']:.1f}  max={cell_snap['max_m']:.1f} m")
-    log("  the cell-centre-to-network link is a straight-line approximation")
+    step("STEP 6  Edge-aware population-cell queries")
+    cells, cell_diag = attach_distances(
+        cells, network, edge_tree,
+        (metro_aug, metro_node_dist), (bus_aug, bus_node_dist),
+    )
+    log(f"  cells: n={cell_diag['count']:,}  min={cell_diag['min_m']:.1f}  "
+        f"mean={cell_diag['mean_m']:.1f}  median={cell_diag['median_m']:.1f}  "
+        f"p95={cell_diag['p95_m']:.1f}  p99={cell_diag['p99_m']:.1f}  "
+        f"max={cell_diag['max_m']:.1f} m  (to the nearest walkable EDGE)")
+    log("  An off-network connector is a straight-line approximation to the nearest")
+    log("  mapped walkable edge. It may not describe a physically walkable link in")
+    log("  every case, so its effect on any individual cell is uncertain.")
 
-    cells["node_index"] = cell_nodes
-    cells["node_offset_m"] = cell_offsets
-    cells["metro_distance_m"] = cell_offsets + metro_node_dist[cell_nodes]
-    cells["bus_distance_m"] = cell_offsets + bus_node_dist[cell_nodes]
+    snap_rows = [
+        {**metro_diag, "role": "transit_source", **{
+            k: v for k, v in metro_place.items() if k != "count"}},
+        {**bus_diag, "role": "transit_source", **{
+            k: v for k, v in bus_place.items() if k != "count"}},
+        {**cell_diag, "role": "population_query"},
+    ]
+    snap_table = pd.DataFrame(snap_rows)
+    snap_table.insert(1, "measures", "straight-line distance to the nearest walkable edge")
+    snap_table.to_csv(cfg.TRANSIT_SNAP_DIAGNOSTICS_FILE, index=False, encoding="utf-8")
+    log(f"  wrote {cfg.TRANSIT_SNAP_DIAGNOSTICS_FILE.name}")
 
     unreachable_metro = float(cells.population[~np.isfinite(cells.metro_distance_m)].sum())
     unreachable_bus = float(cells.population[~np.isfinite(cells.bus_distance_m)].sum())
@@ -344,9 +450,9 @@ def main() -> int:
 
     step("STEP 7  Access classification (main scenario)")
     main_speed = cfg.MAIN_WALK_SPEED_KMH
+    budget = cfg.walk_budget_m(main_speed)
     log(f"  speed {main_speed} km/h = {cfg.kmh_to_ms(main_speed):.10f} m/s, "
-        f"threshold {cfg.WALK_TIME_LIMIT_SECONDS} s "
-        f"(budget {cfg.walk_budget_m(main_speed):.1f} m)")
+        f"threshold {cfg.WALK_TIME_LIMIT_SECONDS} s (budget {budget:.1f} m)")
     flags = classify(cells, main_speed)
 
     city = with_percentages(aggregate(cells, flags, None))
@@ -399,12 +505,19 @@ def main() -> int:
     table["bus_stops_in_district"] = table.district_name.map(bus_counts).fillna(0).astype(int)
     table["bazaars_in_district"] = table.district_name.map(bazaar_counts).fillna(0).astype(int)
 
+    # Nearest-metro distance per district: the continuous evidence behind a
+    # 0.00 percent, reported whether or not the share is zero.
+    nearest = cells.groupby("district_name", sort=True).metro_distance_m.min()
+    table["min_cell_metro_distance_m"] = table.district_name.map(nearest)
+    table["min_cell_metro_margin_m"] = table.min_cell_metro_distance_m - budget
+
     columns = [
         "district_name", "official_population", "calibrated_population",
         "metro_access_population", "metro_access_pct",
         "bus_only_population", "bus_only_pct",
         "underserved_population", "underserved_pct",
         "combined_walk_access_population", "combined_walk_access_pct",
+        "min_cell_metro_distance_m", "min_cell_metro_margin_m",
         "area_km2", "population_density_per_km2",
         "metro_stations_in_district", "metro_access_points_in_district",
         "bus_stops_in_district", "bazaars_in_district",
@@ -416,13 +529,17 @@ def main() -> int:
     table.to_csv(cfg.DISTRICT_ACCESS_METRICS_FILE, index=False, encoding="utf-8")
     log(f"  wrote {cfg.DISTRICT_ACCESS_METRICS_FILE.name} ({len(table)} rows)")
 
-    log(f"\n  {'district':26s} {'pop':>11s} {'metro%':>8s} {'bus-only%':>10s} {'unserved%':>10s}")
-    log("  " + "-" * 70)
+    log(f"\n  {'district':26s} {'pop':>11s} {'metro%':>8s} {'bus-only%':>10s} "
+        f"{'unserved%':>10s} {'min metro m':>12s}")
+    log("  " + "-" * 82)
     for _, r in table.iterrows():
         log(f"  {r.district_name:26s} {r.calibrated_population:11,.0f} "
-            f"{r.metro_access_pct:8.2f} {r.bus_only_pct:10.2f} {r.underserved_pct:10.2f}")
+            f"{r.metro_access_pct:8.2f} {r.bus_only_pct:10.2f} {r.underserved_pct:10.2f} "
+            f"{r.min_cell_metro_distance_m:12.1f}")
 
     step("STEP 9  Walking-speed sensitivity")
+    log("  Distances are speed-independent, so the same network result is reused;")
+    log("  only the distance budget changes. No shortest path is recomputed.")
     sensitivity_rows = []
     for speed in cfg.WALK_SPEED_SCENARIOS_KMH:
         scenario_flags = classify(cells, speed)
@@ -461,35 +578,30 @@ def main() -> int:
 
     step("STEP 10  Population-surface sensitivity (2020 vs 2026)")
     baseline_raster = cfg.worldpop_raster_path(cfg.WORLDPOP_BASELINE_YEAR)
-    surface_rows: list[dict] = []
-    baseline_meta: dict = {}
     if not baseline_raster.exists():
-        log(f"  ! {baseline_raster.name} not present; run scripts/audit_population_surface.py")
         raise FileNotFoundError(f"baseline raster missing: {baseline_raster}")
 
     baseline_cells, baseline_meta = au.rasterize_districts(
         baseline_raster, districts, boundary_geom
     )
-    baseline_cells, baseline_calibration = au.calibrate_to_official(baseline_cells, official)
+    baseline_cells, _ = au.calibrate_to_official(baseline_cells, official)
     log(f"  2020 cells included: {len(baseline_cells):,} "
         f"(2026: {len(cells):,}); both calibrated to the SAME SIAT 2026-Q2 totals")
 
-    b_nodes, b_offsets = au.snap_points(
-        graph, np.column_stack([baseline_cells.x_m.to_numpy(), baseline_cells.y_m.to_numpy()])
+    baseline_cells, baseline_cell_diag = attach_distances(
+        baseline_cells, network, edge_tree,
+        (metro_aug, metro_node_dist), (bus_aug, bus_node_dist),
     )
-    baseline_cells["node_offset_m"] = b_offsets
-    baseline_cells["metro_distance_m"] = b_offsets + metro_node_dist[b_nodes]
-    baseline_cells["bus_distance_m"] = b_offsets + bus_node_dist[b_nodes]
     baseline_flags = classify(baseline_cells, main_speed)
 
     base_city = with_percentages(aggregate(baseline_cells, baseline_flags, None)).iloc[0]
     curr_city = city.iloc[0]
-    surface_rows.append({
+    surface_rows = [{
         "scope": "city", "district_name": "",
         "metro_access_pct_using_2020_surface": base_city.metro_pct,
         "metro_access_pct_using_2026_surface": curr_city.metro_pct,
         "percentage_point_difference": curr_city.metro_pct - base_city.metro_pct,
-    })
+    }]
     base_district = with_percentages(
         aggregate(baseline_cells, baseline_flags, "district_name")
     ).set_index("district_name")
@@ -512,26 +624,37 @@ def main() -> int:
         f"2026 surface {curr_city.metro_pct:.2f}%  "
         f"difference {curr_city.metro_pct - base_city.metro_pct:+.2f} pp")
     log(f"  wrote {cfg.POPULATION_SURFACE_SENSITIVITY_FILE.name} ({len(surface)} rows)")
+    del baseline_cells
 
-    step("STEP 11  Display service areas")
-    budget = cfg.walk_budget_m(main_speed)
-    metro_iso = au.build_service_area(graph, metro_node_dist, budget)
+    step("STEP 11  Edge-aware district focus: nearest metro cell per district")
+    focus = district_focus(
+        cells, table, network, metro_aug, metro_node_dist, metro_pred, metro_super,
+        metro_table, metric_districts, budget, sensitivity,
+    )
+
+    step("STEP 12  Display service areas (edge-aware)")
+    metro_iso, metro_iso_info = au.build_service_area(
+        network, metro_aug, metro_node_dist, budget)
     metro_area = au.service_area_area_km2(metro_iso)
     metro_iso.to_crs(cfg.GEOGRAPHIC_CRS).to_file(cfg.METRO_ISOCHRONE_FILE, driver="GeoJSON")
     log(f"  metro service area: {metro_area:,.2f} km2 -> {cfg.METRO_ISOCHRONE_FILE.name} "
         f"({cfg.human_size(cfg.file_size_bytes(cfg.METRO_ISOCHRONE_FILE))})")
+    log(f"    {metro_iso_info}")
 
-    bus_iso = au.build_service_area(graph, bus_node_dist, budget)
+    bus_iso, bus_iso_info = au.build_service_area(
+        network, bus_aug, bus_node_dist, budget)
     bus_area = au.service_area_area_km2(bus_iso)
     bus_iso.to_crs(cfg.GEOGRAPHIC_CRS).to_file(cfg.BUS_ISOCHRONE_FILE, driver="GeoJSON")
     log(f"  bus service area  : {bus_area:,.2f} km2 -> {cfg.BUS_ISOCHRONE_FILE.name} "
         f"({cfg.human_size(cfg.file_size_bytes(cfg.BUS_ISOCHRONE_FILE))})")
+    log(f"    {bus_iso_info}")
     log("  THESE POLYGONS ARE FOR VISUALISATION. The population classification is")
     log("  computed from network distances and does not depend on them.")
 
-    step("STEP 12  City summary and manifest")
+    step("STEP 13  City summary and manifest")
     summary = {
         "status": "PRELIMINARY - pending independent audit",
+        "snapping_method": SNAPPING_METHOD,
         "analysis_population": float(curr_city.population),
         "official_population": official_total,
         "metro_access_population": float(curr_city.metro),
@@ -564,8 +687,8 @@ def main() -> int:
 
     cells_out = cells[[
         "cell_id", "row", "col", "lon", "lat", "x_m", "y_m", "district_name",
-        "worldpop_raw", "calibration_factor", "population", "node_index",
-        "node_offset_m", "metro_distance_m", "bus_distance_m",
+        "worldpop_raw", "calibration_factor", "population", "edge_index",
+        "edge_fraction", "edge_connector_m", "metro_distance_m", "bus_distance_m",
     ]]
     cells_out.to_parquet(cfg.POPULATION_CELLS_CACHE, index=False)
     log(f"  cached per-cell table -> {cfg.POPULATION_CELLS_CACHE.name} "
@@ -575,9 +698,23 @@ def main() -> int:
         "analysis": "Week 4 - geospatial accessibility engine",
         "status": "PRELIMINARY - pending independent audit",
         "analysis_version": ANALYSIS_VERSION,
+        "snapping_method": SNAPPING_METHOD,
         "started_at_utc": started,
         "generated_at_utc": utc_now(),
         "generated_by": "scripts/analyze_accessibility.py",
+        "correction": {
+            "supersedes": "week4.1 nearest-graph-node snapping",
+            "reason": (
+                "Independent review found that nearest-node snapping on the simplified "
+                "OSM pedestrian graph could add hundreds of metres to some population "
+                "cells simply because no graph vertex existed near the middle of a long "
+                "edge. Population-cell vertex offsets ran to a median of 39.6 m, a 99th "
+                "percentile of 367.5 m and a maximum of 905.9 m against an 800 m budget. "
+                "Before any Week 4 result was merged, the analysis was recomputed using "
+                "edge-aware network snapping."
+            ),
+            "regression_tests": "scripts/test_accessibility_utils.py",
+        },
         "source_manifest": {
             "path": "data/source_manifest.json",
             "sha256": cfg.sha256_file(cfg.MANIFEST_PATH),
@@ -604,13 +741,60 @@ def main() -> int:
             "sensitivity_year": cfg.WORLDPOP_BASELINE_YEAR,
             "raster_2026": raster_meta,
             "raster_2020": baseline_meta,
+            "sensitivity_note": (
+                "both surfaces are calibrated to the SAME SIAT 2026-Q2 district totals, "
+                "so the comparison isolates sensitivity to WITHIN-district weights and "
+                "says nothing about which surface is closer to the truth"
+            ),
         },
-        "graph": {
+        "network": {
             "source": str(cfg.WALK_GRAPH_FILE.relative_to(cfg.REPO_ROOT)).replace("\\", "/"),
             "stored_crs": cfg.GEOGRAPHIC_CRS,
-            "analysis_crs": graph.crs,
-            "nodes": graph.n_nodes,
-            "undirected_edges": graph.n_edges,
+            "analysis_crs": network.crs,
+            "nodes": network.n_nodes,
+            **network.stats,
+        },
+        "routing_model": {
+            "snapping_method": SNAPPING_METHOD,
+            "edge_snap_method": (
+                "shapely STRtree nearest canonical edge geometry, then "
+                "line_locate_point for the position along that edge"
+            ),
+            "position_units": (
+                "fraction along the projected edge geometry, converted to routing "
+                "metres with the SAME edge's cost: cost_to_u = fraction * edge_cost, "
+                "cost_to_v = (1 - fraction) * edge_cost"
+            ),
+            "source_insertion_method": (
+                "canonical edges are split at the snapped source positions, in order "
+                "along the edge, producing an augmented graph in which every transit "
+                "source is a real vertex"
+            ),
+            "population_edge_query_method": (
+                "a cell's position is bracketed by the two consecutive breaks of its "
+                "own edge; the segment interior holds no vertex and no source, so "
+                "d(cell) = min(d(a) + cost(a->cell), d(b) + cost(cell->b)) is exact"
+            ),
+            "same_edge_handling": (
+                "a source in the interior of a cell's own edge is one of that cell's "
+                "bracketing breaks, so the walk is measured directly along the edge and "
+                "never forced out to an endpoint and back"
+            ),
+            "self_loop_handling": (
+                "a self-loop's two breaks are the same vertex, so the same formula "
+                "returns min(d(u) + f*L, d(u) + (1-f)*L): round the loop the short way"
+            ),
+            "directional_duplicate_handling": (
+                "removed during canonicalisation; the sparse matrix additionally "
+                "collapses any repeated node pair to its minimum weight, because "
+                "coo_matrix sums duplicates and would otherwise double a walking cost"
+            ),
+            "unreachable": "+inf for components holding no source of that mode",
+            "shortest_path_passes": 2,
+            "shortest_path_note": (
+                "one multi-source Dijkstra per mode over the augmented graph; walking-"
+                "speed sensitivity reuses those distances and recomputes no path"
+            ),
         },
         "walking_model": {
             "main_speed_kmh": main_speed,
@@ -620,28 +804,52 @@ def main() -> int:
             "threshold_minutes": cfg.WALK_TIME_LIMIT_MINUTES,
             "main_budget_m": budget,
         },
-        "metro_sources": metro_stats,
-        "bus_sources": {"stops_used": int(len(bus_points))},
-        "transit_snap_diagnostics": [metro_snap, bus_snap],
+        "metro_sources": {**metro_stats, "placement": metro_place,
+                          "augmentation": metro_aug.stats},
+        "bus_sources": {"stops_used": int(len(bus_points)), "placement": bus_place,
+                        "augmentation": bus_aug.stats},
+        "connector_diagnostics": {
+            "definition": (
+                "straight-line distance from the point to the nearest walkable EDGE "
+                "(not to the nearest graph vertex)"
+            ),
+            "interpretation": (
+                "Off-network connectors are straight-line approximations to the nearest "
+                "mapped walkable edge. They may not represent a physically walkable "
+                "connection in every case, so their effect on individual cells is "
+                "uncertain. A connector may cross a fence, a parcel boundary, a "
+                "building, a railway, a canal, private land or another unmapped barrier; "
+                "the model does not know."
+            ),
+            "metro": metro_diag,
+            "bus": bus_diag,
+            "population_cells": cell_diag,
+            "population_cells_2020_surface": baseline_cell_diag,
+        },
         "population_cells": {
             "count": int(len(cells)),
-            "snap_diagnostics": cell_snap,
+            "connector_diagnostics": cell_diag,
             "population_without_metro_source": unreachable_metro,
             "population_without_bus_source": unreachable_bus,
         },
         "calibration_factors": calibration.round(10).to_dict(orient="records"),
         "calibrated_total": calibrated_total,
+        "district_focus": focus,
         "service_areas": {
             "method": (
-                "reachable network edges within the budget, buffered by "
+                "reachable AUGMENTED segments within the budget, cut along the real "
+                "edge geometry where the budget runs out, buffered by "
                 f"{cfg.ISOCHRONE_BUFFER_M:.0f} m in {cfg.METRIC_CRS}, dissolved, "
                 f"simplified at {cfg.ISOCHRONE_SIMPLIFY_M:.0f} m, written as WGS84. "
-                "Partially reachable edges are cut at the budget by linear "
-                "interpolation along the straight segment between their nodes."
+                "Because sources are spliced into edge interiors, a stop in the middle "
+                "of a long edge produces reachable geometry around itself even when "
+                "both of that edge's original endpoints lie beyond the budget."
             ),
             "purpose": "visualisation only; not used by the population classification",
             "metro_area_km2": round(metro_area, 4),
             "bus_area_km2": round(bus_area, 4),
+            "metro": metro_iso_info,
+            "bus": bus_iso_info,
         },
         "outputs": [
             str(p.relative_to(cfg.REPO_ROOT)).replace("\\", "/") for p in (
@@ -662,8 +870,16 @@ def main() -> int:
         "limitations": [
             "Physical walking access only: no frequency, span, transfers, in-vehicle "
             "time, reliability, crowding, fare or destination usefulness.",
-            "The link from a raster-cell centre to the pedestrian network, and from a "
-            "transit access point to the network, is a straight-line approximation.",
+            "The link from a raster-cell centre to the network, and from a transit "
+            "access point to the network, is a straight-line off-network connector to "
+            "the nearest mapped walkable edge. It may not represent a physically "
+            "walkable connection in every case, so its effect on individual cells is "
+            "uncertain in an unknown direction.",
+            "Routing runs on the SIMPLIFIED OSM walk graph. Positions along an edge are "
+            "exact, but the edge's own shape is OSM's generalisation of the real path.",
+            "Parallel ways between the same node pair are kept as separate canonical "
+            "edges, so a cell is costed against the way it actually stands beside; "
+            "1,380 node pairs carry such parallel edges here.",
             "WorldPop R2025A is an alpha product; it supplies within-district weights "
             "only, and its within-district accuracy is unverified.",
             "Bus stops come from OSM alone; no official open-data bus layer was "
@@ -683,6 +899,108 @@ def main() -> int:
     step("Analysis complete - PRELIMINARY, pending independent audit")
     log("  Next: python scripts/validate_analysis.py")
     return 0
+
+
+def district_focus(
+    cells: pd.DataFrame,
+    table: pd.DataFrame,
+    network: au.WalkNetwork,
+    metro_aug: au.AugmentedNetwork,
+    metro_node_dist: np.ndarray,
+    predecessors: np.ndarray,
+    super_source: int,
+    metro_table: pd.DataFrame,
+    metric_districts: gpd.GeoDataFrame,
+    budget: float,
+    sensitivity: pd.DataFrame,
+) -> dict:
+    """Trace, for each district, the closest population cell to the metro.
+
+    Reported for every district, not only the ones with a zero share, so a
+    0.00 percent can be read against its actual distance margin instead of
+    being asserted.
+    """
+    aug_xy = au.augmented_node_xy(network, metro_aug)
+    district_geom = dict(zip(metric_districts.district_name, metric_districts.geometry))
+    access_xy = np.column_stack([metro_table.snapped_x_m, metro_table.snapped_y_m])
+
+    focus: dict[str, dict] = {}
+    for name in sorted(cells.district_name.unique()):
+        subset = cells[cells.district_name == name]
+        if subset.empty or not np.isfinite(subset.metro_distance_m).any():
+            continue
+        row = subset.loc[subset.metro_distance_m.idxmin()]
+        edge = int(row.edge_index)
+        fraction = float(row.edge_fraction)
+
+        start = int(metro_aug.break_offset[edge])
+        stop = int(metro_aug.break_offset[edge + 1])
+        block = metro_aug.break_fraction[start:stop]
+        right = int(np.clip(np.searchsorted(block, fraction, side="right"), 1, len(block) - 1))
+        left = right - 1
+        cost = float(network.edge_cost[edge])
+        options = [
+            (metro_node_dist[metro_aug.break_node[start + left]] + (fraction - block[left]) * cost,
+             int(metro_aug.break_node[start + left])),
+            (metro_node_dist[metro_aug.break_node[start + right]] + (block[right] - fraction) * cost,
+             int(metro_aug.break_node[start + right])),
+        ]
+        _, entry_node = min(options, key=lambda pair: pair[0])
+
+        path = au.trace_access_path(predecessors, super_source, entry_node)
+        crosses = None
+        nearest_access = None
+        if path:
+            geom = district_geom.get(name)
+            path_xy = aug_xy[np.asarray(path, dtype=np.int64)]
+            if geom is not None:
+                inside = gpd.GeoSeries(gpd.points_from_xy(path_xy[:, 0], path_xy[:, 1]),
+                                       crs=cfg.METRIC_CRS).within(geom)
+                crosses = bool((~inside).any())
+            # the path starts at the access point's own position on the network
+            first = path_xy[0]
+            distances = np.hypot(access_xy[:, 0] - first[0], access_xy[:, 1] - first[1])
+            best = int(np.argmin(distances))
+            nearest_access = {
+                "access_id": str(metro_table.access_id.iloc[best]),
+                "access_type": str(metro_table.access_type.iloc[best]),
+                "name": None if pd.isna(metro_table.name.iloc[best]) else str(metro_table.name.iloc[best]),
+                "district_name": None if pd.isna(metro_table.district_name.iloc[best])
+                else str(metro_table.district_name.iloc[best]),
+                "off_network_connector_m": float(metro_table.off_network_connector_m.iloc[best]),
+                "distance_from_traced_entry_point_m": float(distances[best]),
+            }
+
+        district_row = table[table.district_name == name].iloc[0]
+        speeds = sensitivity[(sensitivity.scope == "district")
+                             & (sensitivity.district_name == name)]
+        focus[name] = {
+            "calibrated_population": float(district_row.calibrated_population),
+            "metro_access_population": float(district_row.metro_access_population),
+            "metro_access_pct": float(district_row.metro_access_pct),
+            "nearest_cell": {
+                "cell_id": str(row.cell_id),
+                "lon": float(row.lon),
+                "lat": float(row.lat),
+                "total_walking_distance_to_metro_m": float(row.metro_distance_m),
+                "margin_against_budget_m": float(row.metro_distance_m - budget),
+                "off_network_connector_m": float(row.edge_connector_m),
+                "canonical_edge_index": edge,
+                "fraction_along_edge": fraction,
+                "cell_population": float(row.population),
+            },
+            "nearest_metro_access_point": nearest_access,
+            "access_path_leaves_the_district": crosses,
+            "access_path_nodes": len(path),
+            "metro_access_pct_by_speed": {
+                f"{r.speed_kmh:.1f}": float(r.metro_access_pct) for _, r in speeds.iterrows()
+            },
+        }
+        marker = "" if district_row.metro_access_pct > 0 else "   <- zero metro share"
+        log(f"  {name:26s} nearest cell {row.metro_distance_m:8.1f} m "
+            f"({row.metro_distance_m - budget:+8.1f} m vs budget), "
+            f"connector {row.edge_connector_m:6.1f} m{marker}")
+    return focus
 
 
 if __name__ == "__main__":
