@@ -207,7 +207,7 @@ the two layers does not validate the accuracy of either.
 | `years` | `[2020, 2026]` — the two WorldPop layers compared. |
 | `grid_aligned` | `true` only if both rasters share one pixel grid. The script aborts otherwise. |
 | `grid_compatibility` | Per-property CRS, dimensions, transform, nodata and bounds comparison, each with a `match` flag. |
-| `positive_cell_threshold_persons` | Baseline cells at or below this (0.05 persons) are excluded from ratio statistics, so near-empty cells cannot manufacture huge ratios. Percentiles are stable for thresholds from 0 to 1.0. |
+| `positive_cell_threshold_persons` | Ratio statistics exclude baseline cells at or below this value (0.05 modelled persons) because `B/A` becomes numerically unstable as the denominator approaches zero. A **numerical-stability choice only** — it carries no demographic meaning, and a small modelled value is not evidence that nobody lives there. It applies to the ratio summaries alone; the correlation, fitted scalar and residual statistics use every cell valid in both years. |
 | `cells.in_masked_window` | Cells in the cropped window around the districts. |
 | `cells.valid_in_both` | Cells with data in both years — the comparison set. |
 | `cells.valid_only_in_baseline` / `valid_only_in_current` | Cells whose nodata status differs between the two modelled layers. A modelling difference, not an observation of settlement change. |
@@ -217,12 +217,11 @@ the two layers does not validate the accuracy of either.
 | `pearson_correlation_cell_values` | Correlation of 2020 vs 2026 cell values. |
 | `scaling_factor.least_squares` / `.total_ratio` / `.median_of_cell_ratios` | Three estimates of a single multiplier relating the years. |
 | `ratio_percentiles` | min, p1, p5, median, p95, p99, max of `2026 / 2020` per cell. |
-| `residuals_after_least_squares_scaling` | Mean, median and max absolute residual in persons/cell after applying the fitted scalar `k`, plus `normalized_rmse` and `relative_l1_error`. |
+| `residuals_after_least_squares_scaling` | Mean, median and max absolute residual in persons/cell after applying the fitted scalar `k`, plus `normalized_rmse` and `relative_l1_error_common_valid`. All computed over cells valid in **both** years. |
 | `fraction_of_cells_matching_scalar` | Share of cells within 0.1 / 0.5 / 1 / 5 / 10 % of a pure scalar multiple. |
-| `residuals_after_least_squares_scaling.relative_l1_error` | `Σ&#124;B − kA&#124; ÷ ΣB`, where `A` is 2020, `B` is 2026 and `k` is the least-squares scalar. The total absolute cell-wise residual as a fraction of the modelled 2026 total. It is **not** variance explained, accuracy, or "population reproduced". |
-| `modelled_differences` | Counts of cells whose modelled value ratio is above 1.5, above 2, or below 1, and the share of the modelled 2026 total held by cells above 1.5. Differences in model output, not observed change. |
+| `residuals_after_least_squares_scaling.relative_l1_error_common_valid` | `Σ&#124;B − kA&#124; ÷ ΣB`, where `A` and `B` are **corresponding cells valid in both 2020 and 2026** and `k` is the least-squares scalar. The denominator is the modelled 2026 population of that common-valid comparison set — **not** the modelled 2026 total over the districts. The 249 cells valid only in 2026 are excluded and reported separately under `cells`; nodata is never treated as zero. It is **not** variance explained, accuracy, or "population reproduced". |
+| `modelled_differences` | Counts of cells whose modelled value ratio is above 1.5, above 2, or below 1, and the share of the **common-valid** modelled 2026 total held by cells above 1.5. Differences in model output, not observed change. |
 | `is_pure_scalar_multiple` | Computed verdict. **Currently `false`.** |
-| `one_minus_relative_l1_error` | Exactly `1 − relative_l1_error`. Kept only as a convenience; it carries no additional meaning and must not be described as accuracy or explained population. |
 
 ---
 

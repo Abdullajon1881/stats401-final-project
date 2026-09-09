@@ -350,18 +350,25 @@ and writes
 | Cells within 1% of the fitted scalar | 76.2% |
 | Cells within 5% | 94.6% |
 | Normalized RMSE after scaling | 0.0144 |
-| Relative L1 error, Σ&#124;B − kA&#124; ÷ ΣB | 0.0076 |
+| Relative L1 error over common-valid cells, Σ&#124;B − kA&#124; ÷ ΣB | 0.0076 |
 
 It is **not** a pure scalar multiple. 249 cells are nodata in 2020 but valid in
 2026, 5 go from zero to positive, 406 have a modelled value more than 50% higher
 (up to 39×), and roughly a quarter of compared cells depart from the fitted
 scalar by more than 1%.
 
-The aggregate discrepancy is nevertheless small. After least-squares scaling by
-1.1231, **the total absolute cell-wise residual is 0.76% of the modelled 2026
-total** (that is the relative L1 error, Σ|B − kA| ÷ ΣB). The cells with the
-largest modelled increases hold 0.039% of the modelled total, and the cells valid
-only in 2026 hold 0.005%.
+The aggregate discrepancy is nevertheless small. Among the **64,920 cells valid
+in both years**, after least-squares scaling by 1.1231, **the total absolute
+cell-wise residual is 0.76% of the modelled 2026 population in that common-valid
+comparison set** (the relative L1 error, Σ|B − kA| ÷ ΣB, where A and B are
+corresponding cells valid in both years).
+
+The denominator is that common-valid set, not the modelled 2026 total over the
+districts. The **249 cells that are nodata in 2020 but valid in 2026 are excluded
+from this residual and reported separately** — nodata is not treated as zero,
+because it can reflect a model or settlement-mask difference rather than a true
+absence of population. Within the common-valid set, the cells with the largest
+modelled increases hold 0.039% of that set's modelled 2026 population.
 
 **These are differences between two runs of a modelled product, not
 measurements.** WorldPop R2025A is an alpha release, and a difference between its
@@ -466,6 +473,7 @@ from a source we are entitled to use.
    endpoint is recorded per source in the manifest.
 10. The WorldPop 2020 and 2026 modelled cell patterns are highly similar but not
     identical (cell-level correlation 0.9998; 76% of cells within 1% of the
-    fitted 1.1231 scalar, 95% within 5%; relative L1 error 0.76%). That
+    fitted 1.1231 scalar, 95% within 5%; relative L1 error 0.76% over the
+    64,920 cells valid in both years). That
     similarity is between two runs of the same model and does not validate the
     accuracy of the 2026 within-district distribution.

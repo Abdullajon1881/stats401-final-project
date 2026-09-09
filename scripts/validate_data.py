@@ -608,10 +608,10 @@ def validate_temporal_diagnostic() -> None:
         check(not bad, f"{group}: all metrics finite (bad: {bad or 'none'})")
 
     residuals = data.get("residuals_after_least_squares_scaling", {})
-    l1 = residuals.get("relative_l1_error")
+    l1 = residuals.get("relative_l1_error_common_valid")
     check(
         isinstance(l1, float) and math.isfinite(l1) and 0.0 <= l1 <= 1.0,
-        f"relative L1 error recorded as a finite fraction ({l1})",
+        f"common-valid relative L1 error recorded as a finite fraction in [0, 1] ({l1})",
     )
 
     correlation = data.get("pearson_correlation_cell_values")
@@ -629,7 +629,7 @@ def validate_temporal_diagnostic() -> None:
     print(f"    fitted scalar (LS)         : "
           f"{data.get('scaling_factor', {}).get('least_squares')}")
     print(f"    pure scalar multiple       : {verdict}")
-    print(f"    relative L1 error          : {l1}")
+    print(f"    relative L1 error (common-valid cells): {l1}")
     print(f"    within 1% / 5% of scalar   : "
           f"{data.get('fraction_of_cells_matching_scalar', {}).get('within_1pct')} / "
           f"{data.get('fraction_of_cells_matching_scalar', {}).get('within_5pct')}")
