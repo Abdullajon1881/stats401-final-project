@@ -26,6 +26,7 @@ from shapely.geometry import shape
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import config as cfg  # noqa: E402
+from pipeline_utils import enable_utf8_stdout  # noqa: E402
 from build_web_data import WEB_DATA_DIR, WEB_FILES, content_hash  # noqa: E402
 
 SITE_DIR = cfg.REPO_ROOT / "site"
@@ -556,6 +557,118 @@ def validate_no_hardcoded_metrics() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 8. selection state, combobox semantics, modal, and QA gating
+# ---------------------------------------------------------------------------
+def validate_state_and_a11y() -> None:
+    section("8. Selection invariants, combobox, modal, QA gating")
+    sources = js_sources()
+    html = (SITE_DIR / "index.html").read_text(encoding="utf-8")
+    state = sources.get("state.js", "")
+    ui = sources.get("ui.js", "")
+    app = sources.get("app.js", "")
+    mapjs = sources.get("map.js", "")
+
+    # --- the three selection modes are mutually exclusive by construction ---
+    check("export function selectStation" in state,
+          "state exposes a single station-selection path")
+    check("export function selectDistrict" in state,
+          "state exposes a single district-selection path")
+    # The invariant must live in set(), not be re-implemented per caller.
+    normaliser = re.search(
+        r"export function set\(patch\)\s*\{(.+?)\n\}", state, re.S)
+    body = normaliser.group(1) if normaliser else ""
+    check("selectedStation" in body and "selectedDistrict = null" in body,
+          "set() clears the district when a station is selected")
+    check("selectedStation = null" in body,
+          "set() clears the station when a district is selected")
+    check("hoveredDistrict = null" in body,
+          "set() clears the district hover when entering station mode")
+    check("export function invariantHolds" in state,
+          "the mode invariant is exposed for testing")
+
+    # No caller may write the selection keys directly and bypass the invariant.
+    direct = []
+    for name, text in sources.items():
+        if name == "state.js":
+            continue
+        for pattern in (r"set\(\s*\{[^}]*selectedStation",
+                        r"set\(\s*\{[^}]*selectedDistrict"):
+            if re.search(pattern, text):
+                direct.append(name)
+    check(not set(direct),
+          f"no module sets a selection key directly around the invariant "
+          f"(offenders: {sorted(set(direct)) or 'none'})")
+    check("store.selectStation(" in ui, "the search selects stations through the state path")
+    check("store.selectDistrict(" in ui, "the search selects districts through the state path")
+
+    # --- station context and announcement -------------------------------
+    check("function stationDetail" in ui, "a station context renderer exists")
+    check("state.selectedStation" in ui,
+          "the context panel branches on the selected station")
+    check("Metro station" in ui, "the station context names what it is showing")
+    check("selectedStation" in app and "metro station selected" in app,
+          "the live region announces a station selection")
+    check("district_name" in ui,
+          "the station context can show its district when the data carries one")
+
+    # --- combobox -------------------------------------------------------
+    check('role="combobox"' in html, "the search input is a combobox")
+    check('aria-controls="search-results"' in html, "the combobox controls its listbox")
+    check('role="listbox"' in html, "the results are a listbox")
+    check("aria-activedescendant" in ui,
+          "the combobox names its active option with aria-activedescendant")
+    check("removeAttribute('aria-activedescendant')" in ui,
+          "aria-activedescendant is cleared, not only set")
+    check("setAttribute('aria-selected'" in ui, "each option carries aria-selected")
+    check("function setActiveOption" in ui and "function clearActiveOption" in ui,
+          "one code path moves the visual and the semantic active option together")
+    hide = re.search(r"function hideResults\(\)\s*\{(.+?)\n\}", ui, re.S)
+    check(bool(hide) and "clearActiveOption()" in hide.group(1),
+          "closing the results clears the active descendant")
+    check("id: 'sr-opt-'" in ui or 'id: "sr-opt-"' in ui,
+          "every rendered option gets a stable id to be named by")
+    check("mouseover" in ui,
+          "pointer hover updates the same active option, so ARIA cannot contradict it")
+
+    # --- modal ----------------------------------------------------------
+    check("<dialog" in html, "the method window is a native <dialog>")
+    check(re.search(r'<div[^>]*role="dialog"', html) is None,
+          "no hand-rolled role=dialog element remains")
+    check(re.search(r'<div[^>]*aria-modal', html) is None,
+          "aria-modal is left to the native dialog rather than asserted on a div")
+    check("showModal()" in ui, "the dialog is opened as a modal")
+    check("dialog.close()" in ui or ".close()" in ui, "the dialog is closed natively")
+    check("addEventListener('close'" in ui,
+          "focus is restored from the dialog's own close event")
+    check("::backdrop" in (SITE_DIR / "styles.css").read_text(encoding="utf-8"),
+          "the native backdrop is styled")
+    check("focusableWithin" in ui,
+          "Tab is wrapped at both ends of the dialog")
+
+    # --- QA gating ------------------------------------------------------
+    check("qa" in app and "URLSearchParams" in app,
+          "the QA hook is gated on a URL parameter")
+    check(re.search(r"if\s*\(QA\)\s*\{", app) is not None,
+          "window.__prototype is created only inside the QA guard")
+    # There must be no unconditional publication anywhere.
+    # A genuinely unguarded assignment sits at column zero; everything inside
+    # the QA guard is indented, so indentation is the signal here.
+    unconditional = []
+    for name, text in sources.items():
+        for line in text.splitlines():
+            if line.startswith("window.__prototype") and "=" in line:
+                unconditional.append(f"{name}: {line.strip()[:60]}")
+    check(not unconditional,
+          f"no module assigns window.__prototype unguarded at top level "
+          f"(found: {unconditional or 'none'})")
+    check("qaMode" in mapjs,
+          "the map publishes its instance only when QA mode is on")
+    check(re.search(r"if\s*\(qaMode\s*&&", mapjs) is not None,
+          "the MapLibre instance is not reachable from the ordinary product")
+    check("renderProbe" in app, "the hostile-text render probe exists for QA")
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 def main() -> int:
@@ -575,6 +688,7 @@ def main() -> int:
     counts = validate_display_layers()
     validate_manifest(counts, city)
     validate_no_hardcoded_metrics()
+    validate_state_and_a11y()
 
     section("Summary")
     print(f"  passed  : {len(PASSED)}")
@@ -593,4 +707,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    enable_utf8_stdout()
     raise SystemExit(main())

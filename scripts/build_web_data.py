@@ -39,7 +39,7 @@ from shapely.geometry import box, mapping
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import config as cfg  # noqa: E402
-from pipeline_utils import log, step  # noqa: E402
+from pipeline_utils import enable_utf8_stdout, log, step  # noqa: E402
 
 SITE_DIR = cfg.REPO_ROOT / "site"
 WEB_DATA_DIR = SITE_DIR / "data"
@@ -744,4 +744,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    enable_utf8_stdout()
     raise SystemExit(main())

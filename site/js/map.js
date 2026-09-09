@@ -47,7 +47,7 @@ let onReady = null;
 export function getMap() { return map; }
 
 /* ── boot ─────────────────────────────────────────────────────────────── */
-export function initMap(loaded, ready) {
+export function initMap(loaded, ready, qaMode = false) {
   data = loaded;
   onReady = ready;
   bounds = districtBounds(data.districts);
@@ -83,10 +83,14 @@ export function initMap(loaded, ready) {
     wireInteraction();
     store.set({ mapReady: true });
     if (onReady) onReady();
-    // Published so automated visual QA can wait for a genuinely rendered map
-    // instead of guessing with a timer. See window.__prototype in app.js.
-    map.once('idle', () => { window.__prototype.mapLoaded = true; });
-    window.__prototype.map = map;
+    // Only under ?qa=1: automated visual QA needs to wait for a genuinely
+    // rendered map instead of guessing with a timer. The ordinary product
+    // publishes nothing, so the MapLibre instance is not reachable from the
+    // page. See window.__prototype in app.js.
+    if (qaMode && window.__prototype) {
+      window.__prototype.map = map;
+      map.once('idle', () => { window.__prototype.mapLoaded = true; });
+    }
   });
 
   return map;
@@ -141,6 +145,11 @@ function tuneBasemap() {
 }
 
 /* ── layers ───────────────────────────────────────────────────────────── */
+/* A point is emphasised while the pointer is on it. MapLibre insists that
+ * ["zoom"] be the direct input of a top-level interpolate, so this branch
+ * appears in each interpolate's output stops rather than wrapping it. */
+const HOVERED = ['boolean', ['feature-state', 'hover'], false];
+
 function addLayers() {
   const layers = store.get().layers;
   const vis = (on) => ({ visibility: on ? 'visible' : 'none' });
@@ -160,8 +169,10 @@ function addLayers() {
   map.addSource('districts', { type: 'geojson', data: data.districts, promoteId: 'district_name' });
   map.addSource('isochrone', { type: 'geojson', data: data.isochrone });
   map.addSource('metrolines', { type: 'geojson', data: data.metroLines });
-  map.addSource('stations', { type: 'geojson', data: data.stations });
-  map.addSource('access', { type: 'geojson', data: data.access });
+  // generateId lets feature-state address an individual point, which is what
+  // the hover emphasis below needs.
+  map.addSource('stations', { type: 'geojson', data: data.stations, generateId: true });
+  map.addSource('access', { type: 'geojson', data: data.access, generateId: true });
   map.addSource('bazaars', { type: 'geojson', data: data.bazaars });
   map.addSource('bus', {
     type: 'geojson', data: data.bus,
@@ -349,7 +360,11 @@ function addLayers() {
     layout: vis(layers.stations),
     paint: {
       'circle-color': '#35c2d6',
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 11.5, 1.8, 15, 4.2],
+      'circle-radius': [
+        'interpolate', ['linear'], ['zoom'],
+        11.5, ['case', HOVERED, 3.4, 1.8],
+        15, ['case', HOVERED, 8, 4.2],
+      ],
       'circle-stroke-color': '#04262c',
       'circle-stroke-width': 0.8,
       'circle-opacity': 0.95,
@@ -363,7 +378,7 @@ function addLayers() {
       'circle-color': 'rgba(0,0,0,0)',
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 11.5, 3, 15, 6],
       'circle-stroke-color': '#35c2d6',
-      'circle-stroke-width': 1.4,
+      'circle-stroke-width': ['case', HOVERED, 2.8, 1.4],
     },
   });
   map.addLayer({
@@ -371,7 +386,12 @@ function addLayers() {
     layout: vis(layers.stations),
     paint: {
       'circle-color': '#ffffff',
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 2.2, 12, 3.6, 15, 5.5],
+      'circle-radius': [
+        'interpolate', ['linear'], ['zoom'],
+        9, ['case', HOVERED, 3.4, 2.2],
+        12, ['case', HOVERED, 5.6, 3.6],
+        15, ['case', HOVERED, 8.5, 5.5],
+      ],
       'circle-stroke-color': '#0a0e13',
       'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 14, 1.6],
     },
@@ -473,6 +493,7 @@ export function applyLayerVisibility(state) {
 /* ── interaction ──────────────────────────────────────────────────────── */
 let hoveredId = null;
 let selectedId = null;
+let hoveredPoint = null;
 
 function wireInteraction() {
   map.on('mousemove', 'district-fill', (event) => {
@@ -499,8 +520,26 @@ function wireInteraction() {
   });
 
   for (const layer of ['station-point', 'access-point', 'access-fallback', 'bazaar-point']) {
-    map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = ''; });
+    const source = layer === 'station-point' ? 'stations'
+      : layer === 'bazaar-point' ? 'bazaars' : 'access';
+
+    map.on('mousemove', layer, (event) => {
+      map.getCanvas().style.cursor = 'pointer';
+      const feature = event.features && event.features[0];
+      if (!feature || source === 'bazaars') return;
+      if (hoveredPoint && hoveredPoint.id !== feature.id) {
+        map.setFeatureState(hoveredPoint, { hover: false });
+      }
+      hoveredPoint = { source, id: feature.id };
+      map.setFeatureState(hoveredPoint, { hover: true });
+    });
+
+    map.on('mouseleave', layer, () => {
+      map.getCanvas().style.cursor = '';
+      if (hoveredPoint) map.setFeatureState(hoveredPoint, { hover: false });
+      hoveredPoint = null;
+    });
+
     map.on('click', layer, (event) => {
       const feature = event.features && event.features[0];
       if (feature) showFeaturePopup(layer, feature, event.lngLat);
@@ -584,25 +623,33 @@ export function syncMap(state) {
 }
 
 /* ── camera ───────────────────────────────────────────────────────────── */
+/* Someone who has asked their system for reduced motion should not be flown
+ * across the city; they still get the same camera, just without the journey. */
+function motionDuration(ms) {
+  const reduced = window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return reduced ? 0 : ms;
+}
+
 export function fitCity(animate = true) {
   if (!map) return;
-  map.fitBounds(bounds, { padding: mapPadding(), duration: animate ? 700 : 0 });
+  map.fitBounds(bounds, { padding: mapPadding(), duration: animate ? motionDuration(700) : 0 });
 }
 
 export function flyToDistrict(feature) {
   if (!map || !feature) return;
   const b = new maplibregl.LngLatBounds();
   eachPosition(feature.geometry, ([lng, lat]) => b.extend([lng, lat]));
-  map.fitBounds(b, { padding: mapPadding(), duration: 800, maxZoom: 13.5 });
+  map.fitBounds(b, { padding: mapPadding(), duration: motionDuration(800), maxZoom: 13.5 });
 }
 
 export function flyToStation(station) {
   if (!map || !station) return;
-  map.flyTo({ center: [station.lon, station.lat], zoom: 14.4, duration: 900 });
+  map.flyTo({ center: [station.lon, station.lat], zoom: 14.4, duration: motionDuration(900) });
 }
 
 export function zoomBy(delta) {
-  if (map) map.easeTo({ zoom: map.getZoom() + delta, duration: 240 });
+  if (map) map.easeTo({ zoom: map.getZoom() + delta, duration: motionDuration(240) });
 }
 
 export function popupClose() {

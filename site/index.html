@@ -131,15 +131,19 @@
 </main>
 
 <!-- ── method dialog ─────────────────────────────────────────────────── -->
-<div id="method-backdrop" class="backdrop" hidden></div>
-<div id="method-dialog" class="dialog" role="dialog" aria-modal="true"
-     aria-labelledby="method-h" hidden>
+<!-- A native <dialog> opened with showModal(): the browser puts it in the top
+     layer, makes the rest of the document inert, traps Tab inside it and
+     handles Escape, which a plain div with role="dialog" cannot do. -->
+<dialog id="method-dialog" class="dialog" aria-labelledby="method-h">
   <div class="dialog-head">
     <h2 id="method-h">Method &amp; limitations</h2>
     <button type="button" id="method-close" class="iconbtn" aria-label="Close">×</button>
   </div>
-  <div class="dialog-body" id="method-body"></div>
-</div>
+  <!-- tabindex makes the scrollable region a deliberate, predictable tab stop
+       rather than one Chrome invents for scrollable content. -->
+  <div class="dialog-body" id="method-body" tabindex="0"
+       aria-label="Method and limitations, scrollable"></div>
+</dialog>
 
 <div id="tooltip" class="tip" role="tooltip" aria-hidden="true"></div>
 <p id="live" class="visually-hidden" aria-live="polite"></p>

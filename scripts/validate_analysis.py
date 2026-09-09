@@ -29,6 +29,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import config as cfg  # noqa: E402
+from pipeline_utils import enable_utf8_stdout  # noqa: E402
 
 CRITICAL: list[str] = []
 WARNINGS: list[str] = []
@@ -813,4 +814,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    enable_utf8_stdout()
     raise SystemExit(main())

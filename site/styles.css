@@ -34,7 +34,9 @@
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
   --topbar-h: 64px;
-  --side-w:   400px;
+  /* Continuous rather than stepped, so every width between a phone and an
+     ultrawide monitor gets a sensible sidebar and the map keeps the rest. */
+  --side-w:   clamp(292px, 26vw, 460px);
   --r:        6px;
 }
 
@@ -316,6 +318,18 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
 .dd-v.is-metro { color: var(--metro); }
 .dd-v.is-bus   { color: var(--bus); }
 .dd-v.is-under { color: var(--under); }
+.linkrow {
+  display: block; width: 100%; margin-top: 10px; padding: 7px 9px;
+  font: inherit; font-size: 11.5px; text-align: left; cursor: pointer;
+  color: var(--metro); background: rgba(53, 194, 214, 0.07);
+  border: 1px solid rgba(53, 194, 214, 0.28); border-radius: 4px;
+}
+.linkrow:hover { background: rgba(53, 194, 214, 0.13); border-color: var(--metro); }
+
+.dd-hint {
+  margin: 10px 0 0; font-size: 11px; line-height: 1.45; color: var(--text-3);
+}
+
 .dd-note {
   margin-top: 10px; padding: 8px 9px; font-size: 11.5px; line-height: 1.45;
   color: var(--text-2);
@@ -346,17 +360,22 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
 .rk-axis-t { font-size: 9.5px; fill: var(--text-3); font-variant-numeric: tabular-nums; }
 
 /* ── method dialog ────────────────────────────────────────────────────── */
-.backdrop {
-  position: fixed; inset: 0; z-index: 90;
-  background: rgba(4, 7, 10, 0.66); backdrop-filter: blur(2px);
-}
+/* Native <dialog>: the browser handles the top layer, inertness and Tab
+   containment, so this only has to describe how it looks. */
 .dialog {
-  position: fixed; z-index: 91; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: min(680px, calc(100vw - 32px)); max-height: min(78vh, 720px);
-  display: flex; flex-direction: column;
-  background: var(--surface); border: 1px solid var(--line-2);
-  border-radius: 8px; box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(80vh, 760px);
+  padding: 0;
+  margin: auto;                       /* centred by the UA in the top layer */
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
 }
+.dialog[open] { display: flex; flex-direction: column; }
+.dialog::backdrop { background: rgba(4, 7, 10, 0.68); backdrop-filter: blur(2px); }
 .dialog-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; border-bottom: 1px solid var(--line);
@@ -416,9 +435,16 @@ code {
 
 /* ── MapLibre chrome, tuned to the dark system ────────────────────────── */
 .maplibregl-ctrl-attrib.maplibregl-compact { background: rgba(11, 15, 20, 0.82); }
+/* Colour and type only. MapLibre reserves the right-hand padding that keeps
+   the expanded credit clear of its own info button (2px 28px 2px 8px when
+   compact-show); overriding the shorthand here put the button on top of the
+   word "OpenStreetMap", which is attribution we are required to show. */
 .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib {
   font-size: 10px; background: rgba(11, 15, 20, 0.8);
-  border-radius: 4px 0 0 0; padding: 1px 6px;
+  border-radius: 4px 0 0 0;
+  /* MapLibre's compact rule sets colour: #000, which on this dark panel left
+     the non-link words ("Data from") effectively invisible. */
+  color: var(--text-3);
 }
 .maplibregl-ctrl-attrib a { color: var(--text-2); }
 .maplibregl-ctrl-attrib-button { filter: invert(1) opacity(0.55); }
@@ -436,13 +462,13 @@ code {
 .maplibregl-popup-close-button { color: var(--text-3); font-size: 15px; }
 
 /* ── responsive ───────────────────────────────────────────────────────── */
-@media (max-width: 1600px) { :root { --side-w: 380px; } }
-@media (max-width: 1360px) { :root { --side-w: 350px; } }
-
 @media (max-width: 1180px) {
-  :root { --side-w: 320px; }
   .brand-q { display: none; }
   .legend { flex-direction: column; align-items: flex-start; gap: 8px; }
+  /* Below this width the sidebar sits on the floor of its clamp, so the three
+     glance columns are ~82px. The longest label, UNDERSERVED, does not fit at
+     the full tracking and painted past the panel padding. */
+  .stat-k { font-size: 9px; letter-spacing: 0.03em; }
 }
 
 /* tablet and below: map on top, analysis stacked under it, page scrolls */
@@ -479,6 +505,44 @@ code {
 
 @media (max-width: 430px) {
   .legend-block:first-child .legend-i:last-child { display: none; }
+}
+
+/* Short landscape viewports - a phone on its side, a half-height window - would
+   get a 62vh map barely 200px tall under the stacked rule. Keep two columns
+   there instead and let the sidebar scroll: height is the scarce axis. */
+@media (max-height: 620px) and (min-width: 620px) and (orientation: landscape) {
+  body { grid-template-rows: 52px minmax(0, 1fr); overflow: hidden; height: 100%; }
+  /* 285px, not 250: below that the three glance columns cannot hold their
+     labels even at the reduced tracking set above. */
+  :root { --topbar-h: 52px; --side-w: clamp(285px, 30vw, 340px); }
+  .workspace { grid-template-columns: minmax(0, 1fr) var(--side-w); overflow: hidden; }
+  .mapwrap { height: auto; min-height: 0; }
+  .sidebar { border-left: 1px solid var(--line); border-top: 0; overflow-y: auto; }
+  /* The sidebar itself is the scroll container here, so the ranking has to
+     contribute its full height to that scroll. Left as a bounded flex item it
+     kept its natural chart height while its box was squeezed to ~200px, and
+     the lowest-ranked districts painted straight through the panel below. */
+  .panel--grow { flex: 0 0 auto; overflow: visible; }
+  .panel--grow .ranking { overflow: visible; }
+  .brand h1 { font-size: 13px; }
+  .brand-q { display: none; }
+  .panel { padding: 9px 11px 11px; }
+  .stat-v { font-size: 17px; }
+  .legend { display: none; }
+}
+
+/* Very narrow phones. Nothing may overflow at 320px. */
+@media (max-width: 380px) {
+  .topbar { gap: 6px; padding: 0 10px; }
+  .brand h1 { font-size: 12.5px; }
+  .navbtn { padding: 6px 7px; font-size: 11px; }
+  .panel { padding: 10px 11px 12px; }
+  .stats { gap: 6px; }
+  .stat-k { font-size: 9px; letter-spacing: 0.04em; }
+  .stat-v { font-size: 17px; }
+  .stat-n { font-size: 10px; }
+  .dd-grid { grid-template-columns: 1fr; }
+  .map-ui--tr { top: 46px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -40,18 +40,63 @@ export function renderContext(state) {
   const title = document.getElementById('context-h');
   const clear = document.getElementById('clear-selection');
 
-  if (!state.selectedDistrict) {
-    title.textContent = 'Tashkent at a glance';
-    clear.hidden = true;
-    replace(body, cityOverview());
+  // One slot, three modes: city, district, station. The three are mutually
+  // exclusive in the state, so this reads as a straight switch.
+  if (state.selectedStation) {
+    title.textContent = 'Metro station';
+    clear.hidden = false;
+    replace(body, stationDetail(state.selectedStation));
     return;
   }
 
-  const feature = index.byName.get(state.selectedDistrict);
-  if (!feature) return;
-  title.textContent = 'District';
-  clear.hidden = false;
-  replace(body, districtDetail(feature.properties));
+  if (state.selectedDistrict) {
+    const feature = index.byName.get(state.selectedDistrict);
+    if (feature) {
+      title.textContent = 'District';
+      clear.hidden = false;
+      replace(body, districtDetail(feature.properties));
+      return;
+    }
+  }
+
+  title.textContent = 'Tashkent at a glance';
+  clear.hidden = true;
+  replace(body, cityOverview());
+}
+
+/* Only what the station data actually carries. No line is shown: the audited
+ * station layer has no reliable line assignment, and guessing one would put an
+ * invented fact in the interface. */
+function stationDetail(station) {
+  const nodes = [
+    el('div', { class: 'dd-name', text: station.name }),
+    el('div', { class: 'dd-sub', text: 'Metro station' }),
+  ];
+
+  const rows = [cell('Type', 'Metro station')];
+  if (station.district_name) rows.push(cell('District', station.district_name));
+  nodes.push(el('div', { class: 'dd-grid' }, rows));
+
+  // If the station sits in one of the twelve analysis districts, offer that
+  // district's audited figures rather than stopping at a name.
+  const feature = station.district_name ? index.byName.get(station.district_name) : null;
+  if (feature) {
+    const p = feature.properties;
+    nodes.push(el('button', {
+      type: 'button', class: 'linkrow',
+      onclick: () => {
+        store.selectDistrict(p.district_name);
+        if (hooks.flyToDistrict) hooks.flyToDistrict(feature);
+      },
+    }, `View ${p.label} district — ${fmt.pct(p.metro_access_pct)} metro access`));
+  }
+
+  nodes.push(el('p', {
+    class: 'dd-hint',
+    text: 'Stations are shown for orientation. The reported shares are measured '
+      + 'from metro entrances along the pedestrian network, not from station points.',
+  }));
+  return nodes;
 }
 
 function cityOverview() {
@@ -168,7 +213,8 @@ function wireClear() {
     .addEventListener('click', () => store.clearSelection());
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
-    if (!document.getElementById('method-dialog').hidden) { closeMethod(); return; }
+    // The native dialog handles its own Escape and restores focus on close.
+    if (document.getElementById('method-dialog').open) return;
     const results = document.getElementById('search-results');
     if (!results.hidden) { hideResults(); return; }
     if (store.get().selectedDistrict || store.get().selectedStation) store.clearSelection();
@@ -223,12 +269,44 @@ function buildSearchIndex() {
       kind: 'station',
       label,
       key: `station:${p.osm_id}`,
+      district_name: safeName(p.district_name, null),
       lon: feature.geometry.coordinates[0],
       lat: feature.geometry.coordinates[1],
     });
   }
   items.sort((a, b) => a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label));
   return items;
+}
+
+/* Move the visual and the semantic active option together. DOM focus stays on
+ * the combobox input during Arrow navigation, as the pattern requires, so the
+ * input has to name the active option through aria-activedescendant and each
+ * option has to carry its own aria-selected. Setting one without the other
+ * would be an ARIA attribute that is never synchronised. */
+function setActiveOption(nextIndex) {
+  const results = document.getElementById('search-results');
+  const input = document.getElementById('search-input');
+  const options = [...results.querySelectorAll('.sr-item')];
+
+  activeIndex = options.length ? nextIndex : -1;
+
+  options.forEach((option, i) => {
+    const isActive = i === activeIndex;
+    option.classList.toggle('is-active', isActive);
+    option.setAttribute('aria-selected', String(isActive));
+  });
+
+  if (activeIndex >= 0 && options[activeIndex]) {
+    input.setAttribute('aria-activedescendant', options[activeIndex].id);
+    options[activeIndex].scrollIntoView({ block: 'nearest' });
+  } else {
+    input.removeAttribute('aria-activedescendant');
+  }
+}
+
+function clearActiveOption() {
+  activeIndex = -1;
+  document.getElementById('search-input').removeAttribute('aria-activedescendant');
 }
 
 function wireSearch() {
@@ -249,11 +327,10 @@ function wireSearch() {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       if (!options.length) return;
       event.preventDefault();
-      activeIndex += event.key === 'ArrowDown' ? 1 : -1;
-      if (activeIndex < 0) activeIndex = options.length - 1;
-      if (activeIndex >= options.length) activeIndex = 0;
-      options.forEach((o, i) => o.classList.toggle('is-active', i === activeIndex));
-      options[activeIndex].scrollIntoView({ block: 'nearest' });
+      let next = activeIndex + (event.key === 'ArrowDown' ? 1 : -1);
+      if (next < 0) next = options.length - 1;
+      if (next >= options.length) next = 0;
+      setActiveOption(next);
     } else if (event.key === 'Enter') {
       event.preventDefault();
       const target = options[activeIndex >= 0 ? activeIndex : 0];
@@ -273,6 +350,15 @@ function wireSearch() {
     const wrap = document.querySelector('.search');
     if (!wrap.contains(event.target)) hideResults();
   });
+
+  // Hovering a result makes it the active option too, so the pointer and the
+  // keyboard can never disagree about which row is current.
+  document.getElementById('search-results').addEventListener('mouseover', (event) => {
+    const option = event.target.closest('.sr-item');
+    if (!option) return;
+    const options = [...document.querySelectorAll('#search-results .sr-item')];
+    setActiveOption(options.indexOf(option));
+  });
 }
 
 function showResults(query) {
@@ -290,11 +376,14 @@ function showResults(query) {
     replace(results, el('li', {}, el('div', { class: 'sr-empty', text: 'No district or station matches.' })));
     results.hidden = false;
     input.setAttribute('aria-expanded', 'true');
+    clearActiveOption();
     return;
   }
 
-  replace(results, matches.map((item) => el('li', { role: 'presentation' }, [
+  replace(results, matches.map((item, i) => el('li', { role: 'presentation' }, [
     el('button', {
+      // A stable id per visible option, so aria-activedescendant can name it.
+      id: 'sr-opt-' + i,
       type: 'button', class: 'sr-item', role: 'option', 'aria-selected': 'false',
       onclick: () => choose(item),
     }, [
@@ -305,6 +394,7 @@ function showResults(query) {
   ])));
   results.hidden = false;
   input.setAttribute('aria-expanded', 'true');
+  clearActiveOption();
 }
 
 function hideResults() {
@@ -312,7 +402,7 @@ function hideResults() {
   results.hidden = true;
   results.replaceChildren();
   document.getElementById('search-input').setAttribute('aria-expanded', 'false');
-  activeIndex = -1;
+  clearActiveOption();
 }
 
 function choose(item) {
@@ -322,35 +412,97 @@ function choose(item) {
   document.getElementById('search-clear').hidden = false;
 
   if (item.kind === 'district') {
-    store.set({ selectedDistrict: item.key, selectedStation: null });
+    store.selectDistrict(item.key);
     if (hooks.flyToDistrict) hooks.flyToDistrict(item.feature);
   } else {
-    store.set({ selectedStation: { name: item.label, lon: item.lon, lat: item.lat } });
+    store.selectStation({
+      name: item.label,
+      district_name: item.district_name || null,
+      lon: item.lon,
+      lat: item.lat,
+    });
     if (hooks.flyToStation) hooks.flyToStation(item);
   }
 }
 
 /* ── method dialog ────────────────────────────────────────────────────── */
+/* A native <dialog> opened with showModal(). The browser then owns the hard
+ * parts - top layer, background inertness, Tab containment and Escape - which
+ * a div with role="dialog" only pretends to do. */
 function wireMethodDialog() {
+  const dialog = document.getElementById('method-dialog');
   document.getElementById('method-close').addEventListener('click', closeMethod);
-  document.getElementById('method-backdrop').addEventListener('click', closeMethod);
+
+  // Clicking the backdrop closes: the click lands on the dialog element itself
+  // when it falls outside the dialog's own box.
+  dialog.addEventListener('click', (event) => {
+    if (event.target !== dialog) return;
+    const box = dialog.getBoundingClientRect();
+    const outside = event.clientX < box.left || event.clientX > box.right
+      || event.clientY < box.top || event.clientY > box.bottom;
+    if (outside) closeMethod();
+  });
+
+  // Escape fires the dialog's own close event; restore focus from there so
+  // every close path behaves identically.
+  dialog.addEventListener('close', () => {
+    if (methodOpener && methodOpener.focus) methodOpener.focus();
+    methodOpener = null;
+  });
+
+  /* showModal() makes the rest of the document inert, so Tab can never reach a
+   * control behind the dialog. It does, however, pass through document.body on
+   * each wrap - measured here as close button -> scrollable body -> body ->
+   * close button - which is a dead stop for anyone navigating by keyboard.
+   * Wrapping explicitly at both ends removes that stop. */
+  dialog.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab') return;
+    const stops = focusableWithin(dialog);
+    if (stops.length === 0) return;
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    const active = document.activeElement;
+    if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+      event.preventDefault();
+      first.focus();
+    } else if (event.shiftKey && (active === first || !dialog.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    }
+  });
+
   buildMethodBody();
+}
+
+const FOCUSABLE = [
+  'a[href]', 'button:not([disabled])', 'input:not([disabled])',
+  'select:not([disabled])', 'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function focusableWithin(root) {
+  return [...root.querySelectorAll(FOCUSABLE)]
+    .filter((node) => node.offsetWidth > 0 || node.offsetHeight > 0
+      || node.getClientRects().length > 0);
 }
 
 let methodOpener = null;
 
 function openMethod() {
-  methodOpener = document.activeElement;
-  document.getElementById('method-backdrop').hidden = false;
   const dialog = document.getElementById('method-dialog');
-  dialog.hidden = false;
+  if (dialog.open) return;
+  methodOpener = document.activeElement;
+  dialog.showModal();
   document.getElementById('method-close').focus();
 }
 
 function closeMethod() {
-  document.getElementById('method-backdrop').hidden = true;
-  document.getElementById('method-dialog').hidden = true;
-  if (methodOpener && methodOpener.focus) methodOpener.focus();
+  const dialog = document.getElementById('method-dialog');
+  if (dialog.open) dialog.close();
+}
+
+export function methodIsOpen() {
+  return document.getElementById('method-dialog').open === true;
 }
 
 function buildMethodBody() {

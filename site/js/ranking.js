@@ -53,11 +53,17 @@ export function render() {
   if (!host) return;
   const width = Math.max(240, Math.floor(host.clientWidth));
 
-  /* On the desktop layout the ranking owns the rest of the sidebar, so the rows
-   * grow to fill it rather than leaving a dead band under the chart. Below that
-   * breakpoint the panel is content-sized and measuring it would feed back into
-   * itself, so a fixed row height is used. */
-  const fillsPanel = window.innerWidth > 940;
+  /* Where the ranking owns the rest of the sidebar, the rows grow to fill it
+   * rather than leaving a dead band under the chart. Where the panel is
+   * content-sized instead, measuring it would feed back into the height this
+   * render sets, so a fixed row height is used.
+   *
+   * The stylesheet already decides which of those two a layout is - a bounded
+   * box scrolls, a content-sized one does not - so read that rather than
+   * guessing from the window width, which was wrong for short landscape
+   * windows: they are narrow enough to look content-sized but are in fact
+   * height-constrained. */
+  const fillsPanel = getComputedStyle(host).overflowY === 'auto';
   const available = host.clientHeight - MARGIN.top - MARGIN.bottom;
   const rowH = fillsPanel && available > 140
     ? Math.max(ROW_MIN, Math.min(ROW_MAX, Math.floor(available / ranked.length)))
@@ -96,14 +102,17 @@ export function render() {
   axis.append('line')
     .attr('class', 'rk-axis-line')
     .attr('x1', 0).attr('x2', 0)
-    .attr('y1', -2).attr('y2', ranked.length * rowH - rowH / 2);
+    .attr('y1', -2).attr('y2', ranked.length * rowH);
 
   const rows = plot.selectAll('g.rk-row')
     .data(ranked, (d) => d.properties.district_name)
     .join('g')
     .attr('class', 'rk-row')
     .attr('role', 'listitem')
-    .attr('transform', (d, i) => `translate(0,${i * rowH})`);
+    // Each row is drawn around its own centre line, so the group has to sit
+    // half a row down: without this the first band starts above the plot area
+    // and the top-ranked district's highlight is clipped by the SVG edge.
+    .attr('transform', (d, i) => `translate(0,${i * rowH + rowH / 2})`);
 
   rows.append('rect')
     .attr('class', 'rk-band')

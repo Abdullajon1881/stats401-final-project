@@ -9,19 +9,26 @@ import { focusRanking, initRanking, syncRanking } from './ranking.js';
 import { buildDensityLegend, initUI, renderContext } from './ui.js';
 import { el, replace } from './dom.js';
 
-/* One namespaced hook, for automated QA and for the security regression test.
- * It exposes readiness and a render probe; it is not used by the interface. */
-window.__prototype = {
-  mapLoaded: false,
-  map: null,
-  /* Render arbitrary text the way every OSM-sourced label is rendered, so a
-   * test can prove a hostile name becomes literal text and never markup. */
-  renderProbe(text) {
-    const node = el('span', { class: 'tip-name', text });
-    replace(tip, node);
-    return { html: tip.innerHTML, text: tip.textContent };
-  },
-};
+/* Automated QA needs to wait for a genuinely rendered map and to drive the
+ * hostile-text render probe. Neither belongs in the ordinary product, so the
+ * hook exists only when the page is opened with ?qa=1. In normal use
+ * window.__prototype is undefined and the MapLibre instance is not published. */
+const QA = new URLSearchParams(window.location.search).get('qa') === '1';
+
+if (QA) {
+  window.__prototype = {
+    mapLoaded: false,
+    map: null,
+    state: store,
+    /* Render arbitrary text the way every OSM-sourced label is rendered, so a
+     * test can prove a hostile name becomes literal text and never markup. */
+    renderProbe(text) {
+      const node = el('span', { class: 'tip-name', text });
+      replace(tip, node);
+      return { html: tip.innerHTML, text: tip.textContent };
+    },
+  };
+}
 
 function fail(message) {
   document.getElementById('load-error-detail').textContent = message;
@@ -59,10 +66,19 @@ function hideTip() {
 /* ── announce selection changes to assistive technology ───────────────── */
 function announce(state, index) {
   const live = document.getElementById('live');
+
+  if (state.selectedStation) {
+    const where = state.selectedStation.district_name
+      ? `, ${state.selectedStation.district_name}` : '';
+    live.textContent = `${state.selectedStation.name} metro station selected${where}.`;
+    return;
+  }
+
   if (!state.selectedDistrict) {
     live.textContent = 'Selection cleared. Showing the city overview.';
     return;
   }
+
   const p = index.byName.get(state.selectedDistrict).properties;
   live.textContent = `${p.label} selected. Metro access ${p.metro_access_pct.toFixed(1)} percent, `
     + `bus-only ${p.bus_only_pct.toFixed(1)} percent, `
@@ -108,7 +124,7 @@ function announce(state, index) {
   mapModule.initMap(data, () => {
     buildDensityLegend(mapModule.densityRampStops());
     mapModule.syncMap(store.get());
-  });
+  }, QA);
 
   // Every view re-reads the one state; none of them keeps its own copy.
   let lastSelected = null;
@@ -116,7 +132,8 @@ function announce(state, index) {
     if (changed.includes('layers')) mapModule.applyLayerVisibility(state);
     mapModule.syncMap(state);
     syncRanking(state);
-    if (changed.includes('selectedDistrict')) {
+    // Either mode changing re-renders the one context slot and announces once.
+    if (changed.includes('selectedDistrict') || changed.includes('selectedStation')) {
       renderContext(state);
       announce(state, index);
       if (state.selectedDistrict !== lastSelected) {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,8 +42,42 @@ def reset_notes(source_key: str) -> None:
     SOURCE_NOTES.pop(source_key, None)
 
 
+def enable_utf8_stdout() -> None:
+    """Make this process's console able to print the names in the data.
+
+    Uzbek place names ("Gʻafur Gʻulom") and units ("km²") sit outside the
+    legacy Windows code pages, so a script that prints them dies with
+    UnicodeEncodeError on a default `cmd` console even though everything it
+    writes to disk is correct UTF-8. Reconfiguring the streams stops a run
+    from failing over a progress line. Call it from a script's entry point
+    only - importing a module should not reach into another program's stdout.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+        except (ValueError, OSError):
+            # A redirected or detached stream; log() still degrades on its own.
+            pass
+
+
 def log(message: str) -> None:
-    print(message, flush=True)
+    """Print a progress line without letting the console's encoding abort a run.
+
+    Uzbek place names carry characters (Gʻafur Gʻulom, Oʻzbekiston) that a
+    Windows console running a legacy code page cannot encode, and an
+    unhandled UnicodeEncodeError there would kill the pipeline over a progress
+    message. Fall back to an escaped form so the run continues and the name is
+    still legible; the data written to disk is always UTF-8 regardless.
+    """
+    try:
+        print(message, flush=True)
+    except UnicodeEncodeError:
+        encoding = getattr(sys.stdout, "encoding", None) or "ascii"
+        print(message.encode(encoding, "backslashreplace").decode(encoding),
+              flush=True)
 
 
 def step(title: str) -> None:
