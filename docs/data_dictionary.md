@@ -198,6 +198,10 @@ raster is simply the 2020 raster rescaled, at the **raster-cell** level over the
 union of the 12 SIAT districts. District totals cannot answer this, because a
 district total survives any reshuffle of cells inside it.
 
+Every field describes a relationship between two **modelled** surfaces. None of
+it measures construction, migration or settlement growth, and agreement between
+the two layers does not validate the accuracy of either.
+
 | Field | Notes |
 |---|---|
 | `years` | `[2020, 2026]` — the two WorldPop layers compared. |
@@ -206,18 +210,19 @@ district total survives any reshuffle of cells inside it.
 | `positive_cell_threshold_persons` | Baseline cells at or below this (0.05 persons) are excluded from ratio statistics, so near-empty cells cannot manufacture huge ratios. Percentiles are stable for thresholds from 0 to 1.0. |
 | `cells.in_masked_window` | Cells in the cropped window around the districts. |
 | `cells.valid_in_both` | Cells with data in both years — the comparison set. |
-| `cells.valid_only_in_baseline` / `valid_only_in_current` | Cells whose nodata status changed, i.e. settlement-footprint change. |
+| `cells.valid_only_in_baseline` / `valid_only_in_current` | Cells whose nodata status differs between the two modelled layers. A modelling difference, not an observation of settlement change. |
 | `cells.zero_in_both`, `zero_to_positive`, `positive_to_zero` | Occupancy transitions. |
 | `cells.above_ratio_threshold` | Cells used for the ratio statistics. |
 | `totals` | Summed population per year over the comparison set, plus the population and share held by newly-valid cells. |
 | `pearson_correlation_cell_values` | Correlation of 2020 vs 2026 cell values. |
 | `scaling_factor.least_squares` / `.total_ratio` / `.median_of_cell_ratios` | Three estimates of a single multiplier relating the years. |
 | `ratio_percentiles` | min, p1, p5, median, p95, p99, max of `2026 / 2020` per cell. |
-| `residuals_after_least_squares_scaling` | Mean, median and max absolute residual in persons/cell after applying the fitted scalar, plus `normalized_rmse` and `sum_absolute_over_total`. |
+| `residuals_after_least_squares_scaling` | Mean, median and max absolute residual in persons/cell after applying the fitted scalar `k`, plus `normalized_rmse` and `relative_l1_error`. |
 | `fraction_of_cells_matching_scalar` | Share of cells within 0.1 / 0.5 / 1 / 5 / 10 % of a pure scalar multiple. |
-| `redistribution` | Counts of cells with ratio above 1.5, above 2, below 1, and the share of the 2026 total those fast-growing cells hold. |
+| `residuals_after_least_squares_scaling.relative_l1_error` | `Σ&#124;B − kA&#124; ÷ ΣB`, where `A` is 2020, `B` is 2026 and `k` is the least-squares scalar. The total absolute cell-wise residual as a fraction of the modelled 2026 total. It is **not** variance explained, accuracy, or "population reproduced". |
+| `modelled_differences` | Counts of cells whose modelled value ratio is above 1.5, above 2, or below 1, and the share of the modelled 2026 total held by cells above 1.5. Differences in model output, not observed change. |
 | `is_pure_scalar_multiple` | Computed verdict. **Currently `false`.** |
-| `mass_share_explained_by_scalar` | `1 − sum_absolute_over_total`; the share of 2026 population reproduced by scaling 2020. |
+| `one_minus_relative_l1_error` | Exactly `1 − relative_l1_error`. Kept only as a convenience; it carries no additional meaning and must not be described as accuracy or explained population. |
 
 ---
 

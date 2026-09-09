@@ -233,10 +233,14 @@ def cell_level_comparison(rasters: dict[int, Path], districts: gpd.GeoDataFrame)
             "median_absolute": float(np.median(abs_residual)),
             "max_absolute": float(abs_residual.max()),
             "normalized_rmse": float(np.sqrt((residual**2).mean()) / B.mean()),
-            "sum_absolute_over_total": float(abs_residual.sum() / B.sum()),
+            # sum|B - k*A| / sum(B). A relative L1 error, nothing more: it is not
+            # variance explained, accuracy, or "population reproduced".
+            "relative_l1_error": float(abs_residual.sum() / B.sum()),
         },
         "fraction_of_cells_matching_scalar": within,
-        "redistribution": {
+        # Differences between two modelled surfaces. These are changes in model
+        # output, not observations of construction, migration or settlement.
+        "modelled_differences": {
             "cells_ratio_above_1_5": int(high.sum()),
             "cells_ratio_above_2": int((ratios > 2).sum()),
             "cells_ratio_below_1": int((ratios < 1).sum()),
@@ -267,7 +271,7 @@ def cell_level_comparison(rasters: dict[int, Path], districts: gpd.GeoDataFrame)
     log(f"    median |resid| : {res['median_absolute']:.6f} persons/cell")
     log(f"    max |resid|    : {res['max_absolute']:.4f} persons/cell")
     log(f"    normalized RMSE: {res['normalized_rmse']:.6f}")
-    log(f"    sum|resid|/total: {res['sum_absolute_over_total']:.6f}")
+    log(f"    relative L1 error (sum|B-kA| / sum B): {res['relative_l1_error']:.6f}")
     log("\n  share of cells within tolerance of a pure scalar multiple:")
     for name, value in within.items():
         log(f"    {name:>16}: {value:.4f}")
@@ -278,31 +282,38 @@ def cell_level_comparison(rasters: dict[int, Path], districts: gpd.GeoDataFrame)
         tight > 0.99
         and cells["valid_only_in_current"] == 0
         and cells["zero_to_positive"] == 0
-        and result["redistribution"]["cells_ratio_above_1_5"] == 0
+        and result["modelled_differences"]["cells_ratio_above_1_5"] == 0
     )
     result["is_pure_scalar_multiple"] = pure_scalar
-    result["mass_share_explained_by_scalar"] = 1.0 - res["sum_absolute_over_total"]
+    result["one_minus_relative_l1_error"] = 1.0 - res["relative_l1_error"]
 
     log("")
     if pure_scalar:
-        log(f"  VERDICT: the {current} surface IS a pure scalar multiple of {baseline}.")
-        log("           It adds no new spatial detail.")
+        log(f"  VERDICT: the {current} modelled surface IS a pure scalar multiple of "
+            f"{baseline}.")
     else:
-        log(f"  VERDICT: the {current} surface is NOT a pure scalar multiple of {baseline}.")
-        log(f"           {result['mass_share_explained_by_scalar']:.2%} of the {current} "
-            f"population is reproduced by scaling {baseline} by "
-            f"{k_least_squares:.4f}, but")
-        log(f"           {cells['valid_only_in_current']:,} cells became populated that were "
-            f"nodata in {baseline},")
-        log(f"           {cells['zero_to_positive']:,} went from zero to positive, and "
-            f"{result['redistribution']['cells_ratio_above_1_5']:,} cells grew by more "
-            f"than 50%.")
-        log(f"           Those fast-growing cells carry only "
-            f"{result['redistribution']['share_of_current_total_in_cells_above_1_5']:.4%} "
-            f"of the total, so the")
-        log(f"           redistribution is real but small: the {current} layer still "
-            f"carries essentially")
-        log(f"           the {baseline} within-district pattern.")
+        log(f"  VERDICT: the {current} modelled surface is NOT a pure scalar multiple of "
+            f"{baseline}.")
+        log(f"           After least-squares scaling by {k_least_squares:.4f}, the total "
+            f"absolute cell-wise")
+        log(f"           residual is {res['relative_l1_error']:.2%} of the modelled "
+            f"{current} total. Differences:")
+        log(f"           {cells['valid_only_in_current']:,} cells are nodata in {baseline} "
+            f"but valid in {current},")
+        log(f"           {cells['zero_to_positive']:,} go from zero to positive, and "
+            f"{result['modelled_differences']['cells_ratio_above_1_5']:,} cells have a "
+            f"modelled value")
+        log(f"           more than 50% higher. Those cells hold "
+            f"{result['modelled_differences']['share_of_current_total_in_cells_above_1_5']:.4%} "
+            f"of the modelled total.")
+        log(f"           {tight:.1%} of compared cells fall within 1% of the fitted scalar "
+            f"and {within['within_5pct']:.1%} within 5%.")
+    log("")
+    log("  These are differences between two runs of a modelled product. They may come")
+    log("  from model updates, constrained-settlement mask changes, covariate changes,")
+    log("  projected population change, real development, or a combination. They are NOT")
+    log("  measurements of construction, migration or settlement growth, and this")
+    log("  temporal similarity does not validate the accuracy of either surface.")
     return result
 
 
