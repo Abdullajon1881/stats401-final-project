@@ -130,6 +130,70 @@
   </aside>
 </main>
 
+<!-- ── Week 6: coordinated district analysis deck ─────────────────────── -->
+<!-- Three more views over the same twelve districts and the same selection
+     state as the map and the ranking above. Not three separate charts: hover
+     or click a district in any one of the five and all five respond. -->
+<section id="district-analysis" class="deck" aria-labelledby="deck-h" tabindex="-1" hidden>
+
+  <div class="deck-head">
+    <h2 id="deck-h" class="deck-title">District analysis</h2>
+    <p class="deck-lede">Compare how metro access, bus reliance and mapped service
+      distribution vary across the twelve analysed districts.</p>
+  </div>
+
+  <div class="deck-grid">
+
+    <section class="panel deck-panel deck-panel--composition"
+             aria-labelledby="composition-h">
+      <div class="panel-head">
+        <h3 id="composition-h" class="panel-title">Where access depends most on buses</h3>
+        <span class="panel-note">sorted by bus-only share</span>
+      </div>
+      <p class="panel-sub">Share of each district&rsquo;s analysed population by modelled
+        10-minute walking access.</p>
+      <div class="deck-legend" aria-hidden="true">
+        <span class="lg"><i class="lg-sw lg-sw--metro"></i>Metro</span>
+        <span class="lg"><i class="lg-sw lg-sw--bus"></i>Bus-only</span>
+        <span class="lg"><i class="lg-sw lg-sw--under"></i>Underserved</span>
+      </div>
+      <div id="composition" class="chart chart--rows"></div>
+      <p id="composition-lead" class="panel-foot"></p>
+    </section>
+
+    <section class="panel deck-panel deck-panel--scatter" aria-labelledby="scatter-h">
+      <div class="panel-head">
+        <h3 id="scatter-h" class="panel-title">Density vs metro access</h3>
+      </div>
+      <p class="panel-sub">Do denser districts have better modelled metro access?</p>
+      <div id="scatter" class="chart"></div>
+      <p class="panel-foot">Dashed guides mark these twelve districts&rsquo; medians
+        &mdash; descriptive, not thresholds.</p>
+    </section>
+
+    <section class="panel deck-panel deck-panel--parallel" aria-labelledby="parallel-h">
+      <div class="panel-head">
+        <h3 id="parallel-h" class="panel-title">Compare district profiles</h3>
+      </div>
+      <p class="panel-sub">Relative district profiles across population, access and
+        mapped local-service measures.</p>
+      <div id="parallel" class="chart"></div>
+      <div class="compare">
+        <div class="compare-row">
+          <button type="button" id="compare-add" class="btn btn--sm" disabled>
+            Select a district to compare</button>
+          <button type="button" id="compare-clear" class="linkbtn" hidden>Clear comparison</button>
+        </div>
+        <div id="compare-chips" class="chips" hidden></div>
+        <p id="compare-note" class="panel-foot" hidden></p>
+      </div>
+      <p class="panel-foot">MAPPED counts reflect OpenStreetMap coverage, which varies
+        by district &mdash; not official service provision.</p>
+    </section>
+
+  </div>
+</section>
+
 <!-- ── method dialog ─────────────────────────────────────────────────── -->
 <!-- A native <dialog> opened with showModal(): the browser puts it in the top
      layer, makes the rest of the document inert, traps Tab inside it and

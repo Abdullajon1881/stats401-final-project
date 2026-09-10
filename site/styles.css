@@ -56,9 +56,13 @@ body {
   font-size: 13px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
-  display: grid;
-  grid-template-rows: var(--topbar-h) minmax(0, 1fr);
-  overflow: hidden;
+  /* The map workspace still fills the first screen exactly as it did, but the
+     document now scrolls so the analysis deck can live beneath it instead of
+     competing with the map for the same viewport. */
+  display: block;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 100%;
 }
 
 h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
@@ -86,6 +90,9 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
 
 /* ── top bar ──────────────────────────────────────────────────────────── */
 .topbar {
+  /* The page scrolls now, so the header has to stay put rather than scrolling
+     away with the map. */
+  position: sticky; top: 0; z-index: 40;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -117,6 +124,8 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--side-w);
+  /* One screen minus the sticky header: the Week 5 proportions, unchanged. */
+  height: calc(100vh - var(--topbar-h));
   min-height: 0;
   overflow: hidden;
 }
@@ -433,6 +442,172 @@ code {
   background: var(--surface-3); padding: 1px 5px; border-radius: 3px;
 }
 
+/* the one comparison action in the district panel */
+.dd-compare-row { margin-top: 10px; display: flex; align-items: center; gap: 8px; }
+.dd-compare:disabled { color: var(--text-3); cursor: default; text-decoration: none; }
+.dd-compare-hint { font-size: 10.5px; color: var(--text-3); }
+
+/* ── Week 6: district analysis deck ───────────────────────────────────── */
+/* Surfaces on the same ground, separated by the same 1px lines as the sidebar
+   panels above. No floating cards, no second visual language. */
+
+.deck {
+  border-top: 1px solid var(--line-2);
+  background: var(--bg);
+  padding: 18px 20px 26px;
+}
+
+.deck:focus { outline: none; }
+.deck:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+.deck-head { margin-bottom: 14px; max-width: 780px; }
+.deck-title { font-size: 15px; letter-spacing: -0.01em; }
+.deck-lede { margin: 4px 0 0; color: var(--text-2); font-size: 12px; }
+
+.deck-grid {
+  display: grid;
+  /* Roughly 36 / 27 / 37: the rows chart needs label room, the scatter is the
+     most compact idiom, the six parallel axes need the most horizontal space. */
+  grid-template-columns: minmax(0, 36fr) minmax(0, 27fr) minmax(0, 37fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.deck-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  padding: 12px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.deck-panel .panel-head { margin-bottom: 2px; }
+.panel-sub { margin: 0 0 8px; color: var(--text-2); font-size: 11.5px; }
+.panel-foot { margin: 8px 0 0; color: var(--text-3); font-size: 10.5px; }
+
+.deck-legend { display: flex; gap: 12px; margin-bottom: 8px; }
+.lg { display: inline-flex; align-items: center; gap: 5px;
+      font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--text-3); font-weight: 600; }
+.lg-sw { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.lg-sw--metro { background: var(--metro); }
+.lg-sw--bus   { background: var(--bus); }
+.lg-sw--under { background: var(--under); }
+
+/* The chart owns the rest of its panel. A fixed floor keeps a chart readable
+   when the panel is short; the flex growth stops dead space when it is tall. */
+.chart { flex: 1 1 auto; min-height: 268px; min-width: 0; }
+.chart svg { display: block; width: 100%; }
+.chart--rows { overflow: auto; }
+
+/* ── stacked composition ──────────────────────────────────────────────── */
+.cm-band { fill: transparent; }
+.cm-row.is-hovered .cm-band { fill: rgba(255, 255, 255, 0.035); }
+.cm-row.is-selected .cm-band { fill: rgba(53, 194, 214, 0.10); }
+.cm-seg { shape-rendering: crispEdges; }
+.cm-metro { fill: var(--metro); }
+.cm-bus   { fill: var(--bus); }
+.cm-under { fill: var(--under); }
+.cm-row.is-selected .cm-seg { stroke: var(--sel); stroke-width: 0.9; }
+.cm-label { font-size: 11px; fill: var(--text-2); dominant-baseline: middle; }
+.cm-row.is-hovered .cm-label { fill: var(--text); }
+.cm-row.is-selected .cm-label { fill: var(--text); font-weight: 700; }
+.cm-val {
+  font-size: 10.5px; fill: var(--text-3); dominant-baseline: middle;
+  font-variant-numeric: tabular-nums;
+}
+.cm-row.is-selected .cm-val { fill: var(--text); font-weight: 700; }
+.cm-guide { stroke: var(--line); stroke-width: 1; }
+.cm-guide-t { font-size: 9px; fill: var(--text-3); font-variant-numeric: tabular-nums; }
+.cm-hit { fill: transparent; cursor: pointer; }
+.cm-hit:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+/* A pinned district keeps a mark here too, so the comparison set is visible
+   from every view rather than only inside the profile chart. */
+.cm-row.is-compared .cm-label { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── scatter ──────────────────────────────────────────────────────────── */
+.sc-grid { stroke: var(--line); stroke-width: 1; }
+.sc-tick { font-size: 9.5px; fill: var(--text-3); font-variant-numeric: tabular-nums; }
+.sc-axis-title { font-size: 10px; fill: var(--text-3); }
+.sc-median { stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.sc-dot { fill: var(--metro); stroke: var(--surface); stroke-width: 1.2; }
+.sc-halo { fill: none; stroke: none; }
+.sc-pt.is-selected .sc-halo { stroke: var(--sel); stroke-width: 1.6; }
+.sc-pt.is-hovered .sc-halo { stroke: var(--line-2); stroke-width: 1.4; }
+.sc-pt.is-compared .sc-dot { stroke: var(--sel); stroke-width: 1.4; }
+.sc-plabel {
+  font-size: 10.5px; fill: var(--text); paint-order: stroke;
+  stroke: var(--surface); stroke-width: 3; stroke-linejoin: round;
+  opacity: 0; pointer-events: none;
+}
+.sc-pt.is-hovered .sc-plabel, .sc-pt.is-selected .sc-plabel,
+.sc-pt.is-compared .sc-plabel { opacity: 1; }
+.sc-hit { fill: transparent; cursor: pointer; }
+.sc-hit:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ── parallel coordinates ─────────────────────────────────────────────── */
+.pc-axis { stroke: var(--line-2); stroke-width: 1; }
+/* The ticks are drawn inside the plot, so twelve lines pass behind them. A
+   halo in the panel colour keeps them readable without a boxed background. */
+.pc-tick {
+  font-size: 9px; fill: var(--text-2); font-variant-numeric: tabular-nums;
+  paint-order: stroke; stroke: var(--surface); stroke-width: 2.6;
+  stroke-linejoin: round;
+}
+.pc-cap {
+  font-size: 10px; fill: var(--text-2); font-weight: 600;
+  paint-order: stroke; stroke: var(--surface); stroke-width: 2.6;
+  stroke-linejoin: round;
+}
+.pc-row.is-compared .pc-line, .pc-row.is-selected .pc-line { opacity: 1; }
+.pc-unit { font-size: 8.5px; fill: var(--text-3); font-weight: 400; }
+/* Context lines have to be present enough to read as a distribution and quiet
+   enough that a pinned line stands out against them. */
+.pc-line {
+  fill: none; stroke: #8296ad; stroke-width: 1;
+  opacity: 0.34; transition: opacity 120ms linear;
+}
+.pc-hit { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; }
+.pc-hit:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.pc-row.is-hovered .pc-line { stroke: var(--text); opacity: 1; stroke-width: 2; }
+.pc-row.is-selected .pc-line { stroke: var(--metro); opacity: 1; stroke-width: 2.4; }
+/* Pinned lines get colour, but width and opacity carry the same message, so
+   the encoding does not rest on colour alone. */
+.pc-row.is-compared .pc-line { opacity: 1; stroke-width: 2; }
+.pc-row.is-compared.is-selected .pc-line { stroke-width: 3; }
+
+/* ── comparison controls ──────────────────────────────────────────────── */
+.compare { margin-top: 10px; }
+.compare-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.btn {
+  font: inherit; font-size: 11.5px; line-height: 1;
+  color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--line-2); border-radius: var(--r);
+  padding: 7px 10px; cursor: pointer;
+}
+.btn:hover:not(:disabled) { background: var(--surface-3); }
+.btn:disabled { color: var(--text-3); cursor: default; opacity: 0.75; }
+.btn--sm { padding: 6px 9px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface-2); border: 1px solid var(--line-2);
+  border-radius: 999px; padding: 3px 4px 3px 8px; font-size: 11px;
+}
+.chip-sw { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.chip-t { color: var(--text); }
+.chip-x {
+  font: inherit; font-size: 13px; line-height: 1;
+  color: var(--text-3); background: none; border: 0; cursor: pointer;
+  padding: 0 4px; border-radius: 999px;
+}
+.chip-x:hover { color: var(--text); }
+.chip-x:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
 /* ── MapLibre chrome, tuned to the dark system ────────────────────────── */
 .maplibregl-ctrl-attrib.maplibregl-compact { background: rgba(11, 15, 20, 0.82); }
 /* Colour and type only. MapLibre reserves the right-hand padding that keeps
@@ -462,6 +637,15 @@ code {
 .maplibregl-popup-close-button { color: var(--text-3); font-size: 15px; }
 
 /* ── responsive ───────────────────────────────────────────────────────── */
+/* Below this the six parallel axes cannot hold their captions in a third of the
+   width, so the deck goes to two rows rather than shrinking labels into noise:
+   the rows chart takes the full width, the other two share the row beneath. */
+@media (max-width: 1399px) {
+  .deck-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .deck-panel--composition { grid-column: 1 / -1; }
+  .deck-panel--composition .chart { min-height: 300px; }
+}
+
 @media (max-width: 1180px) {
   .brand-q { display: none; }
   .legend { flex-direction: column; align-items: flex-start; gap: 8px; }
@@ -473,8 +657,10 @@ code {
 
 /* tablet and below: map on top, analysis stacked under it, page scrolls */
 @media (max-width: 940px) {
-  body { grid-template-rows: var(--topbar-h) auto; overflow: auto; height: auto; min-height: 100%; }
-  .workspace { grid-template-columns: minmax(0, 1fr); overflow: visible; }
+  .workspace { grid-template-columns: minmax(0, 1fr); height: auto; overflow: visible; }
+  /* One column: the three analytical views read top to bottom. */
+  .deck-grid { grid-template-columns: minmax(0, 1fr); }
+  .deck { padding: 16px 14px 22px; }
   .mapwrap { height: 62vh; min-height: 380px; }
   .sidebar { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
   .panel--grow { overflow: visible; }
@@ -484,6 +670,16 @@ code {
 
 @media (max-width: 620px) {
   :root { --topbar-h: 58px; }
+  .deck { padding: 14px 12px 20px; }
+  /* Side by side, the title and its note each wrapped to two lines and read as
+     a broken two-column block. Stacked, each gets the full width. */
+  .deck-panel .panel-head { display: block; }
+  .deck-panel .panel-note { display: block; margin-top: 2px; }
+  .deck-title { font-size: 14px; }
+  .chart { min-height: 230px; }
+  /* Six axes still fit at this width once the captions abbreviate; the chart
+     redraws rather than scrolling sideways. */
+  .deck-panel--parallel .chart { min-height: 250px; }
   .topbar { padding: 0 12px; gap: 10px; }
   .brand h1 { font-size: 13.5px; white-space: normal; line-height: 1.2; }
   .navbtn { padding: 7px 9px; font-size: 11.5px; }
@@ -511,11 +707,16 @@ code {
    get a 62vh map barely 200px tall under the stacked rule. Keep two columns
    there instead and let the sidebar scroll: height is the scarce axis. */
 @media (max-height: 620px) and (min-width: 620px) and (orientation: landscape) {
-  body { grid-template-rows: 52px minmax(0, 1fr); overflow: hidden; height: 100%; }
   /* 285px, not 250: below that the three glance columns cannot hold their
      labels even at the reduced tracking set above. */
   :root { --topbar-h: 52px; --side-w: clamp(285px, 30vw, 340px); }
-  .workspace { grid-template-columns: minmax(0, 1fr) var(--side-w); overflow: hidden; }
+  /* The workspace keeps its two-column screen; the deck follows below it in
+     the page scroll rather than being squeezed into the same short viewport. */
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) var(--side-w);
+    height: calc(100vh - var(--topbar-h)); overflow: hidden;
+  }
+  .deck-grid { grid-template-columns: minmax(0, 1fr); }
   .mapwrap { height: auto; min-height: 0; }
   .sidebar { border-left: 1px solid var(--line); border-top: 0; overflow-y: auto; }
   /* The sidebar itself is the scroll container here, so the ranking has to
@@ -533,6 +734,10 @@ code {
 
 /* Very narrow phones. Nothing may overflow at 320px. */
 @media (max-width: 380px) {
+  .deck { padding: 12px 10px 18px; }
+  .deck-panel { padding: 10px 11px; }
+  .panel-sub { font-size: 11px; }
+  .deck-legend { gap: 9px; }
   .topbar { gap: 6px; padding: 0 10px; }
   .brand h1 { font-size: 12.5px; }
   .navbtn { padding: 6px 7px; font-size: 11px; }
