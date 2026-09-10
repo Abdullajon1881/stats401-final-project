@@ -144,6 +144,26 @@ def feature(geometry, properties: dict, precision: int = COORD_PRECISION) -> dic
     }
 
 
+DISPLAY_ROLE = "display_only"
+
+
+def display_feature(geometry, properties: dict,
+                    precision: int = COORD_PRECISION) -> dict:
+    """Build a feature belonging to a display-only layer, labelled as such.
+
+    The manifest already records which files are display-only, but a GeoJSON
+    file travels on its own - the map fetches each one directly - so the
+    analytical/display boundary has to survive that journey on the features
+    themselves. Every display layer is built through here, which is why a new
+    display layer cannot quietly ship without the label: there is no other
+    constructor for one.
+
+    Analytical layers (city_summary, districts) deliberately do NOT come
+    through here, and must never carry this role.
+    """
+    return feature(geometry, {**properties, "role": DISPLAY_ROLE}, precision)
+
+
 def write_json(path: Path, payload: dict) -> int:
     """Write compact, deterministic JSON. No timestamps anywhere.
 
@@ -370,11 +390,10 @@ def build_isochrone(paths: dict) -> tuple[int, int, float]:
     iso = gpd.read_file(paths["metro_isochrone"])
     area_km2 = float(iso.to_crs(cfg.METRIC_CRS).area.sum() / 1e6)
     features = [
-        feature(row.geometry, {
+        display_feature(row.geometry, {
             "budget_m": row.budget_m,
             "buffer_m": row.buffer_m,
             "area_km2": round(area_km2, 4),
-            "role": "display_only",
             "note": (
                 "Access shading is a display layer. Population estimates use "
                 "pedestrian-network distance, not polygon intersection."
@@ -399,7 +418,7 @@ def build_analysis_mask(districts: gpd.GeoDataFrame) -> tuple[int, int]:
     union = districts.to_crs(cfg.GEOGRAPHIC_CRS).union_all()
     world = box(-180.0, -85.0, 180.0, 85.0)
     mask = world.difference(union)
-    features = [feature(mask, {"role": "display_only", "purpose": "dim outside the study area"})]
+    features = [display_feature(mask, {"purpose": "dim outside the study area"})]
     size = write_geojson(WEB_DATA_DIR / WEB_FILES["analysis_mask"], features)
     log("    world minus the union of the 12 SIAT districts")
     return 1, size
@@ -427,7 +446,7 @@ def build_metro_lines(paths: dict) -> tuple[int, int, dict]:
                 "ref": p["ref"],
                 "line_name": p.get("line_name"),
                 "colour": p.get("colour"),
-                "role": "display_only",
+                "role": DISPLAY_ROLE,
             },
             "geometry": source["geometry"],
         })
@@ -469,7 +488,7 @@ def build_metro_access_points(paths: dict) -> tuple[int, int, dict]:
     features = []
     for _, row in table.iterrows():
         is_fallback = row.access_type == "station_fallback"
-        features.append(feature(row._geom, {
+        features.append(display_feature(row._geom, {
             "access_id": row.access_id,
             "access_type": row.access_type,
             "name": row["name"],
@@ -490,11 +509,13 @@ def build_metro_access_points(paths: dict) -> tuple[int, int, dict]:
 
 
 def build_point_layer(path: Path, out_name: str, label: str, fields: dict) -> tuple[int, int]:
+    """Metro stations, bus stops and bazaars: shown on the map, never measured."""
     gdf = gpd.read_file(path).to_crs(cfg.GEOGRAPHIC_CRS)
     sort_key = "osm_id" if "osm_id" in gdf.columns else gdf.columns[0]
     gdf = gdf.sort_values(sort_key).reset_index(drop=True)
     features = [
-        feature(row.geometry, {out_key: row.get(src) for out_key, src in fields.items()})
+        display_feature(row.geometry,
+                        {out_key: row.get(src) for out_key, src in fields.items()})
         for _, row in gdf.iterrows()
     ]
     size = write_geojson(WEB_DATA_DIR / out_name, features)
@@ -554,7 +575,7 @@ def build_population_density(paths: dict, districts: gpd.GeoDataFrame) -> tuple[
 
     web = grid.to_crs(cfg.GEOGRAPHIC_CRS)
     features = [
-        feature(row.geometry, {
+        display_feature(row.geometry, {
             "population": round(float(row.population), 3),
             "density_per_km2": round(float(row.density_per_km2), 2),
             "area_km2": round(float(row.clipped_area_km2), 6),
@@ -573,7 +594,7 @@ def build_population_density(paths: dict, districts: gpd.GeoDataFrame) -> tuple[
         "density_min_per_km2": round(float(grid.density_per_km2.min()), 4),
         "density_median_per_km2": round(float(grid.density_per_km2.median()), 4),
         "density_max_per_km2": round(float(grid.density_per_km2.max()), 4),
-        "role": "display_only",
+        "role": DISPLAY_ROLE,
     }
     log(f"    kept {len(features):,} bins, {retained:,.1f} people "
         f"({stats['population_retained_pct']:.4f}% of the audited total)")
@@ -674,7 +695,7 @@ def main() -> int:
                          "population row and is therefore absent from the analytical layer"),
             },
             "metro_isochrone": {
-                "file": WEB_FILES["metro_isochrone"], "role": "display_only",
+                "file": WEB_FILES["metro_isochrone"], "role": DISPLAY_ROLE,
                 "features": counts["metro_isochrone"], "bytes": sizes["metro_isochrone"],
                 "source": "data/processed/metro_isochrone_10min.geojson",
                 "area_km2": round(iso_area, 4),
@@ -682,41 +703,41 @@ def main() -> int:
                          "pedestrian-network distance, not polygon intersection."),
             },
             "metro_access_points": {
-                "file": WEB_FILES["metro_access_points"], "role": "display_only",
+                "file": WEB_FILES["metro_access_points"], "role": DISPLAY_ROLE,
                 "features": counts["metro_access_points"],
                 "bytes": sizes["metro_access_points"],
                 "source": "data/processed/metro_access_points.csv",
                 "by_access_type": access_counts,
             },
             "metro_stations": {
-                "file": WEB_FILES["metro_stations"], "role": "display_only",
+                "file": WEB_FILES["metro_stations"], "role": DISPLAY_ROLE,
                 "features": counts["metro_stations"], "bytes": sizes["metro_stations"],
                 "source": "data/processed/metro_stations.geojson",
             },
             "bus_stops": {
-                "file": WEB_FILES["bus_stops"], "role": "display_only",
+                "file": WEB_FILES["bus_stops"], "role": DISPLAY_ROLE,
                 "features": counts["bus_stops"], "bytes": sizes["bus_stops"],
                 "source": "data/processed/bus_stops.geojson",
             },
             "bazaars": {
-                "file": WEB_FILES["bazaars"], "role": "display_only",
+                "file": WEB_FILES["bazaars"], "role": DISPLAY_ROLE,
                 "features": counts["bazaars"], "bytes": sizes["bazaars"],
                 "source": "data/processed/bazaars.geojson",
             },
             "metro_lines": {
-                "file": WEB_FILES["metro_lines"], "role": "display_only",
+                "file": WEB_FILES["metro_lines"], "role": DISPLAY_ROLE,
                 "features": counts["metro_lines"], "bytes": sizes["metro_lines"],
                 "source": "data/display/metro_lines_osm.geojson",
                 **metro_line_info,
             },
             "analysis_mask": {
-                "file": WEB_FILES["analysis_mask"], "role": "display_only",
+                "file": WEB_FILES["analysis_mask"], "role": DISPLAY_ROLE,
                 "features": counts["analysis_mask"], "bytes": sizes["analysis_mask"],
                 "source": "derived from the 12 SIAT district polygons",
                 "note": "dims the map outside the study area; carries no value",
             },
             "population_density": {
-                "file": WEB_FILES["population_density"], "role": "display_only",
+                "file": WEB_FILES["population_density"], "role": DISPLAY_ROLE,
                 "features": counts["population_density"],
                 "bytes": sizes["population_density"],
                 "source": "data/external/population_cells.parquet (audited Week 4 run)",

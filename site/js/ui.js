@@ -351,6 +351,17 @@ function wireSearch() {
     if (!wrap.contains(event.target)) hideResults();
   });
 
+  /* The options are deliberately not tab stops, so Tab now carries focus out of
+   * the search in one press. Close the popup when it does: an open listbox with
+   * focus somewhere else on the page belongs to nobody. focusout fires before
+   * focus lands, hence the deferred read of activeElement. */
+  document.querySelector('.search').addEventListener('focusout', () => {
+    setTimeout(() => {
+      const wrap = document.querySelector('.search');
+      if (!wrap.contains(document.activeElement)) hideResults();
+    }, 0);
+  });
+
   // Hovering a result makes it the active option too, so the pointer and the
   // keyboard can never disagree about which row is current.
   document.getElementById('search-results').addEventListener('mouseover', (event) => {
@@ -385,6 +396,12 @@ function showResults(query) {
       // A stable id per visible option, so aria-activedescendant can name it.
       id: 'sr-opt-' + i,
       type: 'button', class: 'sr-item', role: 'option', 'aria-selected': 'false',
+      // The combobox owns keyboard focus: DOM focus stays on the input and the
+      // active option is named by aria-activedescendant. A natively tabbable
+      // button here would be a second, competing focus model - Tab would walk
+      // every result instead of leaving the search. It stays a button so a
+      // pointer click keeps working unchanged.
+      tabindex: '-1',
       onclick: () => choose(item),
     }, [
       el('span', { class: `sr-dot sr-dot--${item.kind}` }),

@@ -379,6 +379,89 @@ def validate_display_layers() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# 5b. the analytical/display boundary, checked on the features themselves
+# ---------------------------------------------------------------------------
+# Every display-only web layer, and the layers that must stay analytical. A
+# GeoJSON file is fetched on its own by the map, so a manifest entry alone does
+# not travel with it; the boundary has to be readable from any single file.
+DISPLAY_ONLY_LAYERS = (
+    "metro_isochrone",
+    "metro_access_points",
+    "metro_stations",
+    "bus_stops",
+    "bazaars",
+    "population_density",
+    "metro_lines",
+    "analysis_mask",
+)
+ANALYTICAL_LAYERS = ("districts",)
+
+
+def validate_feature_provenance() -> None:
+    section("5b. Display/analytical provenance, feature by feature")
+
+    total_display = 0
+    for key in DISPLAY_ONLY_LAYERS:
+        layer = load_json(WEB_DATA_DIR / WEB_FILES[key])
+        features = layer.get("features", [])
+        check(len(features) > 0, f"{key}: layer is non-empty")
+
+        missing_props = [i for i, f in enumerate(features) if not isinstance(f.get("properties"), dict)]
+        check(not missing_props,
+              f"{key}: every feature carries a properties object "
+              f"(missing on {len(missing_props)} of {len(features)})")
+
+        wrong = [
+            (i, (f.get("properties") or {}).get("role"))
+            for i, f in enumerate(features)
+            if (f.get("properties") or {}).get("role") != "display_only"
+        ]
+        # Name the first offenders: "one feature is wrong" is not actionable.
+        sample = "; ".join(f"#{i} role={r!r}" for i, r in wrong[:3])
+        check(not wrong,
+              f"{key}: all {len(features):,} features are role=display_only "
+              f"({len(wrong)} not labelled{': ' + sample if sample else ''})")
+        total_display += len(features)
+
+    print(f"    {total_display:,} display features across "
+          f"{len(DISPLAY_ONLY_LAYERS)} layers, every one labelled")
+
+    # The other direction matters just as much: an analytical layer that picked
+    # up the display label would quietly exempt itself from scrutiny.
+    for key in ANALYTICAL_LAYERS:
+        layer = load_json(WEB_DATA_DIR / WEB_FILES[key])
+        features = layer.get("features", [])
+        contaminated = [
+            i for i, f in enumerate(features)
+            if (f.get("properties") or {}).get("role") == "display_only"
+        ]
+        check(not contaminated,
+              f"{key}: no analytical feature claims display_only "
+              f"({len(contaminated)} of {len(features)} contaminated)")
+
+    city = load_json(WEB_DATA_DIR / WEB_FILES["city_summary"])
+    check(city.get("role") != "display_only",
+          "city_summary is not labelled display_only")
+
+    # Feature-level and manifest-level roles must tell the same story.
+    manifest = load_json(WEB_DATA_DIR / WEB_FILES["manifest"])
+    layers = manifest.get("layers", {})
+    for key in DISPLAY_ONLY_LAYERS:
+        check(layers.get(key, {}).get("role") == "display_only",
+              f"{key}: manifest role agrees with the feature-level role")
+    for key in ANALYTICAL_LAYERS + ("city_summary",):
+        check(layers.get(key, {}).get("role") == "analytical",
+              f"{key}: manifest records it as analytical")
+
+    # The build must have no second way to make a display feature.
+    build_src = (cfg.REPO_ROOT / "scripts" / "build_web_data.py").read_text(encoding="utf-8")
+    check("def display_feature(" in build_src,
+          "the build has a single constructor for display features")
+    check('return feature(geometry, {**properties, "role": DISPLAY_ROLE}' in build_src,
+          "that constructor stamps the role rather than trusting each call site")
+
+
+# ---------------------------------------------------------------------------
 # 6. web manifest
 # ---------------------------------------------------------------------------
 def validate_manifest(counts: dict, city: dict) -> None:
@@ -630,6 +713,18 @@ def validate_state_and_a11y() -> None:
     check("mouseover" in ui,
           "pointer hover updates the same active option, so ARIA cannot contradict it")
 
+    # DOM focus must stay on the input. A rendered option that is natively
+    # tabbable would be a second focus model, and Tab would walk every result
+    # instead of leaving the search.
+    option_render = re.search(
+        r"role: 'option'.*?\}, \[", ui, re.S)
+    check(bool(option_render) and "tabindex: '-1'" in option_render.group(0),
+          "each rendered option is removed from the tab order (tabindex=-1)")
+    check("focusout" in ui,
+          "the popup closes when focus leaves the search, not only on outside click")
+    check("aria-expanded" in ui,
+          "the combobox reports whether its listbox is open")
+
     # --- modal ----------------------------------------------------------
     check("<dialog" in html, "the method window is a native <dialog>")
     check(re.search(r'<div[^>]*role="dialog"', html) is None,
@@ -686,6 +781,7 @@ def main() -> int:
     city = validate_city()
     validate_districts(city)
     counts = validate_display_layers()
+    validate_feature_provenance()
     validate_manifest(counts, city)
     validate_no_hardcoded_metrics()
     validate_state_and_a11y()
