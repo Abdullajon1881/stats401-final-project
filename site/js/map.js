@@ -271,12 +271,26 @@ function addLayers() {
   }, under);
 
   /* 5. district boundaries, then the selected one on top of them */
+  /* Administrative structure has to be readable at city and district scale,
+   * where it is the frame the analysis is reported in. At street scale it is
+   * context rather than subject: leaving it at full strength put a heavy grey
+   * line across the metro route, the entrances and the street grid the reader
+   * has zoomed in to look at. So it thins and fades with zoom instead of
+   * disappearing - the boundary is still findable at z15, just no longer
+   * competing. The SELECTED district is drawn by the layer below and keeps its
+   * full weight at every zoom. */
   map.addLayer({
     id: 'district-line', type: 'line', source: 'districts',
     paint: {
       'line-color': '#7b8ea3',
-      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1, 13, 1.4],
-      'line-opacity': 0.9,
+      'line-width': [
+        'interpolate', ['linear'], ['zoom'],
+        9, 1, 13, 1.4, 14.5, 1, 16, 0.7,
+      ],
+      'line-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        9, 0.9, 13, 0.9, 14.5, 0.5, 16, 0.32,
+      ],
     },
   }, under);
   map.addLayer({
@@ -399,7 +413,10 @@ function addLayers() {
   map.addLayer({
     id: 'station-label', type: 'symbol', source: 'stations', minzoom: 12.4,
     layout: {
-      'text-field': ['coalesce', ['get', 'name_en'], ['get', 'name']],
+      // Current name first. Several name_en values carry a historical alias in
+      // parentheses ("Milliy Bog (Komsomolskaya)"); the map should not put a
+      // superseded name on the station. The search still indexes both.
+      'text-field': ['coalesce', ['get', 'name'], ['get', 'name_en']],
       'text-font': ['Noto Sans Regular'],
       'text-size': ['interpolate', ['linear'], ['zoom'], 12.4, 10, 15, 12],
       'text-offset': [0, 1.05],
@@ -566,7 +583,7 @@ function showFeaturePopup(layer, feature, lngLat) {
   let foot = null;
 
   if (layer === 'station-point') {
-    title = safeName(p.name_en, safeName(p.name, 'Metro station'));
+    title = safeName(p.name, safeName(p.name_en, 'Metro station'));
     rows = [kv('Type', 'Metro station')];
     if (p.district_name) rows.push(kv('District', safeName(p.district_name, '—')));
   } else if (layer === 'bazaar-point') {
