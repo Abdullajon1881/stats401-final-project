@@ -19,6 +19,7 @@ export const FILES = {
   bazaars: 'bazaars.geojson',
   density: 'population_density.geojson',
   mask: 'analysis_mask.geojson',
+  sensitivity: 'sensitivity.json',
   manifest: 'manifest.json',
 };
 
