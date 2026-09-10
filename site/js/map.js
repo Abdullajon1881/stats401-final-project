@@ -77,7 +77,37 @@ export function initMap(loaded, ready, qaMode = false) {
     closeButton: true, closeOnClick: true, offset: 12, maxWidth: '260px',
   });
 
+  /* The analytical data on this page is local; the basemap is the one thing
+   * that depends on a remote provider. If its style cannot be fetched, the
+   * 'load' event never fires, no layers are ever added, and the reader is left
+   * with an unexplained black rectangle while the district analysis below
+   * works perfectly. So: say what happened, once, and point at what still
+   * works.
+   *
+   * Individual tile failures are a different matter and are not worth
+   * interrupting anyone over - they are transient, they are common on a slow
+   * connection, and the map remains usable. Whether 'load' has fired separates
+   * the two cleanly: a style failure happens before it, a tile failure after.
+   *
+   * MapLibre's own error is always re-thrown to the console either way, so
+   * nothing needed for debugging is swallowed. */
+  let styleLoaded = false;
+  let noticeShown = false;
+
+  map.on('error', (event) => {
+    const detail = event && event.error ? event.error : event;
+    console.error('[basemap]', detail);
+    if (styleLoaded || noticeShown) return;
+    noticeShown = true;
+    const notice = document.getElementById('basemap-error');
+    if (!notice) return;
+    notice.textContent = 'The basemap could not be loaded, so the map is blank. '
+      + 'The district analysis below is unaffected — it reads only local data.';
+    notice.hidden = false;
+  });
+
   map.on('load', () => {
+    styleLoaded = true;
     tuneBasemap();
     addLayers();
     wireInteraction();
