@@ -8,6 +8,12 @@ import * as mapModule from './map.js';
 import { focusRanking, initRanking, syncRanking } from './ranking.js';
 import { buildDensityLegend, initUI, renderContext } from './ui.js';
 import { el, replace } from './dom.js';
+import { focusComposition, initComposition, updateCompositionState } from './composition.js';
+import { initScatter, updateScatterState } from './scatter.js';
+import { initParallel, updateComparisonUI, updateParallelState } from './parallel.js';
+import {
+  tooltipComposition, tooltipParallel, tooltipScatter,
+} from './chart-utils.js';
 
 /* Automated QA needs to wait for a genuinely rendered map and to drive the
  * hostile-text render probe. Neither belongs in the ordinary product, so the
@@ -85,6 +91,17 @@ function announce(state, index) {
     + `underserved ${p.underserved_pct.toFixed(1)} percent.`;
 }
 
+/* A comparison change is a real state change a screen-reader user has to hear;
+ * without this, pressing "Add Chilanzar" would be silent. */
+function announceComparison(state, index) {
+  const live = document.getElementById('live');
+  const names = state.comparisonDistricts
+    .map((d) => index.byName.get(d)?.properties.label ?? d);
+  live.textContent = names.length === 0
+    ? 'Comparison cleared.'
+    : `Comparing ${names.length} district${names.length === 1 ? '' : 's'}: ${names.join(', ')}.`;
+}
+
 /* ── go ───────────────────────────────────────────────────────────────── */
 (async function start() {
   let data;
@@ -101,6 +118,9 @@ function announce(state, index) {
   }
 
   document.getElementById('workspace').hidden = false;
+  // The deck is hidden until the data is in, for the same reason the workspace
+  // is: an empty analytical deck beneath a load error helps nobody.
+  document.getElementById('district-analysis').hidden = false;
   const index = indexDistricts(data.districts);
 
   initRanking(index.ranked, {
@@ -114,9 +134,28 @@ function announce(state, index) {
     },
   });
 
+  /* The three Week 6 views. Each writes hover and selection through the same
+   * store the map and the ranking use, so a district hovered in any one of the
+   * five is the same fact in all five rather than five copies. */
+  initComposition(index.ranked, {
+    onHover: (event, d) => showTip(tooltipComposition(d.properties), event),
+    onMove: moveTip,
+    onLeave: hideTip,
+  });
+  initScatter(index.ranked, {
+    onHover: (event, d) => showTip(tooltipScatter(d.properties), event),
+    onMove: moveTip,
+    onLeave: hideTip,
+  });
+  initParallel(index.ranked, {
+    onHover: (event, d) => showTip(tooltipParallel(d.properties), event),
+    onMove: moveTip,
+    onLeave: hideTip,
+  });
   initUI(data, index, {
     fitCity: () => mapModule.fitCity(),
     focusRanking,
+    focusComposition,
     flyToDistrict: (feature) => mapModule.flyToDistrict(feature),
     flyToStation: (station) => mapModule.flyToStation(station),
   });
@@ -131,7 +170,13 @@ function announce(state, index) {
   store.subscribe((state, changed) => {
     if (changed.includes('layers')) mapModule.applyLayerVisibility(state);
     mapModule.syncMap(state);
+    // All five views re-read the one state. These are state-only updates: no
+    // chart geometry is rebuilt for a hover or a selection.
     syncRanking(state);
+    updateCompositionState(state);
+    updateScatterState(state);
+    updateParallelState(state);
+
     // Either mode changing re-renders the one context slot and announces once.
     if (changed.includes('selectedDistrict') || changed.includes('selectedStation')) {
       renderContext(state);
@@ -140,6 +185,13 @@ function announce(state, index) {
         lastSelected = state.selectedDistrict;
         if (!state.selectedDistrict) mapModule.popupClose();
       }
+    }
+    // The comparison control and the sidebar action read the same set, so a
+    // change from either has to refresh both.
+    if (changed.includes('comparisonDistricts')) {
+      updateComparisonUI(state);
+      renderContext(state);
+      announceComparison(state, index);
     }
   });
 

@@ -154,7 +154,29 @@ function districtDetail(p) {
   ];
   const note = zeroAccessNote(p);
   if (note) nodes.push(el('p', { class: 'dd-note', text: note }));
+  nodes.push(comparisonAction(p));
   return nodes;
+}
+
+/* One comparison action, in the district panel the reader is already looking
+ * at. It drives the same store set the parallel chart's control does - there
+ * is one comparison set, not one per panel. */
+function comparisonAction(p) {
+  const pinned = store.isCompared(p.district_name);
+  const full = store.comparisonIsFull();
+  const button = el('button', {
+    type: 'button',
+    class: 'linkbtn dd-compare',
+    disabled: !pinned && full,
+    onclick: () => store.toggleComparison(p.district_name),
+  }, pinned ? 'Remove from comparison' : 'Add to comparison');
+  const hint = !pinned && full
+    ? el('span', {
+      class: 'dd-compare-hint',
+      text: `Maximum ${store.MAX_COMPARISON}`,
+    })
+    : null;
+  return el('div', { class: 'dd-compare-row' }, hint ? [button, hint] : [button]);
 }
 
 function zeroAccessNote(p) {
@@ -183,6 +205,14 @@ export function buildDensityLegend(stops) {
   document.getElementById('ramp-hi').textContent = `${fmt.people(stops.max)}+`;
 }
 
+/* Someone who asked their system for reduced motion gets the same destination
+ * without being scrolled across the page. */
+function motion() {
+  const reduced = window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return reduced ? 'auto' : 'smooth';
+}
+
 /* ── navigation ───────────────────────────────────────────────────────── */
 function wireNav() {
   for (const button of document.querySelectorAll('.navbtn')) {
@@ -196,13 +226,20 @@ function wireNav() {
         else other.removeAttribute('aria-current');
       }
       store.set({ view });
+      /* Navigation moves the reader; it does not throw away what they chose.
+       * Overview used to call clearSelection(), so switching sections silently
+       * deselected the district the reader was studying - a side effect of
+       * navigating, not something they asked for. Selection is released only
+       * through Clear, Escape, or re-clicking the same district. */
       if (view === 'overview') {
-        store.clearSelection();
-        if (hooks.fitCity) hooks.fitCity();
+        document.getElementById('workspace')
+          .scrollIntoView({ block: 'start', behavior: motion() });
       } else if (view === 'districts') {
-        const panel = document.getElementById('ranking-panel');
-        panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        if (hooks.focusRanking) hooks.focusRanking();
+        const deck = document.getElementById('district-analysis');
+        deck.scrollIntoView({ block: 'start', behavior: motion() });
+        // Focus the section itself rather than a chart control, so the reader
+        // lands on the heading and can Tab into whichever chart they want.
+        deck.focus({ preventScroll: true });
       }
     });
   }
@@ -263,11 +300,20 @@ function buildSearchIndex() {
   }
   for (const feature of data.stations.features) {
     const p = feature.properties;
-    const label = safeName(p.name_en, safeName(p.name, null));
+    /* The visible label is the CURRENT station name. Several name_en values
+     * carry a historical Soviet-era alias in parentheses - "Milliy Bog
+     * (Komsomolskaya)" - and showing that as the primary label puts a
+     * superseded name in front of the reader. The English form is still
+     * indexed below so either name finds the station. */
+    const label = safeName(p.name, safeName(p.name_en, null));
     if (!label) continue;
+    const alias = safeName(p.name_en, null);
     items.push({
       kind: 'station',
       label,
+      // Matched against, never displayed: a search for "Komsomolskaya" or
+      // "Chilanzar" still finds the station now labelled by its current name.
+      alias: alias && alias !== label ? alias : null,
       key: `station:${p.osm_id}`,
       district_name: safeName(p.district_name, null),
       lon: feature.geometry.coordinates[0],
@@ -380,7 +426,8 @@ function showResults(query) {
   if (query.length < 1) { hideResults(); return; }
   const needle = query.toLowerCase();
   const matches = searchItems
-    .filter((item) => item.label.toLowerCase().includes(needle))
+    .filter((item) => item.label.toLowerCase().includes(needle)
+      || (item.alias && item.alias.toLowerCase().includes(needle)))
     .slice(0, 12);
 
   if (!matches.length) {
