@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tashkent Transit &amp; Walkability</title>
+<meta name="description" content="Interactive spatial analysis of 10-minute walking access to the Tashkent metro, by district.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230b0f14'/%3E%3Ccircle cx='8' cy='8' r='3.2' fill='none' stroke='%2335c2d6' stroke-width='1.8'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a class="skip-link" href="#ranking-panel">Skip to the district ranking</a>
+
+<header class="topbar">
+  <div class="brand">
+    <h1>Tashkent Transit &amp; Walkability</h1>
+    <p class="brand-q">What share of the city lives within a 10-minute walk of the metro?</p>
+  </div>
+  <nav class="topnav" aria-label="Views">
+    <button type="button" class="navbtn is-current" data-view="overview" aria-current="page">Overview</button>
+    <button type="button" class="navbtn" data-view="districts">Districts</button>
+    <button type="button" class="navbtn" data-view="method" aria-haspopup="dialog">Method</button>
+  </nav>
+</header>
+
+<div id="load-error" class="load-error" role="alert" hidden>
+  <h2>The prototype could not load its data</h2>
+  <p id="load-error-detail"></p>
+  <p class="muted">
+    This page reads JSON with <code>fetch</code>, which browsers block on <code>file://</code>.
+    Serve it over HTTP: <code>python -m http.server 8000 -d site</code>
+  </p>
+</div>
+
+<main id="workspace" class="workspace" hidden>
+
+  <!-- ── map ─────────────────────────────────────────────────────────── -->
+  <section class="mapwrap" aria-labelledby="map-h">
+    <h2 id="map-h" class="visually-hidden">Map of modelled metro walking access in Tashkent</h2>
+    <div id="map" class="map"></div>
+
+    <div class="map-ui map-ui--tl">
+      <div class="search" role="search">
+        <svg class="search-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M10.5 10.5 L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <input id="search-input" type="text" autocomplete="off" spellcheck="false"
+               placeholder="Search district or metro station…"
+               aria-label="Search for a district or metro station"
+               aria-expanded="false" aria-controls="search-results" role="combobox"
+               aria-autocomplete="list">
+        <button type="button" id="search-clear" class="search-clear" aria-label="Clear search" hidden>×</button>
+        <ul id="search-results" class="search-results" role="listbox"
+            aria-label="Search results" hidden></ul>
+      </div>
+    </div>
+
+    <div class="map-ui map-ui--tr">
+      <div class="layers">
+        <button type="button" id="layers-toggle" class="mapbtn mapbtn--wide"
+                aria-expanded="false" aria-controls="layers-menu">
+          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" class="mapbtn-icon">
+            <path d="M8 1.6 14.4 5 8 8.4 1.6 5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+            <path d="M2.6 8 8 10.9 13.4 8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+            <path d="M2.6 11 8 13.9 13.4 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          </svg>
+          Layers
+        </button>
+        <div id="layers-menu" class="layers-menu" hidden>
+          <p class="layers-title">Map layers</p>
+          <label class="lyr"><input type="checkbox" data-layer="population" checked>
+            <span class="lyr-sw lyr-sw--pop" aria-hidden="true"></span>Population density</label>
+          <label class="lyr"><input type="checkbox" data-layer="access" checked>
+            <span class="lyr-sw lyr-sw--acc" aria-hidden="true"></span>10-min metro access</label>
+          <label class="lyr"><input type="checkbox" data-layer="metrolines" checked>
+            <span class="lyr-sw lyr-sw--line" aria-hidden="true"></span>Metro lines</label>
+          <label class="lyr"><input type="checkbox" data-layer="stations" checked>
+            <span class="lyr-sw lyr-sw--stn" aria-hidden="true"></span>Stations &amp; entrances</label>
+          <label class="lyr"><input type="checkbox" data-layer="bus">
+            <span class="lyr-sw lyr-sw--bus" aria-hidden="true"></span>Bus stops</label>
+          <label class="lyr"><input type="checkbox" data-layer="bazaars">
+            <span class="lyr-sw lyr-sw--baz" aria-hidden="true"></span>Bazaars</label>
+        </div>
+      </div>
+      <div class="zoomgroup">
+        <button type="button" id="zoom-in" class="mapbtn" aria-label="Zoom in">＋</button>
+        <button type="button" id="zoom-out" class="mapbtn" aria-label="Zoom out">−</button>
+        <button type="button" id="zoom-reset" class="mapbtn" aria-label="Reset the map to fit Tashkent">⤢</button>
+      </div>
+    </div>
+
+    <div class="map-ui map-ui--bl">
+      <div class="legend" id="legend">
+        <div class="legend-block">
+          <span class="legend-t">Access</span>
+          <span class="legend-i"><i class="sw sw-acc"></i>10-min metro walk</span>
+          <span class="legend-i"><i class="sw sw-stn"></i>Station<i class="sw sw-ent"></i>Entrance</span>
+        </div>
+        <div class="legend-block" id="legend-density">
+          <span class="legend-t">People / km²</span>
+          <div class="ramp" id="ramp"></div>
+          <div class="ramp-scale"><span id="ramp-lo">0</span><span id="ramp-hi"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── sidebar ─────────────────────────────────────────────────────── -->
+  <aside class="sidebar" aria-label="Analysis">
+
+    <section class="panel" id="context-panel" aria-labelledby="context-h" aria-live="polite">
+      <div class="panel-head">
+        <h2 id="context-h" class="panel-title">Tashkent at a glance</h2>
+        <button type="button" id="clear-selection" class="linkbtn" hidden>Clear</button>
+      </div>
+      <div id="context-body"></div>
+    </section>
+
+    <section class="panel panel--grow" id="ranking-panel" aria-labelledby="ranking-h" tabindex="-1">
+      <div class="panel-head">
+        <h2 id="ranking-h" class="panel-title">Metro access by district</h2>
+        <span class="panel-note">share within a 10-min walk</span>
+      </div>
+      <div id="ranking" class="ranking"></div>
+    </section>
+
+  </aside>
+</main>
+
+<!-- ── method dialog ─────────────────────────────────────────────────── -->
+<!-- A native <dialog> opened with showModal(): the browser puts it in the top
+     layer, makes the rest of the document inert, traps Tab inside it and
+     handles Escape, which a plain div with role="dialog" cannot do. -->
+<dialog id="method-dialog" class="dialog" aria-labelledby="method-h">
+  <div class="dialog-head">
+    <h2 id="method-h">Method &amp; limitations</h2>
+    <button type="button" id="method-close" class="iconbtn" aria-label="Close">×</button>
+  </div>
+  <!-- tabindex makes the scrollable region a deliberate, predictable tab stop
+       rather than one Chrome invents for scrollable content. -->
+  <div class="dialog-body" id="method-body" tabindex="0"
+       aria-label="Method and limitations, scrollable"></div>
+</dialog>
+
+<div id="tooltip" class="tip" role="tooltip" aria-hidden="true"></div>
+<p id="live" class="visually-hidden" aria-live="polite"></p>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script src="vendor/d3.v7.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

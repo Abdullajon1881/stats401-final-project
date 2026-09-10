@@ -1,0 +1,76 @@
+{
+  "layer": "Tashkent metro route lines",
+  "role": "display_only",
+  "purpose": "Draw the metro network on the map so its structure is legible. This layer is never measured: the audited Week 4 accessibility result is computed from metro entrances and station points, and is unaffected by these lines.",
+  "does_not_affect": [
+    "data/processed/city_access_summary.json",
+    "data/processed/district_access_metrics.csv",
+    "data/processed/metro_access_points.csv",
+    "data/processed/metro_stations.geojson",
+    "data/analysis_manifest.json"
+  ],
+  "source": "OpenStreetMap via the Overpass API",
+  "licence": "Open Database License (ODbL) v1.0",
+  "licence_url": "https://www.openstreetmap.org/copyright",
+  "acquired_at_utc": "2026-09-09T13:44:49+00:00",
+  "bbox_south_west_north_east": [
+    41.15,
+    69.1,
+    41.45,
+    69.55
+  ],
+  "query": "[out:json][timeout:300];\nrelation[\"route\"=\"subway\"](41.15,69.1,41.45,69.55);\nout geom;",
+  "relations_returned": 8,
+  "member_ways_with_geometry": 142,
+  "lines": [
+    {
+      "ref": "1",
+      "line_name": "Chilanzor Line",
+      "colour": "red",
+      "osm_relations": [
+        2254096,
+        2456703
+      ],
+      "way_count": 46,
+      "mapped_track_length_km": 45.98
+    },
+    {
+      "ref": "2",
+      "line_name": "Oʻzbekiston Line",
+      "colour": "blue",
+      "osm_relations": [
+        2255159,
+        2460690
+      ],
+      "way_count": 16,
+      "mapped_track_length_km": 30.459
+    },
+    {
+      "ref": "3",
+      "line_name": "Yunusobod Line",
+      "colour": "green",
+      "osm_relations": [
+        2458135,
+        2458136
+      ],
+      "way_count": 15,
+      "mapped_track_length_km": 21.178
+    },
+    {
+      "ref": "4",
+      "line_name": "Circle Line",
+      "colour": "#9933FF",
+      "osm_relations": [
+        11649095,
+        11649100
+      ],
+      "way_count": 30,
+      "mapped_track_length_km": 44.659
+    }
+  ],
+  "colour_rule": "A line's colour is used only when every one of its route relations carries the same OSM colour tag. Otherwise the colour is null and the map draws that line in a single neutral network colour rather than guessing.",
+  "geometry_rule": "The two directional relations of a line overlap only partly: some sections are mapped as one shared way, others as separate per-direction tracks. Ways are therefore deduplicated by OSM way id and then merged, and no geometry is synthesised. The consequence is that mapped_track_length_km is total mapped TRACK length, not route length - close to twice the route length wherever the two tracks are mapped separately. It is recorded for provenance only and is never presented in the interface as a line length.",
+  "outputs": [
+    "data/display/metro_lines_osm.geojson"
+  ]
+}

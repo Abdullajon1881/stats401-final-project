@@ -1,0 +1,6 @@
+# Generated web artifacts carry their own byte counts in site/data/manifest.json,
+# and scripts/validate_prototype.py checks each one against the file on disk. With
+# core.autocrlf enabled a checkout would rewrite their newlines and every count
+# would be off by one, so these paths are never line-ending converted.
+site/data/**   -text
+site/vendor/** -text
