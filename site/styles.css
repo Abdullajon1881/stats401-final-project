@@ -542,8 +542,9 @@ code {
   stroke: var(--surface); stroke-width: 3; stroke-linejoin: round;
   opacity: 0; pointer-events: none;
 }
-.sc-pt.is-hovered .sc-plabel, .sc-pt.is-selected .sc-plabel,
-.sc-pt.is-compared .sc-plabel { opacity: 1; }
+/* One class, set by updateScatterState for at most one point. Three separate
+   state selectors here let three points show a label at the same time. */
+.sc-pt.has-label .sc-plabel { opacity: 1; }
 .sc-hit { fill: transparent; cursor: pointer; }
 .sc-hit:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 

@@ -123,18 +123,29 @@ export function renderParallel() {
       .text(dim.unit);
   }
 
-  /* lines: every district as context, pinned ones emphasised in update */
-  const rows = plot.selectAll('g.pc-row')
+  /* Lines in one layer, focusable hit paths in another. Emphasis re-orders the
+   * lines so a pinned or hovered one is drawn over the quiet ones, and moving a
+   * node that contains the focused element would blur it and push it to the end
+   * of the tab order - which left exactly one of twelve lines reachable by
+   * keyboard. The hit layer never moves. */
+  const lineLayer = plot.append('g').attr('class', 'pc-lines').attr('aria-hidden', 'true');
+  const hitLayer = plot.append('g').attr('class', 'pc-hits');
+
+  const rows = lineLayer.selectAll('g.pc-row')
     .data(districts, (d) => d.properties.district_name)
     .join('g')
-    .attr('class', 'pc-row')
-    .attr('role', 'listitem');
+    .attr('class', 'pc-row');
 
   rows.append('path').attr('class', 'pc-line').attr('d', line);
 
   // A wide invisible stroke over the same path makes a 1px line clickable and
   // hoverable without thickening what is drawn.
-  rows.append('path')
+  hitLayer.selectAll('g.pc-item')
+    .data(districts, (d) => d.properties.district_name)
+    .join('g')
+    .attr('class', 'pc-item')
+    .attr('role', 'listitem')
+    .append('path')
     .attr('class', 'pc-hit')
     .attr('d', line)
     .attr('role', 'button')
@@ -180,10 +191,10 @@ export function updateParallelState(state) {
     // Colour is one of three cues on a pinned line; width and opacity carry it
     // too, in the stylesheet, so the encoding does not rest on colour alone.
     .style('stroke', (d) => comparisonColour(d.properties.district_name, state.comparisonDistricts));
-  rows.select('.pc-hit')
+  d3.select(host).selectAll('.pc-hit')
     .attr('aria-pressed', (d) => String(d.properties.district_name === state.selectedDistrict));
 
-  // Emphasised lines on top of the quiet ones.
+  // Only lines move; the hit layer stays put.
   rows.filter((d) => state.comparisonDistricts.includes(d.properties.district_name)).raise();
   rows.filter((d) => d.properties.district_name === state.hoveredDistrict
     || d.properties.district_name === state.selectedDistrict).raise();

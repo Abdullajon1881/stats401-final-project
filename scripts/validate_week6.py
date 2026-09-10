@@ -118,6 +118,18 @@ def validate_five_views() -> None:
         check(fn in body, f"{fn} runs on every state change")
 
 
+def strip_comments(src: str) -> str:
+    """Remove JS comments so a scan sees code, not prose about the code.
+
+    A district name inside an explanatory comment is documentation; the same
+    name inside a string or an expression would mean an ordering or a result
+    was written in rather than derived. Only the second is a defect, so the
+    scan has to be able to tell them apart.
+    """
+    src = re.sub(r"/\*.*?\*/", "", src, flags=re.S)
+    return re.sub(r"(?<![:\w])//[^\n]*", "", src)
+
+
 # ---------------------------------------------------------------------------
 # 3. what the charts actually read
 # ---------------------------------------------------------------------------
@@ -161,6 +173,58 @@ def validate_data_mappings() -> None:
     check(re.search(r"\.domain\(\[0,", scat) is not None,
           "scatter axes start at an honest zero")
     check("d3.median" in scat, "the median guides are computed, not assumed")
+
+    # ── at most one scatter text label ──────────────────────────────────
+    # Three independent CSS states each revealed a label, so three could be
+    # visible at once and districts plotting a few pixels apart drew their
+    # names through one another. The rule now lives in one place.
+    css = (SITE_DIR / "styles.css").read_text(encoding="utf-8")
+    reveals = re.findall(r"^([^{\n]*\.sc-plabel[^{\n]*)\{[^}]*opacity:\s*1", css, re.M)
+    selectors = [r.strip() for r in reveals]
+    check(len(selectors) == 1,
+          f"exactly one CSS rule reveals a scatter label ({selectors or 'none'})")
+    check(all("is-compared" not in sel for sel in selectors),
+          "comparison membership alone does not reveal a scatter label")
+    check(all("is-hovered" not in sel and "is-selected" not in sel for sel in selectors),
+          "hover and selection do not each reveal a label independently")
+
+    picker = re.search(r"function labelledDistrict\(state\)\s*\{(.+?)\n\}", scat, re.S)
+    picker_body = picker.group(1) if picker else ""
+    check("state.hoveredDistrict" in picker_body and "state.selectedDistrict" in picker_body,
+          "the labelled district is chosen from hover then selection")
+    check("comparisonDistricts" not in picker_body,
+          "the comparison set has no say in which label is shown")
+    check(bool(picker_body)
+          and picker_body.index("hoveredDistrict") < picker_body.index("selectedDistrict"),
+          "hover outranks selection for the visible label")
+    check("classed('has-label'" in scat, "one class marks the single labelled point")
+
+    # Comparison keeps its POINT styling; only the automatic text label went.
+    check("comparisonColour(" in scat, "pinned districts keep their comparison colour")
+    check(".sc-pt.is-compared .sc-dot" in css,
+          "pinned districts keep their comparison point treatment")
+
+    # ── re-ordering must not move a focusable element ───────────────────
+    # Emphasis is paint order, and paint order is DOM order. Re-appending a
+    # node that contains the focused element blurs it and sends it to the end
+    # of the tab order; with hit targets inside the mark groups that left one
+    # district of twelve reachable by keyboard.
+    for name, marks, hits in (("scatter.js", "sc-marks", "sc-hits"),
+                              ("parallel.js", "pc-lines", "pc-hits")):
+        src = js(name)
+        check(f"'class', '{marks}'" in src, f"{name} draws its marks in their own layer")
+        check(f"'class', '{hits}'" in src,
+              f"{name} keeps its focusable hit targets in a separate layer")
+        # Examine the whole statement each .raise() belongs to, not one call
+        # shape: a raise written through a fresh d3.select of the hit layer
+        # would re-order focusable nodes just as surely. Comments are stripped
+        # first so prose about hit targets cannot trip the check.
+        statements = [st for st in strip_comments(src).split(";") if ".raise()" in st]
+        offenders = [" ".join(st.split())[:80] for st in statements
+                     if re.search(r"hit|item", st, re.I)]
+        check(not offenders,
+              f"{name} raises no focusable element ({offenders or 'none'})")
+        check(len(statements) > 0, f"{name} still orders its marks by emphasis")
 
 
 # ---------------------------------------------------------------------------
@@ -317,18 +381,6 @@ DISTRICT_WORDS = (
     "Shaykhantakhur", "Uchtepa", "Yakkasaray", "Yangikhayot", "Yashnabad",
     "Yunusabad",
 )
-
-
-def strip_comments(src: str) -> str:
-    """Remove JS comments so a scan sees code, not prose about the code.
-
-    A district name inside an explanatory comment is documentation; the same
-    name inside a string or an expression would mean an ordering or a result
-    was written in rather than derived. Only the second is a defect, so the
-    scan has to be able to tell them apart.
-    """
-    src = re.sub(r"/\*.*?\*/", "", src, flags=re.S)
-    return re.sub(r"(?<![:\w])//[^\n]*", "", src)
 
 
 def audited_result_literals() -> set[str]:

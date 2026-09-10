@@ -125,13 +125,30 @@ export function renderScatter() {
    * footnote names the dashed lines and says what they are not, which is the
    * part that actually matters. */
 
-  /* points */
-  const points = plot.selectAll('g.sc-pt')
+  /* Two layers, and the split matters.
+   *
+   * Emphasis is expressed by paint order - the labelled point is drawn last so
+   * nothing covers its text - and paint order in SVG means DOM order, so
+   * emphasising a mark means moving its node. Moving a node that CONTAINS the
+   * focused element blurs it, and re-appending it at the end also puts it last
+   * in the tab order. With the hit targets inside the mark groups, focusing a
+   * point raised it, which blurred it and left the next Tab exiting the chart:
+   * one of twelve districts was reachable by keyboard.
+   *
+   * So the marks re-order freely in their own layer, and the focusable hit
+   * targets sit in a second layer that is never touched. Tab order stays in
+   * data order, focus survives every state change, and the visual result is
+   * unchanged. */
+  const markLayer = plot.append('g').attr('class', 'sc-marks').attr('aria-hidden', 'true');
+  const hitLayer = plot.append('g').attr('class', 'sc-hits');
+
+  const at = (d) => `translate(${x(xValue(d.properties))},${y(yValue(d.properties))})`;
+
+  const points = markLayer.selectAll('g.sc-pt')
     .data(districts, (d) => d.properties.district_name)
     .join('g')
     .attr('class', 'sc-pt')
-    .attr('role', 'listitem')
-    .attr('transform', (d) => `translate(${x(xValue(d.properties))},${y(yValue(d.properties))})`);
+    .attr('transform', at);
 
   points.append('circle').attr('class', 'sc-halo').attr('r', R_SELECTED + 3);
   points.append('circle').attr('class', 'sc-dot').attr('r', R);
@@ -139,42 +156,69 @@ export function renderScatter() {
   // Labels are hidden by default and revealed on hover, selection or focus.
   // Twelve permanent labels at this size collide; a physics simulation to
   // avoid that would be motion for decoration's sake.
-  /* Labels appear only on hover, selection or focus, so at most a few are on
-   * screen at once - but each still has to stay inside the plot and off its
-   * neighbours. The side is chosen from the point's position: a label near the
-   * right edge anchors right rather than overhanging the panel, and one near
-   * the top drops below its point instead of sitting on the district above. */
-  const LABEL_EDGE = 46;
+  /* Label placement.
+   *
+   * Only one label is ever visible, but it still has to avoid the marks around
+   * it: Mirabad and Chilanzar plot about seven pixels apart, so a label centred
+   * above either one lands on the other's dot and selection ring.
+   *
+   * Each point therefore picks its side once, at render, from where its
+   * neighbours actually are. Four candidate placements are tried in a fixed
+   * order and the first one clear of every other point wins; if none is clear,
+   * the one furthest from the nearest neighbour wins. Deterministic, driven by
+   * the data, and it names no district: the same input always produces the same
+   * placement, and there is no simulation and no random offset.
+   */
+  const CLEAR_PX = 15;      // a label centre this close to another point reads as touching
+  const OUT = R_SELECTED + 6;
+  const placed = new Map();
+  const coords = districts.map((d) => ({
+    name: d.properties.district_name,
+    px: x(xValue(d.properties)),
+    py: y(yValue(d.properties)),
+  }));
+
+  for (const point of coords) {
+    const candidates = [
+      { dx: 0, dy: -OUT, anchor: 'middle', cx: 0, cy: -OUT },
+      { dx: 0, dy: OUT + 7, anchor: 'middle', cx: 0, cy: OUT + 7 },
+      { dx: OUT, dy: 4, anchor: 'start', cx: OUT + 18, cy: 4 },
+      { dx: -OUT, dy: 4, anchor: 'end', cx: -(OUT + 18), cy: 4 },
+    ].filter((c) => {
+      // Never let a label leave the plot area.
+      const left = point.px + c.cx - (c.anchor === 'start' ? 0 : 30);
+      const right = point.px + c.cx + (c.anchor === 'end' ? 0 : 30);
+      const top = point.py + c.cy - 6;
+      const bottom = point.py + c.cy + 6;
+      return left > -2 && right < innerW + 2 && top > -2 && bottom < innerH + 2;
+    });
+
+    const others = coords.filter((o) => o.name !== point.name);
+    const nearest = (c) => others.reduce((min, o) => Math.min(
+      min, Math.hypot(point.px + c.cx - o.px, point.py + c.cy - o.py),
+    ), Infinity);
+
+    const usable = candidates.length ? candidates
+      : [{ dx: 0, dy: -OUT, anchor: 'middle', cx: 0, cy: -OUT }];
+    const clear = usable.find((c) => nearest(c) > CLEAR_PX);
+    placed.set(point.name, clear
+      || usable.reduce((best, c) => (nearest(c) > nearest(best) ? c : best), usable[0]));
+  }
+
   points.append('text')
     .attr('class', 'sc-plabel')
-    .attr('x', (d) => {
-      const px = x(xValue(d.properties));
-      if (px > innerW - LABEL_EDGE) return -(R_SELECTED + 4);
-      if (px < LABEL_EDGE) return R_SELECTED + 4;
-      return 0;
-    })
-    .attr('y', (d) => {
-      const px = x(xValue(d.properties));
-      const py = y(yValue(d.properties));
-      const below = R_SELECTED + 13;
-      const above = -(R_SELECTED + 6);
-      // A side-anchored label dropped just below its point clears any
-      // neighbour sitting at the same height; near the plot floor it goes
-      // above instead so it stays inside the axes.
-      if (px > innerW - LABEL_EDGE || px < LABEL_EDGE) {
-        return py > innerH - below ? above : below;
-      }
-      return py < R_SELECTED + 14 ? below : above;
-    })
-    .attr('text-anchor', (d) => {
-      const px = x(xValue(d.properties));
-      if (px > innerW - LABEL_EDGE) return 'end';
-      if (px < LABEL_EDGE) return 'start';
-      return 'middle';
-    })
+    .attr('x', (d) => placed.get(d.properties.district_name).dx)
+    .attr('y', (d) => placed.get(d.properties.district_name).dy)
+    .attr('text-anchor', (d) => placed.get(d.properties.district_name).anchor)
     .text((d) => d.properties.label);
 
-  points.append('circle')
+  hitLayer.selectAll('g.sc-item')
+    .data(districts, (d) => d.properties.district_name)
+    .join('g')
+    .attr('class', 'sc-item')
+    .attr('role', 'listitem')
+    .attr('transform', at)
+    .append('circle')
     .attr('class', 'sc-hit')
     .attr('r', 13)
     .attr('role', 'button')
@@ -205,25 +249,47 @@ export function renderScatter() {
   updateScatterState(store.get());
 }
 
+/* Which district, if any, owns the visible text label.
+ *
+ * Exactly one, or none. Hover outranks selection, so a transient hover takes
+ * the label while the selected district keeps its ring and its place in the
+ * store; letting go gives the label straight back. Comparison membership does
+ * NOT earn a label: a pinned district is already identified by its colour, its
+ * point styling and its chip in the profile panel, and a fourth cue costs more
+ * in clutter than it returns.
+ *
+ * This used to be three independent CSS states - is-hovered, is-selected,
+ * is-compared - each of which revealed a label. Three could be true on three
+ * different points at once, and districts that plot close together then drew
+ * their names through one another. Deciding here means the invariant is a
+ * property of the code rather than of whichever combination happens to arise.
+ */
+function labelledDistrict(state) {
+  return state.hoveredDistrict || state.selectedDistrict || null;
+}
+
 export function updateScatterState(state) {
   if (!host) return;
   const points = d3.select(host).selectAll('g.sc-pt');
+  const labelled = labelledDistrict(state);
   points
     .classed('is-selected', (d) => d.properties.district_name === state.selectedDistrict)
     .classed('is-hovered', (d) => d.properties.district_name === state.hoveredDistrict
       && d.properties.district_name !== state.selectedDistrict)
-    .classed('is-compared', (d) => state.comparisonDistricts.includes(d.properties.district_name));
+    .classed('is-compared', (d) => state.comparisonDistricts.includes(d.properties.district_name))
+    .classed('has-label', (d) => d.properties.district_name === labelled);
   points.select('.sc-dot')
     .attr('r', (d) => (d.properties.district_name === state.selectedDistrict ? R_SELECTED : R))
     // A pinned district carries its comparison colour here too, so the chips in
     // the profile panel and the points in this chart name the same districts.
     .style('fill', (d) => comparisonColour(d.properties.district_name, state.comparisonDistricts));
-  points.select('.sc-hit')
+  d3.select(host).selectAll('.sc-hit')
     .attr('aria-pressed', (d) => String(d.properties.district_name === state.selectedDistrict));
 
-  // Bring the emphasised point to the front so its label is never covered.
-  points.filter((d) => d.properties.district_name === state.selectedDistrict
-    || d.properties.district_name === state.hoveredDistrict).raise();
+  // Only marks move. The hit targets are in a separate layer and stay put, so
+  // this cannot disturb keyboard focus or the tab order.
+  points.filter((d) => d.properties.district_name === state.selectedDistrict).raise();
+  points.filter((d) => d.properties.district_name === labelled).raise();
 }
 
 export function focusScatter() {
