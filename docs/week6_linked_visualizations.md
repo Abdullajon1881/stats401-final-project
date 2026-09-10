@@ -82,12 +82,32 @@ this particular set falls. The quadrants they create are deliberately
 **unlabelled**: naming them ("priority", "underserved quadrant") would assert a
 judgement the analysis does not support. The panel footnote says so explicitly.
 
-**Labels.** Hidden by default; shown on hover, selection, keyboard focus, or
-comparison membership. Twelve permanent labels collide at this size, and a
-force simulation to avoid that would be motion for decoration's sake. Each
-visible label picks its side from the point's position, so a label near the
-right edge anchors right rather than overhanging the panel, and one near the top
-drops below its point rather than sitting on the district above.
+**Labels.** At most one text label is visible at a time. Hover — including
+keyboard focus, which sets the same hovered district — takes first priority; the
+selected district takes second; otherwise no label is shown. Comparison
+membership does not reveal a text label on its own: a pinned district is already
+identified by its comparison colour, its point treatment and its chip in the
+profile panel.
+
+So when another district is hovered, the selected district keeps its ring and
+its enlarged point and stays selected in the store, while the hovered district
+temporarily owns the visible text; on pointer leave the selected district's
+label returns. Twelve permanent labels collide at this size, and a force
+simulation to avoid that would be motion for decoration's sake.
+
+Placement is deterministic and driven by the data rather than by any district's
+identity. Each point chooses its side once, at render, from where its neighbours
+actually are: four candidate placements are tried in a fixed order and the first
+one clear of every other point wins, otherwise the one furthest from the nearest
+neighbour. Mirabad and Chilanzar plot about seven pixels apart, so a label
+centred above either one would otherwise land on the other's dot and ring.
+
+The focusable hit targets live in their own layer, separate from the visual
+marks. Emphasis is expressed by paint order, and paint order in SVG is DOM
+order, so emphasising a mark means moving its node — which would blur a focused
+element inside it and send it to the end of the tab order. Keeping the two
+apart means all twelve scatter controls stay reachable by keyboard while the
+marks re-order freely.
 
 ## 5. Compare district profiles — `site/js/parallel.js`
 
