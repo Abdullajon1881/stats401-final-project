@@ -93,8 +93,9 @@ function stationDetail(station) {
 
   nodes.push(el('p', {
     class: 'dd-hint',
-    text: 'Stations are shown for orientation. The reported shares are measured '
-      + 'from metro entrances along the pedestrian network, not from station points.',
+    text: 'Stations are shown for orientation. The reported shares are measured along '
+      + 'the pedestrian network to metro access points — mapped entrances, or a '
+      + 'station-point fallback where no entrance is mapped.',
   }));
   return nodes;
 }
@@ -130,7 +131,42 @@ function cityOverview() {
       text: `${fmt.people(c.analysis_population)} analysed residents · ${c.reference_period}`
         + ` · ${c.walking_speed_kmh} km/h · ${c.walking_time_minutes} min`,
     }),
+    keyFinding(),
   ];
+}
+
+/* The answer to the question the project asks, in two sentences, in the place a
+ * reader looks first.
+ *
+ * Both sentences are built from the loaded data - the share from the city
+ * summary, the district and its figure from the districts sorted by bus-only
+ * share at runtime - so neither can go stale or disagree with the charts below.
+ *
+ * The wording is deliberately careful. It is an ESTIMATE from a MODEL over the
+ * ANALYSED population, not a measurement of where people live, and a high
+ * bus-only share is a modelled access result rather than a statement about
+ * service quality or about a district being neglected. */
+function keyFinding() {
+  const c = data.city;
+  const ranked = index.ranked.slice().sort(
+    (a, b) => b.properties.bus_only_pct - a.properties.bus_only_pct
+      || a.properties.district_name.localeCompare(b.properties.district_name),
+  );
+  const top = ranked[0].properties;
+
+  return el('section', { class: 'keyfind', 'aria-labelledby': 'keyfind-h' }, [
+    el('h3', { id: 'keyfind-h', class: 'keyfind-h', text: 'Key finding' }),
+    el('p', {
+      class: 'keyfind-p',
+      text: `An estimated ${fmt.pct(c.metro_access_pct)} of the analysed population is`
+        + ` within a modelled ${c.walking_time_minutes}-minute walk of metro access.`,
+    }),
+    el('p', {
+      class: 'keyfind-p',
+      text: `${top.label} has the highest modelled bus-only share, at`
+        + ` ${fmt.pct(top.bus_only_pct)}.`,
+    }),
+  ]);
 }
 
 function districtDetail(p) {
@@ -569,6 +605,75 @@ export function methodIsOpen() {
   return document.getElementById('method-dialog').open === true;
 }
 
+/* Sensitivity, read from site/data/sensitivity.json.
+ *
+ * That file is copied by the build from the audited Week 4 sensitivity outputs;
+ * nothing here recomputes anything, and no figure in this section is written
+ * into the source. A reader should be able to see how much the headline moves
+ * without opening the repository. */
+function sensitivitySection() {
+  const s = data.sensitivity;
+  if (!s || !s.walking_speed || !Array.isArray(s.walking_speed.rows)) {
+    return [el('p', { text: 'Sensitivity results are unavailable in this build.' })];
+  }
+
+  const headline = s.walking_speed.headline_speed_kmh;
+  const head = (text) => el('th', { scope: 'col', text });
+
+  const rows = s.walking_speed.rows.map((row) => {
+    const isHeadline = Math.abs(row.speed_kmh - headline) < 1e-9;
+    return el('tr', isHeadline ? { class: 'is-headline' } : {}, [
+      el('th', { scope: 'row' }, [
+        // toFixed keeps the column aligned: 4.0, not 4, beside 4.8 and 5.6.
+        `${row.speed_kmh.toFixed(1)} km/h`,
+        // Named in text, not only by the row's weight: a border alone is not
+        // information anyone using a screen reader can act on.
+        isHeadline ? el('span', { class: 'sens-tag', text: 'headline assumption' }) : null,
+      ]),
+      el('td', { text: fmt.pct(row.metro_access_pct) }),
+      el('td', { text: fmt.pct(row.combined_pct) }),
+      el('td', { text: fmt.pct(row.underserved_pct) }),
+    ]);
+  });
+
+  const surface = s.population_surface;
+  // The two surfaces are identified by the keys the audited file uses, so the
+  // sentence follows the data rather than repeating years written by hand.
+  const years = Object.keys(surface)
+    .map((k) => (k.match(/_using_(\d{4})_surface$/) || [])[1])
+    .filter(Boolean)
+    .sort()
+    .reverse();
+  const drift = Math.abs(surface.percentage_point_difference);
+  // Two decimals only when the difference is smaller than a tenth of a point,
+  // so the sentence never reads "0.0 percentage points".
+  const driftText = drift < 0.1 ? drift.toFixed(2) : drift.toFixed(1);
+
+  return [
+    el('p', {
+      text: 'The headline is sensitive to the walking-speed assumption: across the tested'
+        + ' 4.0–5.6 km/h range the modelled metro share moves by several percentage points.'
+        + ' These are the audited results at three speeds, each with the distance budget'
+        + ' that follows from it over the same ten minutes.',
+    }),
+    el('table', { class: 'sens' }, [
+      el('caption', { class: 'visually-hidden',
+        text: 'Modelled access at three walking speeds' }),
+      el('thead', {}, el('tr', {}, [
+        head('Walking speed'), head('Metro'), head('Metro + bus'), head('Underserved'),
+      ])),
+      el('tbody', {}, rows),
+    ]),
+    el('p', {
+      text: `Changing the within-district population surface from ${years.join(' to ')}`
+        + ` moves the city metro estimate by about ${driftText} percentage points`
+        + ' once both surfaces are calibrated to the same official district totals.'
+        + ' That means the result is insensitive to this particular substitution.'
+        + ' It does not show that the population surface is accurate.',
+    }),
+  ];
+}
+
 function buildMethodBody() {
   const c = data.city;
   const body = document.getElementById('method-body');
@@ -625,11 +730,15 @@ function buildMethodBody() {
       }),
       el('li', { text: 'Bus stops come from OpenStreetMap alone, with no official operator list.' }),
       el('li', {
-        text: 'Ten of the fifty stations have no mapped entrance and fall back to the station'
-          + ' point, which slightly flatters those stations.',
+        text: 'Ten of the fifty stations have no mapped entrance and therefore use the'
+          + ' station point as a fallback, introducing additional positional uncertainty'
+          + ' for those stations.',
       }),
       el('li', { text: c.estimate_note }),
     ]),
+
+    el('h3', { text: 'How much the headline depends on its assumptions' }),
+    ...sensitivitySection(),
 
     el('h3', { text: 'Provenance' }),
     el('p', {

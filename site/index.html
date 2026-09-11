@@ -26,7 +26,7 @@
 </header>
 
 <div id="load-error" class="load-error" role="alert" hidden>
-  <h2>The prototype could not load its data</h2>
+  <h2>This page could not load its data</h2>
   <p id="load-error-detail"></p>
   <p class="muted">
     This page reads JSON with <code>fetch</code>, which browsers block on <code>file://</code>.
@@ -38,6 +38,14 @@
 
   <!-- ── map ─────────────────────────────────────────────────────────── -->
   <section class="mapwrap" aria-labelledby="map-h">
+
+    <!-- Shown only while the remote basemap is in trouble: provisionally
+         while a pre-style error is still open, persistently if the style
+         itself cannot load, and cleared as soon as the map loads. Everything
+         analytical on this page is local, so the note says what still works
+         rather than implying the whole page is broken. -->
+    <p id="basemap-error" class="basemap-error" role="status" hidden></p>
+
     <h2 id="map-h" class="visually-hidden">Map of modelled metro walking access in Tashkent</h2>
     <div id="map" class="map"></div>
 
@@ -130,7 +138,7 @@
   </aside>
 </main>
 
-<!-- ── Week 6: coordinated district analysis deck ─────────────────────── -->
+<!-- ── coordinated district analysis deck ──────────────────────────────── -->
 <!-- Three more views over the same twelve districts and the same selection
      state as the map and the ranking above. Not three separate charts: hover
      or click a district in any one of the five and all five respond. -->

@@ -70,6 +70,7 @@ WEB_FILES = {
     "population_density": "population_density.geojson",
     "metro_lines": "metro_lines.geojson",
     "analysis_mask": "analysis_mask.geojson",
+    "sensitivity": "sensitivity.json",
     "manifest": "manifest.json",
 }
 
@@ -231,6 +232,8 @@ def load_inputs() -> dict:
         "population_cells": cfg.POPULATION_CELLS_CACHE,
         "metro_lines_snapshot": require(METRO_LINES_SNAPSHOT),
         "metro_lines_provenance": require(METRO_LINES_PROVENANCE),
+        "walk_speed_sensitivity": require(cfg.WALK_SPEED_SENSITIVITY_FILE),
+        "population_surface_sensitivity": require(cfg.POPULATION_SURFACE_SENSITIVITY_FILE),
     }
     if not paths["population_cells"].exists():
         raise FileNotFoundError(
@@ -524,6 +527,83 @@ def build_point_layer(path: Path, out_name: str, label: str, fields: dict) -> tu
 
 
 # ---------------------------------------------------------------------------
+# sensitivity (analytical, copied not recomputed)
+# ---------------------------------------------------------------------------
+def build_sensitivity(paths: dict) -> tuple[int, dict]:
+    """Copy the audited sensitivity results through to the web, unchanged.
+
+    The site should not make a reader open the repository to find out how much
+    the headline depends on its assumptions. Both of these were computed and
+    audited in Week 4; nothing is recomputed here. The city rows are selected,
+    the columns the interface needs are carried across, and the values are
+    written at full precision so the presentation layer decides the rounding.
+    """
+    step("STEP 6b  Sensitivity (ANALYTICAL, copied from audited outputs)")
+
+    speed = pd.read_csv(paths["walk_speed_sensitivity"])
+    city_speed = speed[speed.scope == "city"].sort_values("speed_kmh")
+    if len(city_speed) == 0:
+        raise ValueError("walking_speed_sensitivity.csv carries no city-scope rows")
+
+    rows = [
+        {
+            "speed_kmh": _clean(row.speed_kmh),
+            "budget_m": _clean(row.budget_m),
+            "metro_access_pct": _clean(row.metro_access_pct),
+            "combined_pct": _clean(row.combined_pct),
+            "underserved_pct": _clean(row.underserved_pct),
+            "metro_access_population": _clean(row.metro_access_population),
+        }
+        for row in city_speed.itertuples()
+    ]
+
+    surface = pd.read_csv(paths["population_surface_sensitivity"])
+    city_surface = surface[surface.scope == "city"]
+    if len(city_surface) != 1:
+        raise ValueError(
+            f"population_surface_sensitivity.csv should carry exactly one city row, "
+            f"found {len(city_surface)}"
+        )
+    srow = city_surface.iloc[0]
+
+    payload = {
+        "role": "analytical",
+        "note": (
+            "Copied from the audited Week 4 sensitivity outputs. Nothing here is "
+            "recomputed by the build or by the site."
+        ),
+        "walking_speed": {
+            "headline_speed_kmh": _clean(cfg.MAIN_WALK_SPEED_KMH),
+            "source": str(paths["walk_speed_sensitivity"].relative_to(cfg.REPO_ROOT))
+                .replace("\\", "/"),
+            "rows": rows,
+        },
+        "population_surface": {
+            "source": str(paths["population_surface_sensitivity"].relative_to(cfg.REPO_ROOT))
+                .replace("\\", "/"),
+            "metro_access_pct_using_2020_surface":
+                _clean(srow.metro_access_pct_using_2020_surface),
+            "metro_access_pct_using_2026_surface":
+                _clean(srow.metro_access_pct_using_2026_surface),
+            "percentage_point_difference": _clean(srow.percentage_point_difference),
+            "interpretation": (
+                "The result is insensitive to this particular temporal-surface "
+                "substitution once both surfaces are calibrated to the same official "
+                "district totals. It does not validate the population surface."
+            ),
+        },
+    }
+
+    size = write_json(WEB_DATA_DIR / WEB_FILES["sensitivity"], payload)
+    for row in rows:
+        log(f"    {row['speed_kmh']:.1f} km/h  metro {row['metro_access_pct']:.6f}%  "
+            f"combined {row['combined_pct']:.6f}%  "
+            f"underserved {row['underserved_pct']:.6f}%")
+    log(f"    population surface: {payload['population_surface']['percentage_point_difference']:+.6f} pp")
+    return size, payload
+
+
+# ---------------------------------------------------------------------------
 # population density (display only)
 # ---------------------------------------------------------------------------
 def build_population_density(paths: dict, districts: gpd.GeoDataFrame) -> tuple[int, int, dict]:
@@ -644,10 +724,11 @@ def main() -> int:
 
     counts["population_density"], sizes["population_density"], density_stats = \
         build_population_density(paths, districts)
+    sizes["sensitivity"], sensitivity = build_sensitivity(paths)
 
     step("STEP 8  Web data manifest")
     manifest = {
-        "milestone": "Week 5 - interim interactive prototype",
+        "project_stage": "final integrated visualization",
         "generated_by": "scripts/build_web_data.py",
         "deterministic": (
             "No timestamp is recorded. Ordering, rounding and precision are fixed, so "
@@ -745,6 +826,13 @@ def main() -> int:
                 "note": ("visual context only; every reported access share comes from the "
                          "Week 4 per-cell network-distance classification, never from "
                          "these bins"),
+            },
+            "sensitivity": {
+                "file": WEB_FILES["sensitivity"], "role": "analytical",
+                "features": None, "bytes": sizes["sensitivity"],
+                "source": "data/processed/walking_speed_sensitivity.csv + "
+                          "data/processed/population_surface_sensitivity.csv",
+                "note": "audited sensitivity results copied through; not recomputed",
             },
         },
         "not_recomputed": [

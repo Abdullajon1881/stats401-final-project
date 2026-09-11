@@ -133,6 +133,23 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
 .mapwrap { position: relative; min-width: 0; min-height: 0; background: #0a0d12; }
 .map { position: absolute; inset: 0; }
 
+/* A quiet strip below the search row. The bottom of the map area is taken by
+   the legend, the scale bar and the attribution, and a notice there covered the
+   legend; the band under the search is clear, and the right inset keeps it off
+   the zoom stack. */
+.basemap-error {
+  position: absolute; z-index: 6;
+  /* Measured against the real control boxes: the search row ends 44px down,
+     and the zoom stack occupies the rightmost 86px. 52/98 clears both. */
+  left: 12px; right: 98px; top: 52px;
+  margin: 0; padding: 8px 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--bus);
+  border-radius: var(--r);
+  color: var(--text-2); font-size: 11.5px; line-height: 1.4;
+}
+
 /* ── map overlay UI ───────────────────────────────────────────────────── */
 .map-ui { position: absolute; z-index: 5; display: flex; gap: 8px; }
 .map-ui--tl { top: 12px; left: 12px; right: 168px; }
@@ -446,6 +463,51 @@ code {
 .dd-compare-row { margin-top: 10px; display: flex; align-items: center; gap: 8px; }
 .dd-compare:disabled { color: var(--text-3); cursor: default; text-decoration: none; }
 .dd-compare-hint { font-size: 10.5px; color: var(--text-3); }
+
+/* ── key finding ──────────────────────────────────────────────────────── */
+/* The answer to the project's question, in the city slot. Same surface system
+   as every other panel: a rule and a tint, not a floating card. */
+.keyfind {
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.keyfind-h {
+  font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--text-3); font-weight: 600; margin-bottom: 5px;
+}
+.keyfind-p { margin: 0 0 4px; font-size: 12px; color: var(--text-2); }
+.keyfind-p:last-child { margin-bottom: 0; }
+.keyfind-p:first-of-type { color: var(--text); }
+
+/* ── sensitivity table, inside the method dialog ──────────────────────── */
+.sens {
+  width: 100%; border-collapse: collapse; margin: 8px 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+.sens caption { text-align: left; }
+.sens th, .sens td {
+  text-align: right; padding: 5px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.sens thead th {
+  font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-3); font-weight: 600;
+  border-bottom-color: var(--line-2);
+}
+.sens tbody th { text-align: left; font-weight: 500; color: var(--text-2); }
+.sens tbody td { color: var(--text-2); }
+/* The headline row is marked by weight and a rule, not a colour block - and it
+   also says so in words, because a border is not something a screen reader can
+   report. */
+.sens tr.is-headline th, .sens tr.is-headline td {
+  color: var(--text); font-weight: 700;
+  border-bottom: 1px solid var(--line-2);
+}
+.sens-tag {
+  display: block; font-size: 9.5px; font-weight: 400; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--metro);
+}
 
 /* ── Week 6: district analysis deck ───────────────────────────────────── */
 /* Surfaces on the same ground, separated by the same 1px lines as the sidebar
