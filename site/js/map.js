@@ -15,6 +15,21 @@ import * as store from './state.js';
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
 
+/* What the reader is told about the basemap, by state. 'provisional' is
+ * neutral on purpose: it is shown while the outcome is still open and is
+ * withdrawn as soon as the map loads. 'unavailable' is reserved for a style
+ * that genuinely cannot initialise. */
+const BASEMAP_NOTICE = {
+  none: '',
+  provisional: 'The basemap is having trouble loading.',
+  unavailable: 'The basemap is unavailable, so the map cannot be drawn. '
+    + 'The district analysis below is unaffected — it reads only local data.',
+};
+/* How long an open outcome is given before a notice is settled: a style that
+ * has still not arrived becomes 'unavailable'; a live style whose resources
+ * keep failing becomes 'provisional'. */
+const BASEMAP_GRACE_MS = 3000;
+
 /* Tashkent only. Beyond these the city is off screen and the map is useless. */
 const MIN_ZOOM = 8.5;
 const MAX_ZOOM = 17.5;
@@ -43,6 +58,7 @@ let data = null;
 let bounds = null;
 let popup = null;
 let onReady = null;
+let basemapNotice = 'none';
 
 export function getMap() { return map; }
 
@@ -78,36 +94,82 @@ export function initMap(loaded, ready, qaMode = false) {
   });
 
   /* The analytical data on this page is local; the basemap is the one thing
-   * that depends on a remote provider. If its style cannot be fetched, the
-   * 'load' event never fires, no layers are ever added, and the reader is left
-   * with an unexplained black rectangle while the district analysis below
-   * works perfectly. So: say what happened, once, and point at what still
-   * works.
+   * that depends on a remote provider. MapLibre reports every problem through
+   * the same 'error' event, so the handler has to tell three cases apart:
    *
-   * Individual tile failures are a different matter and are not worth
-   * interrupting anyone over - they are transient, they are common on a slow
-   * connection, and the map remains usable. Whether 'load' has fired separates
-   * the two cleanly: a style failure happens before it, a tile failure after.
+   *   - The style document itself could not be fetched. MapLibre reports that
+   *     as an AJAXError naming the style URL, whether the network refused the
+   *     request or the server answered with an error. 'style.load' never
+   *     fires, no layer is ever added, and the reader is left with an
+   *     unexplained black rectangle while the district analysis below works
+   *     perfectly. That is the one case that earns a persistent notice.
+   *   - A resource inside a live style failed: a tile, a source's TileJSON, a
+   *     sprite or a glyph range. MapLibre attaches `sourceId` to anything a
+   *     source reports and `tile` to tile failures, and anything reported
+   *     after 'style.load' is by definition inside a live style. These are
+   *     transient and common on a slow connection, and the map keeps drawing
+   *     everything else, so they raise nothing on their own. Only if the map
+   *     still has not finished loading after the grace period does a neutral
+   *     provisional notice appear - which 'load' withdraws.
+   *   - Anything else before the style settled, such as a style document that
+   *     arrived but failed validation. Not proof of a dead style, so the
+   *     notice is provisional, and it only hardens into 'unavailable' if
+   *     'style.load' still has not fired after the grace period.
+   *
+   * 'style.load' is the style-specific readiness signal: MapLibre fires it
+   * synchronously once the style document has been parsed and its sources and
+   * layers created, before any sprite, glyph or tile request completes. A
+   * successful 'load' resets the notice unconditionally, so a transient error
+   * can never leave a stale failure message on a working map.
    *
    * MapLibre's own error is always re-thrown to the console either way, so
    * nothing needed for debugging is swallowed. */
   let styleLoaded = false;
-  let noticeShown = false;
+  let mapLoaded = false;
+  let graceTimer = null;
+
+  const cancelGrace = () => {
+    if (graceTimer === null) return;
+    window.clearTimeout(graceTimer);
+    graceTimer = null;
+  };
+  const settleGrace = () => {
+    graceTimer = null;
+    if (mapLoaded) return;
+    setBasemapNotice(styleLoaded ? 'provisional' : 'unavailable');
+  };
+  const startGrace = () => {
+    if (graceTimer === null) graceTimer = window.setTimeout(settleGrace, BASEMAP_GRACE_MS);
+  };
 
   map.on('error', (event) => {
     const detail = event && event.error ? event.error : event;
     console.error('[basemap]', detail);
-    if (styleLoaded || noticeShown) return;
-    noticeShown = true;
-    const notice = document.getElementById('basemap-error');
-    if (!notice) return;
-    notice.textContent = 'The basemap could not be loaded, so the map is blank. '
-      + 'The district analysis below is unaffected — it reads only local data.';
-    notice.hidden = false;
+    if (mapLoaded || basemapNotice === 'unavailable') return;
+    if (styleLoaded || isResourceError(event)) {
+      startGrace();
+      return;
+    }
+    if (isStyleDocumentError(detail)) {
+      cancelGrace();
+      setBasemapNotice('unavailable');
+      return;
+    }
+    setBasemapNotice('provisional');
+    startGrace();
+  });
+
+  map.on('style.load', () => {
+    styleLoaded = true;
+    cancelGrace();
+    setBasemapNotice('none');
   });
 
   map.on('load', () => {
     styleLoaded = true;
+    mapLoaded = true;
+    cancelGrace();
+    setBasemapNotice('none');
     tuneBasemap();
     addLayers();
     wireInteraction();
@@ -124,6 +186,27 @@ export function initMap(loaded, ready, qaMode = false) {
   });
 
   return map;
+}
+
+/* A source-scoped error names its source; a tile error carries the tile. Either
+ * way the style is alive and the map keeps working. */
+function isResourceError(event) {
+  return Boolean(event && (event.sourceId || event.tile));
+}
+
+/* MapLibre's AJAXError records the URL of the request that failed, whether
+ * the network refused it or the server answered with an error. When that URL
+ * is the style document itself, the failure is definitive. */
+function isStyleDocumentError(error) {
+  return Boolean(error && typeof error.url === 'string' && error.url === STYLE_URL);
+}
+
+function setBasemapNotice(state) {
+  basemapNotice = state;
+  const notice = document.getElementById('basemap-error');
+  if (!notice) return;
+  notice.textContent = BASEMAP_NOTICE[state];
+  notice.hidden = state === 'none';
 }
 
 function mapPadding() {

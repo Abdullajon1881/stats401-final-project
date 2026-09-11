@@ -16,8 +16,8 @@ Before starting: `python -m http.server 8000 -d site`, open
 ## 1. The question
 
 **Say:** Tashkent has a metro, and it has buses. The question is how much of the
-city can actually reach the metro on foot, and which districts are left
-depending on buses instead.
+analysed population is estimated to be within a ten-minute network walk of metro
+access, and which districts have the highest modelled bus-only shares.
 
 **Show:** The page at rest — the map of the city with the access area on it.
 
@@ -33,8 +33,12 @@ That answer is wrong, and it is worth seeing why."
 **Say:** A circle assumes you can walk straight through whatever is in the way —
 railway lines, canals, walled blocks, motorways. People walk on streets and
 paths. Two points the same distance from a station can be a very different walk
-apart. This project measures distance **along the pedestrian network** instead,
-from each population cell's own position on the footway.
+apart. This project measures distance **along the pedestrian network** instead.
+For each population cell, the model connects the cell centre to the nearest
+mapped walkable edge, then measures shortest-path distance along the pedestrian
+network from that snapped edge position. That first connector is a straight
+line and may not itself be a physically walkable path — it is one of the stated
+limitations.
 
 **Show:** Zoom to street level near a station. Point at the access area's shape:
 it follows streets, and it stops where the network stops.
@@ -67,8 +71,9 @@ official number.
 **Say:** Yangi Toshkent has an OSM boundary but no published SIAT population row,
 so there is no official total to calibrate against. Rather than invent a
 denominator, it is excluded and the exclusion is recorded. Within the twelve
-that remain, each cell is routed along the network to the nearest metro
-entrance and the nearest bus stop, at 4.8 km/h for ten minutes.
+that remain, each cell is routed along the network to the nearest metro access
+point — a mapped entrance, or a station-point fallback where no entrance is
+mapped — and to the nearest bus stop, at 4.8 km/h for ten minutes.
 
 **Show:** Method dialog, "Known limits". Mention the ten stations with no mapped
 entrance that fall back to the station point.
@@ -98,14 +103,18 @@ measurement of where people live or how they travel.
 
 ## 6. Map walkthrough
 
-**Say:** The teal area is everything within the ten-minute network walk. The
-white dots are stations, the small cyan dots are individual entrances. The
-darker grid underneath is where people are.
+**Say:** The teal shading is the display representation of the modelled
+ten-minute metro service area. The reported population shares themselves come
+from per-cell pedestrian-network distances, not polygon intersection. Its
+irregular shape still shows how the walking network, not a circle, decides who
+is within reach. The white dots are stations, the small cyan dots are the metro
+access points — mapped entrances, drawn hollow where a station falls back to
+its own point. The darker grid underneath is where people are.
 
 **Show:** Start at city zoom. Point out how the access area is a ribbon along the
 lines rather than a blanket. Zoom to a district. Then zoom to street level so
-the entrances and the street grid resolve. Toggle **Bus stops** on to show how
-much wider the bus network's reach is.
+the access points and the street grid resolve. Toggle **Bus stops** on to show
+how much wider the bus network's reach is.
 
 **Number:** at most one — the combined metro-or-bus figure, 85.6%.
 
@@ -171,10 +180,12 @@ more. Point at the chips and the coloured lines.
 
 ## 10. Sensitivity
 
-**Say:** Walking speed is the assumption the headline is most exposed to. At
-4.0 km/h the metro share falls to 10.0%; at 5.6 km/h it rises to 17.3%. The
-direction of the finding does not change, but the number moves by several
-percentage points, so quote it as an estimate.
+**Say:** The headline is sensitive to the walking-speed assumption. Across the
+tested 4.0–5.6 km/h range the modelled metro share moves by several percentage
+points: at 4.0 km/h it falls to 10.0%; at 5.6 km/h it rises to 17.3%. The
+direction of the finding does not change, so quote it as an estimate. Only
+walking speed and the population surface were tested, so do not rank walking
+speed against assumptions that were not.
 
 Then the population surface: swapping the within-district WorldPop surface from
 2026 to 2020 moves the city estimate by about 0.01 percentage points. That means

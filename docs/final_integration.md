@@ -88,8 +88,13 @@ build or by the site.
 | **4.8 km/h** (headline) | **13.6%** | **85.6%** | **14.4%** |
 | 5.6 km/h | 17.3% | 89.3% | 10.7% |
 
-Walking speed is the assumption the headline is most exposed to: a ±0.8 km/h
-change moves the metro share by roughly ±3.5 percentage points.
+The headline is sensitive to the walking-speed assumption: across the tested
+4.0–5.6 km/h range, the modelled metro share moves by several percentage points
+(a 0.8 km/h change in either direction moves it by roughly 3.6–3.7 points).
+Only the walking speed and the population surface were sensitivity-tested; no
+claim is made about how the headline ranks against untested assumptions such as
+OSM network completeness, connector validity, entrance completeness or fallback
+positioning.
 
 Changing the within-district population surface from 2026 to 2020 moves the city
 metro estimate by about **0.01 percentage points** once both surfaces are
@@ -127,8 +132,9 @@ silently dropped.
 - The link from a population cell to the network is a straight line to the
   nearest mapped walkable edge. It may not be physically walkable; its effect on
   any individual cell is uncertain and in an unknown direction.
-- Ten of the fifty stations have no mapped entrance and fall back to the station
-  point, which slightly flatters those stations.
+- Ten of the fifty stations have no mapped entrance and therefore use the
+  station point as a fallback, introducing additional positional uncertainty
+  for those stations.
 - Bus stops come from OpenStreetMap alone, with no official operator list.
   Coverage varies by district and is not a measure of service provision — the
   parallel chart's mapped bus-stop and bazaar axes are labelled MAPPED for this

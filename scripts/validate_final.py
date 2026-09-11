@@ -457,6 +457,148 @@ def validate_frozen() -> None:
           f"analysis population = 3,212,200 (found {city.get('analysis_population')!r})")
 
 
+# ---------------------------------------------------------------------------
+# 9. the final-audit corrections stay corrected
+# ---------------------------------------------------------------------------
+STALE_STAGE_WORDS = ("week 5", "week 6", "week 7", "interim", "prototype", "pending audit")
+
+
+def validate_web_manifest_stage() -> None:
+    """The generated web manifest must describe a finished product, not a
+    milestone, and the generator must agree with it so a rebuild cannot
+    reintroduce the stale label."""
+    section("9a. Web manifest stage metadata")
+    manifest = load_json(WEB_DATA_DIR / "manifest.json")
+
+    check("milestone" not in manifest, "manifest carries no 'milestone' key")
+    stage = manifest.get("project_stage")
+    check(stage == "final integrated visualization",
+          f"manifest project_stage is the final stage (found {stage!r})")
+
+    # Top-level scalar metadata is what identifies the product; layer notes
+    # legitimately cite the audited Week 4 run as provenance and are not scanned.
+    scalars = {k: v for k, v in manifest.items() if isinstance(v, str)}
+    for key, value in scalars.items():
+        stale = [w for w in STALE_STAGE_WORDS if w in value.lower()]
+        check(not stale, f"manifest.{key}: no milestone/prototype language ({stale or 'none'})")
+
+    builder = (cfg.REPO_ROOT / "scripts" / "build_web_data.py").read_text(encoding="utf-8")
+    check('"project_stage": "final integrated visualization"' in builder,
+          "build_web_data.py emits the same final stage metadata")
+    check(re.search(r'"milestone"\s*:', builder) is None,
+          "build_web_data.py no longer emits a milestone key")
+
+
+def final_docs() -> dict[str, str]:
+    """The two final documents with their hard wrapping collapsed, so a phrase
+    is found whether or not a line break falls inside it."""
+    out = {}
+    for doc in ("final_integration.md", "final_presentation_rehearsal.md"):
+        path = DOCS_DIR / doc
+        text = path.read_text(encoding="utf-8") if path.exists() else ""
+        out[doc] = re.sub(r"\s+", " ", text)
+    return out
+
+
+def validate_evidence_limited_claims() -> None:
+    """Sensitivity and fallback wording may claim only what was tested."""
+    section("9b. Evidence-limited claims")
+    texts = {**product_copy(), **final_docs()}
+
+    for name, src in texts.items():
+        low = src.lower()
+        check("most exposed" not in low and "exposed to" not in low,
+              f"{name}: walking speed is not ranked as the most influential assumption")
+        # A direction for the station-point fallback was never demonstrated.
+        directional = re.search(r"(flatter|overstat|understat)\w*", low)
+        check(directional is None,
+              f"{name}: no directional claim about station fallbacks "
+              f"({directional.group(0) if directional else 'none'})")
+
+    ui = strip_comments(js("ui.js"))
+    sens = re.search(r"function sensitivitySection\(\)\s*\{(.+?)\n\}", ui, re.S)
+    body = sens.group(1) if sens else ""
+    check("sensitive to the walking-speed assumption" in body and "tested" in body,
+          "the site's sensitivity wording is scoped to the tested range")
+    check("positional uncertainty" in ui,
+          "the site describes the station fallback as positional uncertainty")
+    integration = texts["final_integration.md"]
+    check("positional uncertainty" in integration,
+          "final_integration.md describes the station fallback as positional uncertainty")
+    check("tested" in integration and "4.0\u20135.6 km/h" in integration,
+          "final_integration.md scopes the walking-speed sensitivity to the tested range")
+
+
+def validate_rehearsal_method() -> None:
+    """The rehearsal notes must describe the routing model that was run."""
+    section("9c. Rehearsal method precision")
+    text = final_docs()["final_presentation_rehearsal.md"]
+    low = text.lower()
+
+    check("on the footway" not in low,
+          "the rehearsal does not start a cell on the footway")
+    check("cell centre" in low and "nearest mapped walkable edge" in low and "snapped" in low,
+          "the rehearsal explains cell centre -> nearest walkable edge -> snapped position")
+    check("straight" in low and "walkable" in low,
+          "the rehearsal keeps the straight-connector limitation")
+
+    check("nearest metro entrance" not in low,
+          "the rehearsal does not route every cell to an entrance")
+    check("metro access point" in low and "fallback" in low,
+          "the rehearsal distinguishes metro access points from mapped entrances")
+
+    check(re.search(r"teal (area|shading) is everything", low) is None,
+          "the rehearsal does not call the display isochrone everything within access")
+    check("display representation" in low and "not polygon intersection" in low,
+          "the rehearsal separates the display isochrone from the per-cell shares")
+
+    check("actually reach" not in low,
+          "the opening question is not phrased as observed behaviour")
+    check("estimated" in low and "analysed population" in low,
+          "the opening question is phrased as a modelled estimate")
+
+
+def validate_basemap_recovery() -> None:
+    """A transient MapLibre error must never leave a stale fatal notice."""
+    section("9d. Basemap failure classification")
+    src = strip_comments(js("map.js"))
+
+    check("map is blank" not in src, "map.js never declares the map blank")
+    error = re.search(r"map\.on\('error',\s*\(event\)\s*=>\s*\{(.+?)\n  \}\);", src, re.S)
+    body = error.group(1) if error else ""
+    check(bool(error), "map.js handles the MapLibre error event")
+    check("console.error" in body, "MapLibre errors still reach the console")
+    check("isResourceError(event)" in body,
+          "resource-scoped errors are separated from style failure")
+    check(re.search(r"function isResourceError[^}]*sourceId[^}]*tile", src, re.S) is not None,
+          "resource errors are recognised by sourceId or tile")
+    check("setBasemapNotice('provisional')" in body,
+          "a pre-style error raises a provisional notice, not a fatal one")
+    check("isStyleDocumentError(detail)" in body and "STYLE_URL" in src,
+          "only a failed style document is treated as definitive")
+    check(re.search(r"styleLoaded \? 'provisional' : 'unavailable'", src) is not None,
+          "an error inside a live style can settle only as provisional, never unavailable")
+    check(re.search(r"if \(mapLoaded[^\n]*\) return;", body) is not None,
+          "errors after a successful load are ignored for notice purposes")
+
+    for event in ("style.load", "load"):
+        handler = re.search(
+            rf"map\.on\('{event}',\s*\(\)\s*=>\s*\{{(.+?)\n  \}}\);", src, re.S)
+        hbody = handler.group(1) if handler else ""
+        check("setBasemapNotice('none')" in hbody,
+              f"the '{event}' handler clears any basemap notice")
+
+    notice = re.search(r"const BASEMAP_NOTICE\s*=\s*\{(.+?)\};", src, re.S)
+    nbody = notice.group(1) if notice else ""
+    check("having trouble loading" in nbody, "the provisional wording is neutral")
+    check("unavailable" in nbody and "district analysis" in nbody.lower(),
+          "the persistent wording says what still works")
+    setter = re.search(r"function setBasemapNotice\(state\)\s*\{(.+?)\n\}", src, re.S)
+    sbody = setter.group(1) if setter else ""
+    check("hidden = state === 'none'" in sbody,
+          "the notice element is hidden again when the state clears")
+
+
 def main() -> int:
     print("=" * 74)
     print("Final integration validation")
@@ -470,6 +612,10 @@ def main() -> int:
     validate_hardening()
     validate_publishable()
     validate_frozen()
+    validate_web_manifest_stage()
+    validate_evidence_limited_claims()
+    validate_rehearsal_method()
+    validate_basemap_recovery()
 
     print()
     print("-" * 74)

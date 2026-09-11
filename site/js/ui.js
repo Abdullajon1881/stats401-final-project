@@ -93,8 +93,9 @@ function stationDetail(station) {
 
   nodes.push(el('p', {
     class: 'dd-hint',
-    text: 'Stations are shown for orientation. The reported shares are measured '
-      + 'from metro entrances along the pedestrian network, not from station points.',
+    text: 'Stations are shown for orientation. The reported shares are measured along '
+      + 'the pedestrian network to metro access points — mapped entrances, or a '
+      + 'station-point fallback where no entrance is mapped.',
   }));
   return nodes;
 }
@@ -650,9 +651,10 @@ function sensitivitySection() {
 
   return [
     el('p', {
-      text: 'Walking speed is the assumption the headline is most exposed to. These are the'
-        + ' audited results at three speeds, each with the distance budget that follows from'
-        + ' it over the same ten minutes.',
+      text: 'The headline is sensitive to the walking-speed assumption: across the tested'
+        + ' 4.0–5.6 km/h range the modelled metro share moves by several percentage points.'
+        + ' These are the audited results at three speeds, each with the distance budget'
+        + ' that follows from it over the same ten minutes.',
     }),
     el('table', { class: 'sens' }, [
       el('caption', { class: 'visually-hidden',
@@ -728,8 +730,9 @@ function buildMethodBody() {
       }),
       el('li', { text: 'Bus stops come from OpenStreetMap alone, with no official operator list.' }),
       el('li', {
-        text: 'Ten of the fifty stations have no mapped entrance and fall back to the station'
-          + ' point, which slightly flatters those stations.',
+        text: 'Ten of the fifty stations have no mapped entrance and therefore use the'
+          + ' station point as a fallback, introducing additional positional uncertainty'
+          + ' for those stations.',
       }),
       el('li', { text: c.estimate_note }),
     ]),

@@ -728,7 +728,7 @@ def main() -> int:
 
     step("STEP 8  Web data manifest")
     manifest = {
-        "milestone": "Week 5 - interim interactive prototype",
+        "project_stage": "final integrated visualization",
         "generated_by": "scripts/build_web_data.py",
         "deterministic": (
             "No timestamp is recorded. Ordering, rounding and precision are fixed, so "
