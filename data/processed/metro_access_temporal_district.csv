@@ -1,0 +1,145 @@
+district_id,district_name,year,metro_state_id,open_station_count,population_modelled_available,population_growth_pct_from_2015,metro_access_population_standardized,metro_access_pct_standardized,metro_access_pct_change_from_2015_pp,population_model_status,population_projection_flag,geography_version
+1726262,Uchtepa district,2015,metro_state_29,29,183756.820057,0.0,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726262,Uchtepa district,2016,metro_state_29,29,186989.5577,1.759248,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726262,Uchtepa district,2017,metro_state_29,29,190210.045192,3.511829,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726262,Uchtepa district,2018,metro_state_29,29,193435.315488,5.267013,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726262,Uchtepa district,2019,metro_state_29,29,196893.3505,7.148867,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726262,Uchtepa district,2020,metro_state_43,43,200563.514534,9.146161,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726262,Uchtepa district,2021,metro_state_43,43,204388.820705,11.227883,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726262,Uchtepa district,2022,metro_state_43,43,208488.90194,13.459137,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726262,Uchtepa district,2023,metro_state_48,48,212771.630017,15.789787,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726262,Uchtepa district,2024,metro_state_50,50,217089.809878,18.139729,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726262,Uchtepa district,2025,metro_state_50,50,221326.699389,20.445434,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726262,Uchtepa district,2026,metro_state_50,50,225428.017351,22.677361,0.0,0.0,0.0,modelled_estimate,True,current_12_district_analysis_geometry
+1726264,Bektemir district,2015,metro_state_29,29,199724.834773,0.0,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726264,Bektemir district,2016,metro_state_29,29,203250.115498,1.765069,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726264,Bektemir district,2017,metro_state_29,29,206760.250416,3.522554,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726264,Bektemir district,2018,metro_state_29,29,210275.065169,5.282383,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726264,Bektemir district,2019,metro_state_29,29,214042.144638,7.168518,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726264,Bektemir district,2020,metro_state_43,43,218038.111783,9.169254,9670.366378,4.435172502,4.435172502,modelled_estimate,False,current_12_district_analysis_geometry
+1726264,Bektemir district,2021,metro_state_43,43,222201.175194,11.253653,9853.714531,4.434591546,4.434591546,modelled_estimate,False,current_12_district_analysis_geometry
+1726264,Bektemir district,2022,metro_state_43,43,226664.046881,13.488163,10047.737675,4.43287668,4.43287668,modelled_estimate,False,current_12_district_analysis_geometry
+1726264,Bektemir district,2023,metro_state_48,48,231324.891574,15.821796,10248.962689,4.430549008,4.430549008,modelled_estimate,False,current_12_district_analysis_geometry
+1726264,Bektemir district,2024,metro_state_50,50,236022.709226,18.173941,10451.289447,4.428086383,4.428086383,modelled_estimate,False,current_12_district_analysis_geometry
+1726264,Bektemir district,2025,metro_state_50,50,240632.154247,20.481839,10648.442735,4.425195281,4.425195281,modelled_estimate,False,current_12_district_analysis_geometry
+1726264,Bektemir district,2026,metro_state_50,50,245092.483186,22.715076,10841.942604,4.42361286,4.42361286,modelled_estimate,True,current_12_district_analysis_geometry
+1726266,Yunusabad district,2015,metro_state_29,29,192964.672578,0.0,24896.783479,12.902249488,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726266,Yunusabad district,2016,metro_state_29,29,196359.425122,1.759261,25324.175059,12.896847219,-0.005402268,modelled_estimate,False,current_12_district_analysis_geometry
+1726266,Yunusabad district,2017,metro_state_29,29,199741.400156,3.511901,25755.715521,12.894530378,-0.007719109,modelled_estimate,False,current_12_district_analysis_geometry
+1726266,Yunusabad district,2018,metro_state_29,29,203128.427299,5.267158,26198.330974,12.897422248,-0.00482724,modelled_estimate,False,current_12_district_analysis_geometry
+1726266,Yunusabad district,2019,metro_state_29,29,206759.923159,7.149107,26664.799324,12.896502822,-0.005746666,modelled_estimate,False,current_12_district_analysis_geometry
+1726266,Yunusabad district,2020,metro_state_43,43,210614.172645,9.146493,37371.988286,17.744289388,4.8420399,modelled_estimate,False,current_12_district_analysis_geometry
+1726266,Yunusabad district,2021,metro_state_43,43,214631.266639,11.22827,38095.918213,17.749472763,4.847223275,modelled_estimate,False,current_12_district_analysis_geometry
+1726266,Yunusabad district,2022,metro_state_43,43,218936.876051,13.459564,38867.098113,17.752650359,4.850400872,modelled_estimate,False,current_12_district_analysis_geometry
+1726266,Yunusabad district,2023,metro_state_48,48,223434.296012,15.79026,39672.095659,17.755598119,4.853348631,modelled_estimate,False,current_12_district_analysis_geometry
+1726266,Yunusabad district,2024,metro_state_50,50,227968.94713,18.14025,40485.510446,17.759221576,4.856972089,modelled_estimate,False,current_12_district_analysis_geometry
+1726266,Yunusabad district,2025,metro_state_50,50,232418.264223,20.446018,41283.709849,17.762678844,4.860429356,modelled_estimate,False,current_12_district_analysis_geometry
+1726266,Yunusabad district,2026,metro_state_50,50,236725.192997,22.677996,42059.99608,17.767435543,4.865186055,modelled_estimate,True,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2015,metro_state_29,29,113847.693115,0.0,8135.195855,7.145683529,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2016,metro_state_29,29,115850.50557,1.759203,8277.842994,7.145279991,-0.000403538,modelled_estimate,False,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2017,metro_state_29,29,117845.720966,3.511734,8423.792742,7.148153257,0.002469729,modelled_estimate,False,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2018,metro_state_29,29,119843.969458,5.266928,8572.692931,7.153211772,0.007528243,modelled_estimate,False,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2019,metro_state_29,29,121986.331511,7.148707,8728.666658,7.155446475,0.009762946,modelled_estimate,False,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2020,metro_state_43,43,124260.126621,9.145933,8895.459053,7.15873973,0.013056201,modelled_estimate,False,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2021,metro_state_43,43,126630.059706,11.227603,9071.06811,7.163439811,0.017756282,modelled_estimate,False,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2022,metro_state_43,43,129170.201712,13.458778,9261.181031,7.169750382,0.024066853,modelled_estimate,False,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2023,metro_state_48,48,131823.526638,15.78937,9460.164831,7.176385788,0.030702259,modelled_estimate,False,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2024,metro_state_50,50,134498.828864,18.139266,9659.843748,7.182102498,0.036418969,modelled_estimate,False,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2025,metro_state_50,50,137123.73626,20.444897,9854.702743,7.186722745,0.041039216,modelled_estimate,False,current_12_district_analysis_geometry
+1726269,Mirzo Ulugbek district,2026,metro_state_50,50,139664.694152,22.676789,10044.581829,7.19192627,0.046242741,modelled_estimate,True,current_12_district_analysis_geometry
+1726273,Mirabad district,2015,metro_state_29,29,204234.348455,0.0,31959.250605,15.64832304,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726273,Mirabad district,2016,metro_state_29,29,207827.532406,1.759344,32488.155925,15.632267558,-0.016055482,modelled_estimate,False,current_12_district_analysis_geometry
+1726273,Mirabad district,2017,metro_state_29,29,211406.932315,3.511938,33009.697253,15.614292725,-0.034030315,modelled_estimate,False,current_12_district_analysis_geometry
+1726273,Mirabad district,2018,metro_state_29,29,214991.825281,5.267222,33533.539834,15.597588322,-0.050734718,modelled_estimate,False,current_12_district_analysis_geometry
+1726273,Mirabad district,2019,metro_state_29,29,218835.428274,7.149179,34084.609837,15.575453255,-0.072869785,modelled_estimate,False,current_12_district_analysis_geometry
+1726273,Mirabad district,2020,metro_state_43,43,222914.901618,9.146627,35705.597903,16.017591307,0.369268267,modelled_estimate,False,current_12_district_analysis_geometry
+1726273,Mirabad district,2021,metro_state_43,43,227166.483938,11.228344,36351.563513,16.00216849,0.35384545,modelled_estimate,False,current_12_district_analysis_geometry
+1726273,Mirabad district,2022,metro_state_43,43,231723.614135,13.459668,37042.524018,15.985649178,0.337326138,modelled_estimate,False,current_12_district_analysis_geometry
+1726273,Mirabad district,2023,metro_state_48,48,236483.638911,15.790336,46239.84814,19.553085513,3.904762473,modelled_estimate,False,current_12_district_analysis_geometry
+1726273,Mirabad district,2024,metro_state_50,50,241283.119322,18.140323,47147.748282,19.540425544,3.892102504,modelled_estimate,False,current_12_district_analysis_geometry
+1726273,Mirabad district,2025,metro_state_50,50,245992.292022,20.446092,48040.073184,19.529096944,3.880773904,modelled_estimate,False,current_12_district_analysis_geometry
+1726273,Mirabad district,2026,metro_state_50,50,250550.651605,22.678018,48905.492577,19.519203907,3.870880867,modelled_estimate,True,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2015,metro_state_29,29,195073.786964,0.0,28865.575044,14.797259792,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2016,metro_state_29,29,198505.448329,1.759161,29357.015107,14.789022344,-0.008237449,modelled_estimate,False,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2017,metro_state_29,29,201924.08527,3.511645,29849.663887,14.782616867,-0.014642926,modelled_estimate,False,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2018,metro_state_29,29,205347.835959,5.26675,30342.005489,14.775907108,-0.021352685,modelled_estimate,False,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2019,metro_state_29,29,209018.745499,7.148556,30864.895467,14.766568134,-0.030691658,modelled_estimate,False,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2020,metro_state_43,43,212914.919728,9.145838,31413.941665,14.754222816,-0.043036977,modelled_estimate,False,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2021,metro_state_43,43,216975.467754,11.227383,32003.33183,14.74974667,-0.047513122,modelled_estimate,False,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2022,metro_state_43,43,221327.824119,13.458516,32630.600371,14.743108103,-0.05415169,modelled_estimate,False,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2023,metro_state_48,48,225874.027211,15.789021,33296.560393,14.741208099,-0.056051693,modelled_estimate,False,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2024,metro_state_50,50,230457.991268,18.138882,33965.024153,14.738054413,-0.059205379,modelled_estimate,False,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2025,metro_state_50,50,234955.603575,20.444478,34608.177223,14.729666667,-0.067593125,modelled_estimate,False,current_12_district_analysis_geometry
+1726277,Shaykhantakhur district,2026,metro_state_50,50,239309.416266,22.676357,35232.934229,14.722752986,-0.074506806,modelled_estimate,True,current_12_district_analysis_geometry
+1726280,Almazar district,2015,metro_state_29,29,181481.580384,0.0,8759.981596,4.826926004,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726280,Almazar district,2016,metro_state_29,29,184674.408348,1.759312,8914.723508,4.827265233,0.000339229,modelled_estimate,False,current_12_district_analysis_geometry
+1726280,Almazar district,2017,metro_state_29,29,187855.257554,3.512024,9073.766656,4.830190421,0.003264417,modelled_estimate,False,current_12_district_analysis_geometry
+1726280,Almazar district,2018,metro_state_29,29,191040.933814,5.267396,9231.817934,4.832376889,0.005450885,modelled_estimate,False,current_12_district_analysis_geometry
+1726280,Almazar district,2019,metro_state_29,29,194456.328496,7.149347,9401.34169,4.83468024,0.007754236,modelled_estimate,False,current_12_district_analysis_geometry
+1726280,Almazar district,2020,metro_state_43,43,198081.22925,9.14674,9581.415729,4.837114433,0.010188429,modelled_estimate,False,current_12_district_analysis_geometry
+1726280,Almazar district,2021,metro_state_43,43,201859.511572,11.22865,9769.532242,4.839768097,0.012842093,modelled_estimate,False,current_12_district_analysis_geometry
+1726280,Almazar district,2022,metro_state_43,43,205908.973673,13.459985,9973.678797,4.843731975,0.016805971,modelled_estimate,False,current_12_district_analysis_geometry
+1726280,Almazar district,2023,metro_state_48,48,210138.871013,15.790743,10183.188685,4.845932899,0.019006895,modelled_estimate,False,current_12_district_analysis_geometry
+1726280,Almazar district,2024,metro_state_50,50,214403.820227,18.140816,10396.634912,4.849090329,0.022164325,modelled_estimate,False,current_12_district_analysis_geometry
+1726280,Almazar district,2025,metro_state_50,50,218588.553069,20.446688,10606.062338,4.852066675,0.025140671,modelled_estimate,False,current_12_district_analysis_geometry
+1726280,Almazar district,2026,metro_state_50,50,222639.413805,22.678794,10809.503276,4.855161578,0.028235574,modelled_estimate,True,current_12_district_analysis_geometry
+1726283,Sergeli district,2015,metro_state_29,29,47223.127135,0.0,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726283,Sergeli district,2016,metro_state_29,29,48053.948621,1.759353,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726283,Sergeli district,2017,metro_state_29,29,48881.683369,3.512169,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726283,Sergeli district,2018,metro_state_29,29,49710.584225,5.267455,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726283,Sergeli district,2019,metro_state_29,29,50599.354634,7.149521,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726283,Sergeli district,2020,metro_state_43,43,51542.622126,9.146991,2406.006881,4.667994723,4.667994723,modelled_estimate,False,current_12_district_analysis_geometry
+1726283,Sergeli district,2021,metro_state_43,43,52525.80828,11.228992,2451.300551,4.666849747,4.666849747,modelled_estimate,False,current_12_district_analysis_geometry
+1726283,Sergeli district,2022,metro_state_43,43,53579.512288,13.460322,2500.732192,4.667329144,4.667329144,modelled_estimate,False,current_12_district_analysis_geometry
+1726283,Sergeli district,2023,metro_state_48,48,54680.224311,15.791197,6222.601248,11.37998486,11.37998486,modelled_estimate,False,current_12_district_analysis_geometry
+1726283,Sergeli district,2024,metro_state_50,50,55790.046113,18.141363,7202.91312,12.910749537,12.910749537,modelled_estimate,False,current_12_district_analysis_geometry
+1726283,Sergeli district,2025,metro_state_50,50,56878.976511,20.447289,7340.749661,12.905910252,12.905910252,modelled_estimate,False,current_12_district_analysis_geometry
+1726283,Sergeli district,2026,metro_state_50,50,57933.111058,22.679531,7474.920642,12.902674318,12.902674318,modelled_estimate,True,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2015,metro_state_29,29,229091.200849,0.0,14819.308639,6.468737596,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2016,metro_state_29,29,233121.57376,1.759288,15043.613983,6.453119606,-0.01561799,modelled_estimate,False,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2017,metro_state_29,29,237136.797185,3.511962,15268.616838,6.438737901,-0.029999695,modelled_estimate,False,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2018,metro_state_29,29,241158.059153,5.267273,15493.959248,6.424815037,-0.043922559,modelled_estimate,False,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2019,metro_state_29,29,245469.417687,7.149213,15729.034738,6.407737015,-0.061000581,modelled_estimate,False,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2020,metro_state_43,43,250045.243148,9.146594,15980.178127,6.39091467,-0.077822926,modelled_estimate,False,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2021,metro_state_43,43,254814.486376,11.228404,16244.915208,6.375192965,-0.093544632,modelled_estimate,False,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2022,metro_state_43,43,259926.285723,13.459742,16523.102307,6.356841618,-0.111895978,modelled_estimate,False,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2023,metro_state_48,48,265265.774555,15.790468,16821.382777,6.341331747,-0.127405849,modelled_estimate,False,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2024,metro_state_50,50,270649.541162,18.140522,17120.337161,6.325647953,-0.143089643,modelled_estimate,False,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2025,metro_state_50,50,275931.972637,20.446343,17406.334389,6.308197714,-0.160539883,modelled_estimate,False,current_12_district_analysis_geometry
+1726287,Yakkasaray district,2026,metro_state_50,50,281045.423419,22.678402,17687.326359,6.293404868,-0.175332728,modelled_estimate,True,current_12_district_analysis_geometry
+1726290,Yashnabad district,2015,metro_state_29,29,146876.96969,0.0,4330.604781,2.948457331,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726290,Yashnabad district,2016,metro_state_29,29,149459.161806,1.758065,4406.946067,2.948595465,0.000138134,modelled_estimate,False,current_12_district_analysis_geometry
+1726290,Yashnabad district,2017,metro_state_29,29,152031.668135,3.509535,4480.786672,2.947271925,-0.001185406,modelled_estimate,False,current_12_district_analysis_geometry
+1726290,Yashnabad district,2018,metro_state_29,29,154607.977456,5.263594,4556.167474,2.946916161,-0.00154117,modelled_estimate,False,current_12_district_analysis_geometry
+1726290,Yashnabad district,2019,metro_state_29,29,157369.888748,7.144019,4639.783832,2.948330121,-0.00012721,modelled_estimate,False,current_12_district_analysis_geometry
+1726290,Yashnabad district,2020,metro_state_43,43,160301.531553,9.140005,13219.643253,8.246735465,5.298278133,modelled_estimate,False,current_12_district_analysis_geometry
+1726290,Yashnabad district,2021,metro_state_43,43,163357.979045,11.220962,13470.681008,8.246111446,5.297654115,modelled_estimate,False,current_12_district_analysis_geometry
+1726290,Yashnabad district,2022,metro_state_43,43,166633.294083,13.450934,13737.042344,8.243876123,5.295418792,modelled_estimate,False,current_12_district_analysis_geometry
+1726290,Yashnabad district,2023,metro_state_48,48,170054.236568,15.780055,14015.034958,8.241508851,5.293051519,modelled_estimate,False,current_12_district_analysis_geometry
+1726290,Yashnabad district,2024,metro_state_50,50,173503.379043,18.128376,14295.016117,8.239041911,5.29058458,modelled_estimate,False,current_12_district_analysis_geometry
+1726290,Yashnabad district,2025,metro_state_50,50,176887.539878,20.432455,14570.469772,8.237137439,5.288680107,modelled_estimate,False,current_12_district_analysis_geometry
+1726290,Yashnabad district,2026,metro_state_50,50,180163.687314,22.662993,14838.277083,8.235997666,5.287540335,modelled_estimate,True,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2015,metro_state_29,29,177876.294075,0.0,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2016,metro_state_29,29,181005.411464,1.759154,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2017,metro_state_29,29,184121.967446,3.511245,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2018,metro_state_29,29,187242.595615,5.265627,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2019,metro_state_29,29,190588.306966,7.146547,0.0,0.0,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2020,metro_state_43,43,194138.803772,9.142595,18027.327741,9.285793149,9.285793149,modelled_estimate,False,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2021,metro_state_43,43,197839.216153,11.222924,18373.630699,9.287153,9.287153,modelled_estimate,False,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2022,metro_state_43,43,201805.531383,13.452741,18745.201965,9.288745376,9.288745376,modelled_estimate,False,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2023,metro_state_48,48,205948.654417,15.781957,19134.016741,9.290673345,9.290673345,modelled_estimate,False,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2024,metro_state_50,50,210126.101312,18.130469,25744.94108,12.252138558,12.252138558,modelled_estimate,False,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2025,metro_state_50,50,214224.912056,20.434774,26227.151122,12.242811011,12.242811011,modelled_estimate,False,current_12_district_analysis_geometry
+1726292,Yangikhayot district,2026,metro_state_50,50,218192.32402,22.665207,26696.106355,12.23512627,12.23512627,modelled_estimate,True,current_12_district_analysis_geometry
+1726294,Chilanzar district,2015,metro_state_29,29,69486.682167,0.0,11569.088254,16.649360558,0.0,modelled_estimate,False,current_12_district_analysis_geometry
+1726294,Chilanzar district,2016,metro_state_29,29,70709.03577,1.759119,11772.15234,16.648724186,-0.000636372,modelled_estimate,False,current_12_district_analysis_geometry
+1726294,Chilanzar district,2017,metro_state_29,29,71926.691623,3.511478,11983.736864,16.661042783,0.011682225,modelled_estimate,False,current_12_district_analysis_geometry
+1726294,Chilanzar district,2018,metro_state_29,29,73146.125125,5.266395,12196.331919,16.673927564,0.024567005,modelled_estimate,False,current_12_district_analysis_geometry
+1726294,Chilanzar district,2019,metro_state_29,29,74453.653441,7.148091,12412.787672,16.671831533,0.022470975,modelled_estimate,False,current_12_district_analysis_geometry
+1726294,Chilanzar district,2020,metro_state_43,43,75841.395266,9.145225,12693.897041,16.737425513,0.088064955,modelled_estimate,False,current_12_district_analysis_geometry
+1726294,Chilanzar district,2021,metro_state_43,43,77287.773849,11.226744,12937.865735,16.739860771,0.090500212,modelled_estimate,False,current_12_district_analysis_geometry
+1726294,Chilanzar district,2022,metro_state_43,43,78838.032509,13.457759,13197.136276,16.739555588,0.090195029,modelled_estimate,False,current_12_district_analysis_geometry
+1726294,Chilanzar district,2023,metro_state_48,48,80457.364564,15.78818,13471.507994,16.74366053,0.094299972,modelled_estimate,False,current_12_district_analysis_geometry
+1726294,Chilanzar district,2024,metro_state_50,50,82090.116597,18.137914,13747.996008,16.747443636,0.098083078,modelled_estimate,False,current_12_district_analysis_geometry
+1726294,Chilanzar district,2025,metro_state_50,50,83692.123204,20.443401,14015.760276,16.746809305,0.097448746,modelled_estimate,False,current_12_district_analysis_geometry
+1726294,Chilanzar district,2026,metro_state_50,50,85242.901171,22.675164,14276.631899,16.748176919,0.098816361,modelled_estimate,True,current_12_district_analysis_geometry

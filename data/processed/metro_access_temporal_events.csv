@@ -1,0 +1,4 @@
+year,previous_metro_state_id,new_metro_state_id,stations_before,stations_after,stations_added,station_names_added,city_access_pct_previous_year,city_access_pct_event_year,city_access_change_pp,change_interpretation
+2020,metro_state_29,metro_state_43,29,43,14,Chinor | Choshtepa | Olmos | O‘zgarish | Qo‘yliq | Rohat | Sergeli | Texnopark | Turkiston | Tuzel | Yangihayot | Yangiobod | Yashnobod | Yunusobod,6.850650207,9.199727142,2.349076935,combined annual standardized change
+2023,metro_state_43,metro_state_48,43,48,5,Matonat | Qiyot | Quruvchilar | Tolarik | Xonobod,9.193179782,9.730442334,0.537262552,combined annual standardized change
+2024,metro_state_48,metro_state_50,48,50,2,Qipchok | Turon,9.730442334,10.03613144,0.305689106,combined annual standardized change

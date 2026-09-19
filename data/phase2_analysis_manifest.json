@@ -1,0 +1,185 @@
+{
+  "analysis": "Phase 2B standardized temporal metro accessibility",
+  "analysis_version": "phase2b-standardized-temporal-metro-v1",
+  "comparison_design": "standardized temporal comparison",
+  "input_files": {
+    "data/phase2_source_manifest.json": {
+      "sha256": "c3d86638d8a8f2d27bf3be535128b595ede3fd4e3415a661ce429ed067a7e760",
+      "size_bytes": 18581
+    },
+    "data/source_manifest.json": {
+      "sha256": "756f8c99a98b668a5ae8cacb547dfb57b5fd5ff700f6c3556c02104f29cc41c4",
+      "size_bytes": 17233
+    },
+    "data/analysis_manifest.json": {
+      "sha256": "de013284a04aa029ab34f0dcc76c731e96732e7c37bc0429830d7899a4e53678",
+      "size_bytes": 30306
+    },
+    "data/external/worldpop_temporal_cells.csv.gz": {
+      "sha256": "255659e12093cfb1d4df6ef3ba422d22b6acb9e5a6fa724d2d855c00f6814715",
+      "size_bytes": 4080636
+    },
+    "data/external/tashkent_walk_network.graphml": {
+      "sha256": "948da22f9a608b8d795c07bb8c8b8d04ca5abcbc429b51b1c99f5546772e9c41",
+      "size_bytes": 112934536
+    },
+    "data/processed/metro_station_history.csv": {
+      "sha256": "317a50417255f02b7cd81e2882ea9815223a3f97575c29196cc827ac41bfcba9",
+      "size_bytes": 15904
+    },
+    "data/processed/worldpop_district_year.csv": {
+      "sha256": "cd59bea377eccd1c702b133c2dc0828f1ab14ff1c28aa484fc7525f18a975ca4",
+      "size_bytes": 50623
+    },
+    "data/processed/tashkent_districts.geojson": {
+      "sha256": "7f60b2b28d650f0ca4a9ec24bef54cd0ca31336b7901db7a6fdb8ff08d6d6dd6",
+      "size_bytes": 172208
+    }
+  },
+  "cell_cache": {
+    "path": "data/external/worldpop_temporal_cells.csv.gz",
+    "sha256": "255659e12093cfb1d4df6ef3ba422d22b6acb9e5a6fa724d2d855c00f6814715",
+    "rows": 65169,
+    "annual_nodata_treatment": "exclude missing values from each annual denominator; never replace with numeric zero"
+  },
+  "pedestrian_network": {
+    "path": "data/external/tashkent_walk_network.graphml",
+    "sha256": "948da22f9a608b8d795c07bb8c8b8d04ca5abcbc429b51b1c99f5546772e9c41",
+    "fixed_current_snapshot": true,
+    "routing_crs": "EPSG:32642",
+    "nodes": 111386,
+    "stored_edge_records": 308272,
+    "canonical_routing_edges": 154133
+  },
+  "routing": {
+    "engine": "scripts/accessibility_utils.py edge-aware primitives",
+    "walking_speed_kmh": 4.8,
+    "walking_time_minutes": 10,
+    "distance_budget_m": 800.0,
+    "station_source_rule": "current station-centre coordinates fixed across years; opening_year <= year",
+    "source_sets": [
+      {
+        "state_id": "metro_state_29",
+        "years": [
+          2015,
+          2016,
+          2017,
+          2018,
+          2019
+        ],
+        "open_station_count": 29,
+        "active_station_ids_sha256": "374690cfd7f5d6a4cd2948786052580c39c6f1879044bef2b4127bcc02a818fa"
+      },
+      {
+        "state_id": "metro_state_43",
+        "years": [
+          2020,
+          2021,
+          2022
+        ],
+        "open_station_count": 43,
+        "active_station_ids_sha256": "7e69855dd6cde2ba87ce2f0782b1375a85cb588115b54080496e7edabc970677"
+      },
+      {
+        "state_id": "metro_state_48",
+        "years": [
+          2023
+        ],
+        "open_station_count": 48,
+        "active_station_ids_sha256": "26bc18fdb2b8db738bab398896e73bfdb718f2028f6bde0d9dc7c2454ce2cc40"
+      },
+      {
+        "state_id": "metro_state_50",
+        "years": [
+          2024,
+          2025,
+          2026
+        ],
+        "open_station_count": 50,
+        "active_station_ids_sha256": "9d5bf6c6919639891ad5a4d8875499e982a8354e6f83083ffa71755ba50ace8e"
+      }
+    ],
+    "unique_routing_states": 4,
+    "dijkstra_runs": 4,
+    "routing_state_diagnostics": "data/processed/metro_temporal_routing_states.json"
+  },
+  "population_weighting": {
+    "source": "WorldPop Global 2 R2025A v1 annual modelled estimates",
+    "calibrated_to_siat": false,
+    "temporal_reference": "January 1",
+    "fixed_geography": "current_12_district_analysis_geometry",
+    "rule": "sum finite raw annual model weights; annual missing remains missing",
+    "cell_cache_serialization_reconciliation": {
+      "reason": "Phase 2A stores each cell value to six decimals while its district table stores totals computed before that serialization. Within each district-year, finite cached weights are multiplied by the Phase 2A total divided by their serialized sum so committed denominators reconcile exactly. This is not SIAT calibration.",
+      "maximum_absolute_multiplicative_deviation_from_one": 1.0862878374595653e-09,
+      "missing_values_preserved": true
+    }
+  },
+  "bus_history_used": false,
+  "distance_cache": {
+    "path": "data/external/metro_temporal_distances.npz",
+    "sha256": "41cc4940131ed7d0f9b9fc11d855f7bd2a5e5b02ac4e9a3c6dd0374ffc938e02",
+    "tracked": false,
+    "state_order": [
+      "metro_state_29",
+      "metro_state_43",
+      "metro_state_48",
+      "metro_state_50"
+    ],
+    "cell_order": "cell_id ascending"
+  },
+  "cell_snap_cache": {
+    "path": "data/external/temporal_cell_network_snap.npz",
+    "sha256": "46ae946b6c6fb21aecb4e7bf5f4f35830c42aceadc286660a9a1fce2274b4c9a",
+    "tracked": false
+  },
+  "output_files": {
+    "data/processed/metro_access_temporal_city.csv": {
+      "sha256": "f8aff0fb62d833bbc920e1ffde19ea0660d75e9db1efb679605513ac5d197ea6",
+      "rows": 12
+    },
+    "data/processed/metro_access_temporal_district.csv": {
+      "sha256": "62c91e880b588b4be4a0f529fe7c29f49879920fc10cd837aeff9357acef9906",
+      "rows": 144
+    },
+    "data/processed/metro_access_temporal_events.csv": {
+      "sha256": "4efb9873d45e5a550301d955a91c8abe7483dfa486754d8da5e4690cb7f4f608",
+      "rows": 3
+    },
+    "data/processed/metro_access_temporal_counterfactual.csv": {
+      "sha256": "27d39c2f692a628fa7592df5770babd07867242ddc253046584443f34119da84",
+      "rows": 12
+    },
+    "data/processed/metro_temporal_routing_states.json": {
+      "sha256": "7a85ec4299bef3054c3b821ee16bb19ec3edadf48ba433104857c056550b9037",
+      "rows": 4
+    }
+  },
+  "counterfactual_diagnostics": {
+    "actual": "network state for year Y weighted by population model Y",
+    "network_change_on_2015_population": "network state for year Y weighted by fixed 2015 population model",
+    "population_change_under_2015_network": "fixed 2015 network state weighted by population model Y",
+    "causal_decomposition": false,
+    "warning": "the three series are diagnostics and are not an additive causal decomposition"
+  },
+  "current_headline_bridge": {
+    "current_entrance_aware_pct": 13.563595724255597,
+    "standardized_2026_pct": 10.028085007,
+    "absolute_difference_pp": 3.5355107172555975,
+    "forced_to_match": false,
+    "methodological_differences": [
+      "current station centres instead of entrance-aware access points",
+      "raw annual WorldPop model weights instead of SIAT-calibrated population",
+      "standardized temporal comparison objective instead of current headline objective"
+    ]
+  },
+  "limitations": [
+    "This is not a literal reconstruction of historical streets or entrances.",
+    "The current pedestrian network and current station-centre coordinates are held fixed.",
+    "WorldPop values are modelled estimates, not observations, and are not calibrated to SIAT.",
+    "Off-network connectors are straight-line approximations to the nearest mapped walkable edge.",
+    "Annual access changes combine metro source-set expansion and changes in modelled population weights.",
+    "No historical bus accessibility is computed.",
+    "Counterfactual diagnostics are not an additive causal decomposition."
+  ]
+}
