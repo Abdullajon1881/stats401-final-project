@@ -247,6 +247,32 @@ METRO_OPENING_TIMELINE_FILE = PROCESSED_DIR / "metro_opening_timeline.csv"
 PHASE2_SOURCE_MANIFEST_PATH = DATA_DIR / "phase2_source_manifest.json"
 
 
+# ---------------------------------------------------------------------------
+# Phase 2B standardized temporal metro accessibility
+# ---------------------------------------------------------------------------
+# Phase 2B remains additive: none of these files replaces the current-period
+# analysis manifest or any current headline output above.
+PHASE2_ACCESS_ANALYSIS_VERSION = "phase2b-standardized-temporal-metro-v1"
+PHASE2_ACCESS_CITY_FILE = PROCESSED_DIR / "metro_access_temporal_city.csv"
+PHASE2_ACCESS_DISTRICT_FILE = PROCESSED_DIR / "metro_access_temporal_district.csv"
+PHASE2_ACCESS_EVENTS_FILE = PROCESSED_DIR / "metro_access_temporal_events.csv"
+PHASE2_ACCESS_COUNTERFACTUAL_FILE = (
+    PROCESSED_DIR / "metro_access_temporal_counterfactual.csv"
+)
+PHASE2_ROUTING_STATES_FILE = PROCESSED_DIR / "metro_temporal_routing_states.json"
+PHASE2_ANALYSIS_MANIFEST_PATH = DATA_DIR / "phase2_analysis_manifest.json"
+PHASE2_ACCESS_METHODOLOGY_FILE = DOCS_DIR / "phase2_temporal_accessibility.md"
+
+# Rebuildable routing products. The external-data directory is gitignored.
+PHASE2_DISTANCE_CACHE = EXTERNAL_DIR / "metro_temporal_distances.npz"
+PHASE2_CELL_SNAP_CACHE = EXTERNAL_DIR / "temporal_cell_network_snap.npz"
+
+# This is deliberately the same physical walking budget as the current
+# headline, while the sources and population weights remain methodologically
+# distinct (station centres and raw annual WorldPop model weights).
+PHASE2_ACCESS_DISTANCE_BUDGET_M = 800.0
+
+
 def worldpop_temporal_filename(year: int) -> str:
     """Return the pinned Global 2 filename for one requested model year."""
     if year not in TEMPORAL_YEARS:
