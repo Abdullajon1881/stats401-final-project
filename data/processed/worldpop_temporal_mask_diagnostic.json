@@ -1,0 +1,487 @@
+{
+  "affected_districts": [
+    {
+      "district_id": "1726264",
+      "district_name": "Bektemir district",
+      "nodata_to_valid_cells": 64,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "district_id": "1726266",
+      "district_name": "Yunusabad district",
+      "nodata_to_valid_cells": 7,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "district_id": "1726269",
+      "district_name": "Mirzo Ulugbek district",
+      "nodata_to_valid_cells": 18,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "district_id": "1726283",
+      "district_name": "Sergeli district",
+      "nodata_to_valid_cells": 27,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "district_id": "1726290",
+      "district_name": "Yashnabad district",
+      "nodata_to_valid_cells": 158,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "district_id": "1726292",
+      "district_name": "Yangikhayot district",
+      "nodata_to_valid_cells": 139,
+      "valid_to_nodata_cells": 0
+    }
+  ],
+  "cell_counts": {
+    "fixed_polygon_centre_cells": 67824,
+    "multi_switch_cells": 0,
+    "nodata_in_all_years_cells": 2655,
+    "nodata_to_valid_cells": 413,
+    "valid_in_all_years_cells": 64756,
+    "valid_to_nodata_cells": 0
+  },
+  "geography_version": "current_12_district_analysis_geometry",
+  "product_version": "v1",
+  "production_treatment": {
+    "aggregation": "sum finite model estimates available for each year",
+    "annual_nodata": "stored as null/missing, never imputed as numeric zero",
+    "cell_set": "cells valid in at least one requested year",
+    "method": "union_valid_with_annual_missing",
+    "rationale": "Preserve the fixed union cell identity without assigning an undocumented population value to annual NoData cells."
+  },
+  "raster_encoding": {
+    "dtype": "float32",
+    "interpretation": "The rasters encode valid numeric zero separately from the NoData sentinel; therefore NoData is not relabelled as numeric zero in the cache.",
+    "nodata_value": -99999.0,
+    "valid_zero_cells_by_year": {
+      "2015": 86,
+      "2016": 82,
+      "2017": 81,
+      "2018": 82,
+      "2019": 81,
+      "2020": 81,
+      "2021": 79,
+      "2022": 79,
+      "2023": 78,
+      "2024": 77,
+      "2025": 77,
+      "2026": 77
+    }
+  },
+  "release": "R2025A",
+  "schema_version": 1,
+  "sensitivity": {
+    "city": {
+      "growth_difference_pp": 0.011096716,
+      "method_a_growth_pct": 22.679268936,
+      "method_a_population_2015": 1941638.010244,
+      "method_a_population_2026": 2381987.316345,
+      "method_b_growth_pct": 22.66817222,
+      "method_b_population_2015": 1941638.010244,
+      "method_b_population_2026": 2381771.858294
+    },
+    "districts": [
+      {
+        "district_id": "1726262",
+        "district_name": "Uchtepa district",
+        "growth_difference_pp": 0.0,
+        "method_a_growth_pct": 22.677360917,
+        "method_a_population_2015": 183756.820057,
+        "method_a_population_2026": 225428.017351,
+        "method_b_growth_pct": 22.677360917,
+        "method_b_population_2015": 183756.820057,
+        "method_b_population_2026": 225428.017351
+      },
+      {
+        "district_id": "1726264",
+        "district_name": "Bektemir district",
+        "growth_difference_pp": 0.027773645,
+        "method_a_growth_pct": 22.715076202,
+        "method_a_population_2015": 199724.834773,
+        "method_a_population_2026": 245092.483186,
+        "method_b_growth_pct": 22.687302557,
+        "method_b_population_2015": 199724.834773,
+        "method_b_population_2026": 245037.012318
+      },
+      {
+        "district_id": "1726266",
+        "district_name": "Yunusabad district",
+        "growth_difference_pp": 0.002771367,
+        "method_a_growth_pct": 22.67799584,
+        "method_a_population_2015": 192964.672578,
+        "method_a_population_2026": 236725.192997,
+        "method_b_growth_pct": 22.675224472,
+        "method_b_population_2015": 192964.672578,
+        "method_b_population_2026": 236719.845237
+      },
+      {
+        "district_id": "1726269",
+        "district_name": "Mirzo Ulugbek district",
+        "growth_difference_pp": 0.003813951,
+        "method_a_growth_pct": 22.676788901,
+        "method_a_population_2015": 113847.693115,
+        "method_a_population_2026": 139664.694152,
+        "method_b_growth_pct": 22.67297495,
+        "method_b_population_2015": 113847.693115,
+        "method_b_population_2026": 139660.352056
+      },
+      {
+        "district_id": "1726273",
+        "district_name": "Mirabad district",
+        "growth_difference_pp": 0.0,
+        "method_a_growth_pct": 22.678018414,
+        "method_a_population_2015": 204234.348455,
+        "method_a_population_2026": 250550.651605,
+        "method_b_growth_pct": 22.678018414,
+        "method_b_population_2015": 204234.348455,
+        "method_b_population_2026": 250550.651605
+      },
+      {
+        "district_id": "1726277",
+        "district_name": "Shaykhantakhur district",
+        "growth_difference_pp": 0.0,
+        "method_a_growth_pct": 22.67635749,
+        "method_a_population_2015": 195073.786964,
+        "method_a_population_2026": 239309.416266,
+        "method_b_growth_pct": 22.67635749,
+        "method_b_population_2015": 195073.786964,
+        "method_b_population_2026": 239309.416266
+      },
+      {
+        "district_id": "1726280",
+        "district_name": "Almazar district",
+        "growth_difference_pp": 0.0,
+        "method_a_growth_pct": 22.678793811,
+        "method_a_population_2015": 181481.580384,
+        "method_a_population_2026": 222639.413805,
+        "method_b_growth_pct": 22.678793811,
+        "method_b_population_2015": 181481.580384,
+        "method_b_population_2026": 222639.413805
+      },
+      {
+        "district_id": "1726283",
+        "district_name": "Sergeli district",
+        "growth_difference_pp": 0.009648641,
+        "method_a_growth_pct": 22.679531351,
+        "method_a_population_2015": 47223.127135,
+        "method_a_population_2026": 57933.111058,
+        "method_b_growth_pct": 22.66988271,
+        "method_b_population_2015": 47223.127135,
+        "method_b_population_2026": 57928.554668
+      },
+      {
+        "district_id": "1726287",
+        "district_name": "Yakkasaray district",
+        "growth_difference_pp": 0.0,
+        "method_a_growth_pct": 22.678401605,
+        "method_a_population_2015": 229091.200849,
+        "method_a_population_2026": 281045.423419,
+        "method_b_growth_pct": 22.678401605,
+        "method_b_population_2015": 229091.200849,
+        "method_b_population_2026": 281045.423419
+      },
+      {
+        "district_id": "1726290",
+        "district_name": "Yashnabad district",
+        "growth_difference_pp": 0.020716522,
+        "method_a_growth_pct": 22.66299318,
+        "method_a_population_2015": 146876.96969,
+        "method_a_population_2026": 180163.687314,
+        "method_b_growth_pct": 22.642276658,
+        "method_b_population_2015": 146876.96969,
+        "method_b_population_2026": 180133.259515
+      },
+      {
+        "district_id": "1726292",
+        "district_name": "Yangikhayot district",
+        "growth_difference_pp": 0.064827716,
+        "method_a_growth_pct": 22.665206825,
+        "method_a_population_2015": 177876.294075,
+        "method_a_population_2026": 218192.32402,
+        "method_b_growth_pct": 22.600379109,
+        "method_b_population_2015": 177876.294075,
+        "method_b_population_2026": 218077.010881
+      },
+      {
+        "district_id": "1726294",
+        "district_name": "Chilanzar district",
+        "growth_difference_pp": 0.0,
+        "method_a_growth_pct": 22.675163805,
+        "method_a_population_2015": 69486.682167,
+        "method_a_population_2026": 85242.901171,
+        "method_b_growth_pct": 22.675163805,
+        "method_b_population_2015": 69486.682167,
+        "method_b_population_2026": 85242.901171
+      }
+    ],
+    "maximum_absolute_growth_difference_pp": 0.064827716,
+    "maximum_difference_district_id": "1726292",
+    "maximum_difference_district_name": "Yangikhayot district",
+    "method_a": "union-valid cells with annual NoData treated as zero",
+    "method_b": "only cells valid in all requested years"
+  },
+  "source_evidence": {
+    "documented": [
+      "The product consists of modelled gridded population estimates.",
+      "Annual binary built-settlement datasets are modelled and interpolated between input timepoints.",
+      "Oceans and major inland waterbodies in the mastergrid are encoded as NoData."
+    ],
+    "empirical_pattern": "Within the fixed analysis geometry, mask changes are monotonic NoData-to-valid transitions with no valid-to-NoData or multi-switch cells. This is consistent with, but does not by itself prove, modelled settlement expansion.",
+    "not_established": "The release statement does not explicitly define every NoData cell in a constrained annual raster as a numeric population value of zero.",
+    "release_statement_url": "https://data.worldpop.org/repo/prj/Global_2015_2030/R2025A/doc/Global2_Release_Statement_R2025A_v1.pdf"
+  },
+  "temporal_reference": "January 1",
+  "transition_cells_annual_population_contribution": [
+    {
+      "city_population_people": 1941638.010244,
+      "population_people": 0.0,
+      "share_of_city_population_pct": 0.0,
+      "year": 2015
+    },
+    {
+      "city_population_people": 1975806.124393,
+      "population_people": 0.618341,
+      "share_of_city_population_pct": 3.1296e-05,
+      "year": 2016
+    },
+    {
+      "city_population_people": 2009842.499628,
+      "population_people": 1.82066,
+      "share_of_city_population_pct": 9.0587e-05,
+      "year": 2017
+    },
+    {
+      "city_population_people": 2043928.714044,
+      "population_people": 3.833745,
+      "share_of_city_population_pct": 0.000187567,
+      "year": 2018
+    },
+    {
+      "city_population_people": 2080472.873552,
+      "population_people": 7.603151,
+      "share_of_city_population_pct": 0.000365453,
+      "year": 2019
+    },
+    {
+      "city_population_people": 2119256.572045,
+      "population_people": 14.784117,
+      "share_of_city_population_pct": 0.000697609,
+      "year": 2020
+    },
+    {
+      "city_population_people": 2159678.049209,
+      "population_people": 28.84411,
+      "share_of_city_population_pct": 0.001335575,
+      "year": 2021
+    },
+    {
+      "city_population_people": 2203003.094497,
+      "population_people": 49.192715,
+      "share_of_city_population_pct": 0.002232984,
+      "year": 2022
+    },
+    {
+      "city_population_people": 2248257.135792,
+      "population_people": 78.836585,
+      "share_of_city_population_pct": 0.003506564,
+      "year": 2023
+    },
+    {
+      "city_population_people": 2293884.410144,
+      "population_people": 116.563761,
+      "share_of_city_population_pct": 0.005081501,
+      "year": 2024
+    },
+    {
+      "city_population_people": 2338652.82707,
+      "population_people": 163.740126,
+      "share_of_city_population_pct": 0.007001472,
+      "year": 2025
+    },
+    {
+      "city_population_people": 2381987.316345,
+      "population_people": 215.45805,
+      "share_of_city_population_pct": 0.009045306,
+      "year": 2026
+    }
+  ],
+  "transition_counts_by_year": [
+    {
+      "affected_district_count": 5,
+      "affected_district_ids": [
+        "1726264",
+        "1726266",
+        "1726283",
+        "1726290",
+        "1726292"
+      ],
+      "from_year": 2015,
+      "newly_nodata_previous_population_people": 0.0,
+      "newly_valid_population_people": 0.618341,
+      "nodata_to_valid_cells": 26,
+      "to_year": 2016,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "affected_district_count": 4,
+      "affected_district_ids": [
+        "1726266",
+        "1726283",
+        "1726290",
+        "1726292"
+      ],
+      "from_year": 2016,
+      "newly_nodata_previous_population_people": 0.0,
+      "newly_valid_population_people": 0.484507,
+      "nodata_to_valid_cells": 26,
+      "to_year": 2017,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "affected_district_count": 4,
+      "affected_district_ids": [
+        "1726266",
+        "1726283",
+        "1726290",
+        "1726292"
+      ],
+      "from_year": 2017,
+      "newly_nodata_previous_population_people": 0.0,
+      "newly_valid_population_people": 0.734905,
+      "nodata_to_valid_cells": 29,
+      "to_year": 2018,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "affected_district_count": 6,
+      "affected_district_ids": [
+        "1726264",
+        "1726266",
+        "1726269",
+        "1726283",
+        "1726290",
+        "1726292"
+      ],
+      "from_year": 2018,
+      "newly_nodata_previous_population_people": 0.0,
+      "newly_valid_population_people": 1.64569,
+      "nodata_to_valid_cells": 42,
+      "to_year": 2019,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "affected_district_count": 6,
+      "affected_district_ids": [
+        "1726264",
+        "1726266",
+        "1726269",
+        "1726283",
+        "1726290",
+        "1726292"
+      ],
+      "from_year": 2019,
+      "newly_nodata_previous_population_people": 0.0,
+      "newly_valid_population_people": 2.192112,
+      "nodata_to_valid_cells": 41,
+      "to_year": 2020,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "affected_district_count": 6,
+      "affected_district_ids": [
+        "1726264",
+        "1726266",
+        "1726269",
+        "1726283",
+        "1726290",
+        "1726292"
+      ],
+      "from_year": 2020,
+      "newly_nodata_previous_population_people": 0.0,
+      "newly_valid_population_people": 3.671445,
+      "nodata_to_valid_cells": 54,
+      "to_year": 2021,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "affected_district_count": 4,
+      "affected_district_ids": [
+        "1726264",
+        "1726269",
+        "1726283",
+        "1726292"
+      ],
+      "from_year": 2021,
+      "newly_nodata_previous_population_people": 0.0,
+      "newly_valid_population_people": 3.326198,
+      "nodata_to_valid_cells": 37,
+      "to_year": 2022,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "affected_district_count": 5,
+      "affected_district_ids": [
+        "1726264",
+        "1726269",
+        "1726283",
+        "1726290",
+        "1726292"
+      ],
+      "from_year": 2022,
+      "newly_nodata_previous_population_people": 0.0,
+      "newly_valid_population_people": 5.872552,
+      "nodata_to_valid_cells": 65,
+      "to_year": 2023,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "affected_district_count": 3,
+      "affected_district_ids": [
+        "1726264",
+        "1726283",
+        "1726292"
+      ],
+      "from_year": 2023,
+      "newly_nodata_previous_population_people": 0.0,
+      "newly_valid_population_people": 3.686953,
+      "nodata_to_valid_cells": 20,
+      "to_year": 2024,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "affected_district_count": 4,
+      "affected_district_ids": [
+        "1726264",
+        "1726283",
+        "1726290",
+        "1726292"
+      ],
+      "from_year": 2024,
+      "newly_nodata_previous_population_people": 0.0,
+      "newly_valid_population_people": 4.78007,
+      "nodata_to_valid_cells": 21,
+      "to_year": 2025,
+      "valid_to_nodata_cells": 0
+    },
+    {
+      "affected_district_count": 4,
+      "affected_district_ids": [
+        "1726269",
+        "1726283",
+        "1726290",
+        "1726292"
+      ],
+      "from_year": 2025,
+      "newly_nodata_previous_population_people": 0.0,
+      "newly_valid_population_people": 2.46509,
+      "nodata_to_valid_cells": 52,
+      "to_year": 2026,
+      "valid_to_nodata_cells": 0
+    }
+  ]
+}

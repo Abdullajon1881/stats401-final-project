@@ -199,6 +199,78 @@ POPULATION_CELLS_CACHE = EXTERNAL_DIR / "population_cells.parquet"
 WORLDPOP_BASELINE_YEAR = 2020
 
 
+# ---------------------------------------------------------------------------
+# Phase 2 temporal foundation
+# ---------------------------------------------------------------------------
+# Phase 2 is deliberately additive. These constants do not replace the frozen
+# current-period inputs or outputs above.
+TEMPORAL_START_YEAR = 2015
+TEMPORAL_END_YEAR = 2026
+TEMPORAL_YEARS = tuple(range(TEMPORAL_START_YEAR, TEMPORAL_END_YEAR + 1))
+TEMPORAL_GEOGRAPHY_VERSION = "current_12_district_analysis_geometry"
+
+SIAT_ANNUAL_DATASET_ID = 246
+SIAT_ANNUAL_LANDING_URL = (
+    f"https://siat.stat.uz/data/{SIAT_ANNUAL_DATASET_ID}/?lang=en"
+)
+SIAT_ANNUAL_DOWNLOAD_API = (
+    f"https://api.siat.stat.uz/sdmx/{SIAT_ANNUAL_DATASET_ID}/"
+    "table/download/?download_format=csv"
+)
+SIAT_ANNUAL_RAW_FILE = RAW_DIR / "siat_population_246.csv"
+
+WORLDPOP_TEMPORAL_RELEASE = WORLDPOP_RELEASE
+WORLDPOP_TEMPORAL_PRODUCT_VERSION = "v1"
+WORLDPOP_TEMPORAL_PRODUCT = (
+    "Global 2 constrained population counts, 100m (3 arc-second), "
+    "individual countries"
+)
+WORLDPOP_TEMPORAL_REFERENCE_DATE = "January 1"
+WORLDPOP_TEMPORAL_MODEL_STATUS = "modelled_estimate"
+WORLDPOP_PROJECTION_FLAG_DEFINITION = (
+    "True identifies a model year beyond the R2025A release-year basis; "
+    "False does not mean observed. Every year is a modelled estimate."
+)
+WORLDPOP_TEMPORAL_DIR = EXTERNAL_DIR / "worldpop_temporal"
+WORLDPOP_TEMPORAL_CELL_CACHE = EXTERNAL_DIR / "worldpop_temporal_cells.csv.gz"
+
+WORLDPOP_DISTRICT_YEAR_FILE = PROCESSED_DIR / "worldpop_district_year.csv"
+WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE = (
+    PROCESSED_DIR / "worldpop_temporal_mask_diagnostic.json"
+)
+SIAT_ANNUAL_POPULATION_FILE = PROCESSED_DIR / "siat_population_annual.csv"
+TEMPORAL_POPULATION_DIAGNOSTIC_FILE = (
+    PROCESSED_DIR / "temporal_population_diagnostic.csv"
+)
+METRO_STATION_HISTORY_FILE = PROCESSED_DIR / "metro_station_history.csv"
+METRO_OPENING_TIMELINE_FILE = PROCESSED_DIR / "metro_opening_timeline.csv"
+PHASE2_SOURCE_MANIFEST_PATH = DATA_DIR / "phase2_source_manifest.json"
+
+
+def worldpop_temporal_filename(year: int) -> str:
+    """Return the pinned Global 2 filename for one requested model year."""
+    if year not in TEMPORAL_YEARS:
+        raise ValueError(f"unsupported temporal WorldPop year: {year}")
+    return (
+        f"uzb_pop_{year}_CN_100m_{WORLDPOP_TEMPORAL_RELEASE}_"
+        f"{WORLDPOP_TEMPORAL_PRODUCT_VERSION}.tif"
+    )
+
+
+def worldpop_temporal_url(year: int) -> str:
+    """Return the exact pinned R2025A v1 URL; never substitute a release."""
+    filename = worldpop_temporal_filename(year)
+    return (
+        "https://data.worldpop.org/GIS/Population/Global_2015_2030/"
+        f"{WORLDPOP_TEMPORAL_RELEASE}/{year}/UZB/"
+        f"{WORLDPOP_TEMPORAL_PRODUCT_VERSION}/100m/constrained/{filename}"
+    )
+
+
+def worldpop_temporal_path(year: int) -> Path:
+    return WORLDPOP_TEMPORAL_DIR / worldpop_temporal_filename(year)
+
+
 def worldpop_raster_path(year: int) -> Path:
     return EXTERNAL_DIR / f"uzb_pop_{year}_CN_100m_{WORLDPOP_RELEASE}_v1.tif"
 
@@ -228,3 +300,4 @@ def human_size(num_bytes: int) -> str:
 def ensure_directories() -> None:
     for directory in (PROCESSED_DIR, EXTERNAL_DIR, RAW_DIR, OSM_CACHE_DIR, DOCS_DIR):
         directory.mkdir(parents=True, exist_ok=True)
+    WORLDPOP_TEMPORAL_DIR.mkdir(parents=True, exist_ok=True)
