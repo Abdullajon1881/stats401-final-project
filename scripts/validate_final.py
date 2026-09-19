@@ -429,8 +429,21 @@ def validate_frozen() -> None:
                            text=True, encoding="utf-8", errors="replace")
         return r.stdout.strip()
 
-    for path in ("README.md", "docs/proposal.md", "data/processed",
-                 "data/analysis_manifest.json"):
+    frozen_processed = git(
+        "ls-tree", "-r", "--name-only", BASELINE_MAIN, "--", "data/processed"
+    ).splitlines()
+    changed_processed = [
+        path
+        for path in frozen_processed
+        if git("diff", "--stat", BASELINE_MAIN, "--", path)
+    ]
+    check(
+        bool(frozen_processed) and not changed_processed,
+        "pre-existing data/processed files are unchanged since "
+        f"{BASELINE_MAIN[:10]}",
+    )
+
+    for path in ("README.md", "docs/proposal.md", "data/analysis_manifest.json"):
         diff = git("diff", "--stat", BASELINE_MAIN, "--", path)
         check(diff == "", f"{path} is unchanged since {BASELINE_MAIN[:10]}")
 

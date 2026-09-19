@@ -472,8 +472,21 @@ def validate_provenance() -> None:
                                 errors="replace")
         return result.stdout.strip()
 
-    for path in ("data/processed", "data/analysis_manifest.json",
-                 "README.md", "docs/proposal.md"):
+    frozen_processed = git(
+        "ls-tree", "-r", "--name-only", BASELINE_MAIN, "--", "data/processed"
+    ).splitlines()
+    changed_processed = [
+        path
+        for path in frozen_processed
+        if git("diff", "--stat", BASELINE_MAIN, "--", path)
+    ]
+    check(
+        bool(frozen_processed) and not changed_processed,
+        "pre-existing data/processed files are unchanged since "
+        f"{BASELINE_MAIN[:10]} ({changed_processed or 'no diff'})",
+    )
+
+    for path in ("data/analysis_manifest.json", "README.md", "docs/proposal.md"):
         diff = git("diff", "--stat", BASELINE_MAIN, "--", path)
         check(diff == "", f"{path} is unchanged since {BASELINE_MAIN[:10]} ({diff or 'no diff'})")
 
