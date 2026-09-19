@@ -74,7 +74,8 @@ def validate_worldpop() -> None:
     required = {
         "district_id", "district_name", "year", "geography_version",
         "population_modelled", "population_density_modelled_km2",
-        "population_growth_pct_from_2015", "population_projection_flag",
+        "population_growth_pct_from_2015", "population_model_status",
+        "population_projection_flag",
         "worldpop_release", "worldpop_product", "source_url",
     }
     check(required <= set(frame.columns), "district-year table has every required column")
@@ -91,6 +92,8 @@ def validate_worldpop() -> None:
     check((frame.population_modelled > 0).all(), "all district populations are positive")
     check((frame.population_density_modelled_km2 > 0).all(),
           "all district population densities are positive")
+    check(frame.population_model_status.eq(cfg.WORLDPOP_TEMPORAL_MODEL_STATUS).all(),
+          "every district-year row explicitly identifies a modelled estimate")
     baseline = frame[frame.year == cfg.TEMPORAL_START_YEAR]
     check((baseline.population_growth_pct_from_2015 == 0).all(),
           "2015 baseline growth is exactly zero")
@@ -224,6 +227,119 @@ def validate_diagnostic() -> None:
           "diagnostic differences are numeric")
 
 
+def validate_mask_diagnostic() -> None:
+    section("WorldPop temporal mask diagnostic")
+    path = cfg.WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE
+    if not check(path.exists(), f"{path.name} exists"):
+        return
+    diagnostic = json.loads(path.read_text(encoding="utf-8"))
+    counts = diagnostic.get("cell_counts", {})
+    required_counts = {
+        "fixed_polygon_centre_cells", "valid_in_all_years_cells",
+        "nodata_in_all_years_cells", "nodata_to_valid_cells",
+        "valid_to_nodata_cells", "multi_switch_cells",
+    }
+    check(required_counts <= set(counts), "mask diagnostic has every required cell count")
+    check(all(isinstance(counts.get(key), int) and counts[key] >= 0
+              for key in required_counts), "mask cell counts are non-negative integers")
+    classified = (
+        counts.get("valid_in_all_years_cells", 0)
+        + counts.get("nodata_in_all_years_cells", 0)
+        + counts.get("nodata_to_valid_cells", 0)
+    )
+    check(
+        counts.get("valid_to_nodata_cells") == 0
+        and counts.get("multi_switch_cells") == 0
+        and classified == counts.get("fixed_polygon_centre_cells"),
+        "observed masks are monotonic nodata-to-valid with every polygon cell classified",
+    )
+
+    transitions = diagnostic.get("transition_counts_by_year", [])
+    check(len(transitions) == len(cfg.TEMPORAL_YEARS) - 1
+          and {row.get("to_year") for row in transitions}
+          == set(cfg.TEMPORAL_YEARS[1:]),
+          "mask diagnostic contains one transition record per year after 2015")
+    check(sum(row.get("nodata_to_valid_cells", -1) for row in transitions)
+          == counts.get("nodata_to_valid_cells")
+          and sum(row.get("valid_to_nodata_cells", -1) for row in transitions)
+          == counts.get("valid_to_nodata_cells"),
+          "annual transition counts reconcile with the overall cell counts")
+    check(all(math.isfinite(float(row.get("newly_valid_population_people")))
+              and math.isfinite(float(row.get("newly_nodata_previous_population_people")))
+              for row in transitions),
+          "transition population contributions are finite")
+
+    affected = diagnostic.get("affected_districts", [])
+    check(bool(affected)
+          and len({row.get("district_id") for row in affected}) == len(affected),
+          "affected districts are listed once with stable identities")
+    check(sum(row.get("nodata_to_valid_cells", -1) for row in affected)
+          == counts.get("nodata_to_valid_cells")
+          and sum(row.get("valid_to_nodata_cells", -1) for row in affected)
+          == counts.get("valid_to_nodata_cells"),
+          "affected-district transition counts reconcile")
+
+    contributions = diagnostic.get("transition_cells_annual_population_contribution", [])
+    check(len(contributions) == len(cfg.TEMPORAL_YEARS)
+          and {row.get("year") for row in contributions} == set(cfg.TEMPORAL_YEARS),
+          "transition-cell contributions cover every requested year")
+    check(all(math.isfinite(float(row.get(key)))
+              for row in contributions
+              for key in ("population_people", "city_population_people",
+                          "share_of_city_population_pct")),
+          "annual transition-cell contribution metrics are finite")
+
+    treatment = diagnostic.get("production_treatment", {})
+    check(treatment.get("method") == "union_valid_with_annual_missing"
+          and treatment.get("annual_nodata")
+          == "stored as null/missing, never imputed as numeric zero",
+          "production mask treatment retains union cells with annual missing values")
+    encoding = diagnostic.get("raster_encoding", {})
+    valid_zero_counts = encoding.get("valid_zero_cells_by_year", {})
+    check(encoding.get("nodata_value") != 0
+          and set(valid_zero_counts) == {str(year) for year in cfg.TEMPORAL_YEARS}
+          and all(isinstance(count, int) and count > 0
+                  for count in valid_zero_counts.values()),
+          "raster diagnostic distinguishes valid numeric zero from the nodata sentinel")
+    evidence = diagnostic.get("source_evidence", {})
+    check(str(evidence.get("release_statement_url", ""))
+          == cfg.WORLDPOP_RELEASE_STATEMENT_URL
+          and "does not explicitly define" in str(evidence.get("not_established", "")),
+          "diagnostic records the source limit on interpreting nodata as zero")
+
+    sensitivity = diagnostic.get("sensitivity", {})
+    city = sensitivity.get("city", {})
+    city_fields = {
+        "method_a_population_2015", "method_b_population_2015",
+        "method_a_population_2026", "method_b_population_2026",
+        "method_a_growth_pct", "method_b_growth_pct", "growth_difference_pp",
+    }
+    check(city_fields <= set(city)
+          and all(math.isfinite(float(city[key])) for key in city_fields),
+          "city mask-sensitivity metrics are finite and complete")
+    districts = sensitivity.get("districts", [])
+    district_fields = {
+        "method_a_population_2015", "method_b_population_2015",
+        "method_a_population_2026", "method_b_population_2026",
+        "method_a_growth_pct", "method_b_growth_pct", "growth_difference_pp",
+    }
+    check(len(districts) == cfg.EXPECTED_ANALYSIS_DISTRICTS
+          and len({row.get("district_id") for row in districts}) == len(districts)
+          and all(district_fields <= set(row)
+                  and all(math.isfinite(float(row[key])) for key in district_fields)
+                  for row in districts),
+          "district mask-sensitivity metrics are finite and complete")
+    if districts:
+        maximum = max(districts, key=lambda row: abs(row["growth_difference_pp"]))
+        check(math.isclose(
+            float(sensitivity.get("maximum_absolute_growth_difference_pp", math.nan)),
+            abs(float(maximum["growth_difference_pp"])),
+            abs_tol=1e-9,
+        ) and sensitivity.get("maximum_difference_district_id")
+            == maximum.get("district_id"),
+            "reported maximum district sensitivity is data-derived")
+
+
 def validate_provenance() -> None:
     section("Phase 2 provenance")
     path = cfg.PHASE2_SOURCE_MANIFEST_PATH
@@ -244,11 +360,56 @@ def validate_provenance() -> None:
           "manifest records all twelve WorldPop files")
     check(all(str(item.get("url", "")).startswith("https://") for item in files),
           "manifest WorldPop source URLs are present")
+    check(all(item.get("model_status") == cfg.WORLDPOP_TEMPORAL_MODEL_STATUS
+              for item in files),
+          "manifest explicitly identifies every WorldPop year as modelled")
+    check(all(item.get("temporal_reference") == cfg.WORLDPOP_TEMPORAL_REFERENCE_DATE
+              for item in files)
+          and worldpop.get("temporal_reference") == cfg.WORLDPOP_TEMPORAL_REFERENCE_DATE,
+          "manifest records the January 1 WorldPop reference date")
+    check(worldpop.get("all_years_modelled") is True,
+          "manifest states that all WorldPop years are modelled estimates")
+    projection_definition = str(worldpop.get("projection_flag_definition", ""))
+    check("release-year basis" in projection_definition
+          and "False does not mean observed" in projection_definition,
+          "manifest defines the projection flag without implying observation")
+    check(all("http_etag" not in item and "http_last_modified" not in item
+              for item in files),
+          "deterministic manifest excludes transient HTTP response headers")
     cell_cache = worldpop.get("cell_cache", {})
     check(cell_cache.get("union_valid_cells", 0) > 0,
           "manifest records a non-empty fixed union cell cache")
-    check("store zero" in str(cell_cache.get("nodata_treatment", "")),
-          "manifest records annual nodata handling for the union cell set")
+    check(cell_cache.get("annual_nodata_cache_encoding") == "empty/null"
+          and "null/missing" in str(cell_cache.get("nodata_treatment", "")),
+          "manifest records annual nodata as missing rather than zero")
+    if check(cfg.WORLDPOP_TEMPORAL_CELL_CACHE.exists(),
+             "gitignored temporal cell cache exists for full validation"):
+        cached_cells = pd.read_csv(cfg.WORLDPOP_TEMPORAL_CELL_CACHE)
+        population_columns = [f"pop_{year}" for year in cfg.TEMPORAL_YEARS]
+        expected_missing = {
+            column: int(cell_cache.get("annual_nodata_counts", {}).get(str(year), 0))
+            - int(cell_cache.get("excluded_all_years_nodata_cells", 0))
+            for year, column in zip(cfg.TEMPORAL_YEARS, population_columns, strict=True)
+        }
+        observed_missing = {
+            column: int(cached_cells[column].isna().sum())
+            for column in population_columns
+        }
+        check(len(cached_cells) == cell_cache.get("union_valid_cells")
+              and set(population_columns) <= set(cached_cells),
+              "cell cache uses the documented union cell set and annual columns")
+        check(observed_missing == expected_missing,
+              "cell cache annual missing values match raster nodata masks")
+        check(all((cached_cells[column].dropna() >= 0).all()
+                  for column in population_columns),
+              "cell cache contains only non-negative finite population estimates or missing")
+    mask_record = worldpop.get("mask_diagnostic", {})
+    check(mask_record.get("filename") == cfg.WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE.name
+          and mask_record.get("production_method")
+          == "union_valid_with_annual_missing"
+          and mask_record.get("sha256")
+          == cfg.sha256_file(cfg.WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE),
+          "manifest pins the mask diagnostic and documented production method")
     check(siat.get("dataset_id") == cfg.SIAT_ANNUAL_DATASET_ID,
           "manifest pins SIAT dataset 246")
     check(str(siat.get("landing_url", "")).startswith("https://")
@@ -268,6 +429,17 @@ def validate_provenance() -> None:
     check("D:\\" not in serialized and "C:\\" not in serialized,
           "manifest contains no temporary machine paths")
 
+    methodology = (cfg.DOCS_DIR / "phase2_temporal_methodology.md").read_text(
+        encoding="utf-8"
+    )
+    check("January 1" in methodology,
+          "methodology records the WorldPop January 1 reference date")
+    check("every year are modelled" in methodology
+          and "`false` does not mean observed" in methodology,
+          "methodology states all years are modelled and defines a false projection flag")
+    check("stores a blank" in methodology and "Nodata is not imputed" in methodology,
+          "methodology documents the chosen annual nodata treatment")
+
 
 def main() -> int:
     print("=" * 74)
@@ -277,6 +449,7 @@ def main() -> int:
     validate_siat()
     validate_metro()
     validate_diagnostic()
+    validate_mask_diagnostic()
     validate_provenance()
     section("Summary")
     print(f"  passed: {len(PASSED)}")

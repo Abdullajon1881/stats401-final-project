@@ -21,7 +21,9 @@ WorldPop Global 2 R2025A v1 constrained population counts are the primary
 spatial series for 2015–2026. The release is pinned to DOI
 `10.5258/SOTON/WP00839`; no other release is substituted. SIAT dataset 246 is
 an official annual permanent-population control, in thousands of residents.
-The WorldPop and SIAT series are not forced to agree.
+The WorldPop and SIAT series are not forced to agree. The WorldPop national
+temporal reference is January 1, aligned to the UN World Population Prospects
+2024 national estimates. No identical SIAT reference instant is assumed.
 
 ## 4. Fixed-geography choice
 
@@ -31,10 +33,20 @@ therefore means population modelled inside the current analysis footprint for
 that model year. The polygons are not presented as historical 2015 boundaries.
 Pixel centres determine district membership, providing one deterministic cell
 identity and preventing double counting along shared district edges. The cell
-cache retains the union of cells valid in any requested year, stores zero when a
-cell is nodata in a particular year within that union, and excludes cells that
-are nodata in all twelve years. This keeps one cell set while retaining cells
-that enter the constrained model surface later.
+cache retains the union of cells valid in any requested year, stores a blank
+value when a cell is nodata in a particular year, and excludes cells that are
+nodata in all twelve years. Annual aggregates sum only finite model estimates.
+Nodata is not imputed as numeric zero because the release statement does not
+explicitly define every constrained-raster nodata cell that way.
+
+The committed mask diagnostic records 64,756 cells valid in all twelve years,
+2,655 cells nodata in all twelve years, and 413 cells that move from nodata to
+valid. No cell moves from valid to nodata and no cell switches more than once.
+This monotonic pattern is consistent with the documented modelled annual
+built-settlement expansion, but it is not treated as proof that nodata is a
+numeric zero. A sensitivity comparison against an all-years-valid cell set
+changes citywide 2015–2026 growth by 0.011096716 percentage points; the largest
+district difference is 0.064827716 percentage points in Yangikhayot.
 
 ## 5. 2021 administrative break
 
@@ -48,10 +60,15 @@ geography. The default safe official district comparison period is 2021–2026.
 
 ## 6. WorldPop modelling and alpha caveat
 
-WorldPop values are modelled population surfaces, not annual census counts for
-each neighbourhood. R2025A is an alpha release. Historical years remain model-
-derived estimates, and 2026 is projected. Small-area changes must not be
-described as observed migration or observed annual neighbourhood population.
+WorldPop values for every year are modelled population surfaces, not annual
+census counts for each neighbourhood. R2025A is an alpha release. The
+`population_projection_flag` marks 2026 because it lies beyond the R2025A
+release-year basis; `false` does not mean observed. Population between or beyond
+input timepoints is modelled, built-settlement change is also modelled and
+interpolated, and small-area changes may contain spatial discontinuities. These
+changes must not be described as observed migration or observed annual
+neighbourhood population. These semantics follow the
+[R2025A v1 release statement](https://data.worldpop.org/repo/prj/Global_2015_2030/R2025A/doc/Global2_Release_Statement_R2025A_v1.pdf).
 
 ## 7. SIAT official-control role
 
@@ -117,7 +134,11 @@ continuous identically measured series.
 
 ## 14. Known limitations
 
-- WorldPop is modelled, R2025A is alpha, and 2026 is projected.
+- Every WorldPop year is modelled, R2025A is alpha, and the 2026 flag identifies
+  the year beyond the release-year basis rather than separating modelled from
+  observed data.
+- Annual settlement extent is modelled. Raster nodata is retained as missing,
+  and the mask-sensitivity diagnostic should accompany small-area growth claims.
 - Fixed current polygons do not recreate historical administrative boundaries.
 - SIAT and WorldPop have different geography and measurement semantics.
 - Historical entrance inventories and equal-quality pedestrian snapshots are

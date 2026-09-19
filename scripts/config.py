@@ -225,10 +225,19 @@ WORLDPOP_TEMPORAL_PRODUCT = (
     "Global 2 constrained population counts, 100m (3 arc-second), "
     "individual countries"
 )
+WORLDPOP_TEMPORAL_REFERENCE_DATE = "January 1"
+WORLDPOP_TEMPORAL_MODEL_STATUS = "modelled_estimate"
+WORLDPOP_PROJECTION_FLAG_DEFINITION = (
+    "True identifies a model year beyond the R2025A release-year basis; "
+    "False does not mean observed. Every year is a modelled estimate."
+)
 WORLDPOP_TEMPORAL_DIR = EXTERNAL_DIR / "worldpop_temporal"
 WORLDPOP_TEMPORAL_CELL_CACHE = EXTERNAL_DIR / "worldpop_temporal_cells.csv.gz"
 
 WORLDPOP_DISTRICT_YEAR_FILE = PROCESSED_DIR / "worldpop_district_year.csv"
+WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE = (
+    PROCESSED_DIR / "worldpop_temporal_mask_diagnostic.json"
+)
 SIAT_ANNUAL_POPULATION_FILE = PROCESSED_DIR / "siat_population_annual.csv"
 TEMPORAL_POPULATION_DIAGNOSTIC_FILE = (
     PROCESSED_DIR / "temporal_population_diagnostic.csv"
