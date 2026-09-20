@@ -8,7 +8,9 @@ No repository data or network download is used.
 
 from __future__ import annotations
 
+import json
 import sys
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -121,12 +123,34 @@ def test_opening_year_selects_nested_states():
     return "opening years produce 1 -> 3 -> 4 nested station states"
 
 
+def test_json_writer_emits_canonical_lf_bytes():
+    payload = {"state": "metro_state_29", "years": [2015, 2016], "nested": {"cells": 3456}}
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "routing_states.json"
+        ta.write_json_lf(path, payload)
+        first = path.read_bytes()
+        ta.write_json_lf(path, payload)
+        second = path.read_bytes()
+
+    first.decode("utf-8")
+    assert b"\r\n" not in first, "canonical JSON must not contain CRLF"
+    assert b"\r" not in first, "canonical JSON must not contain a bare CR"
+    assert b"\n" in first, "canonical JSON must be newline delimited"
+    assert first.endswith(b"}\n"), "canonical JSON must end with exactly one LF"
+    assert not first.endswith(b"\n\n"), "canonical JSON must not end with a blank line"
+    assert json.loads(first.decode("utf-8")) == payload
+    assert first == second, "repeated writes must be byte-identical"
+    lf_count = first.count(b"\n")
+    return f"{len(first)} bytes, {lf_count} LF, 0 CRLF, byte-stable on rewrite"
+
+
 TESTS = [
     ("adding a source cannot increase cell distance", test_adding_source_never_increases_distance),
     ("same-edge station and cell distance stays exact", test_same_edge_distance_is_exact),
     ("annual weights can change percentages with one mask", test_population_weights_can_change_pct_with_fixed_mask),
     ("annual missing population is excluded", test_missing_population_is_excluded),
     ("opening years select deterministic nested states", test_opening_year_selects_nested_states),
+    ("committed JSON is written as canonical LF bytes", test_json_writer_emits_canonical_lf_bytes),
 ]
 
 

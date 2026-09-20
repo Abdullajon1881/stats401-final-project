@@ -366,10 +366,7 @@ def main() -> int:  # noqa: PLR0915 - linear analysis pipeline is intentional
         "nested_access_mask_violations": access_violations,
         "states": state_diagnostics,
     }
-    cfg.PHASE2_ROUTING_STATES_FILE.write_text(
-        json.dumps(routing_diagnostic, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    ta.write_json_lf(cfg.PHASE2_ROUTING_STATES_FILE, routing_diagnostic)
 
     step("STEP 6  Aggregate annual city and district series")
     phase2_lookup = district_year.set_index(["district_id", "year"])
@@ -691,9 +688,7 @@ def main() -> int:  # noqa: PLR0915 - linear analysis pipeline is intentional
             "Counterfactual diagnostics are not an additive causal decomposition.",
         ],
     }
-    cfg.PHASE2_ANALYSIS_MANIFEST_PATH.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    ta.write_json_lf(cfg.PHASE2_ANALYSIS_MANIFEST_PATH, manifest)
     log(f"  wrote {relative(cfg.PHASE2_ANALYSIS_MANIFEST_PATH)}")
     step("Phase 2B analysis complete")
     log("  Next: python scripts/validate_phase2_accessibility.py")

@@ -13,6 +13,8 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 import hashlib
+import json
+
 import numpy as np
 import pandas as pd
 
@@ -121,6 +123,20 @@ def active_station_ids_sha256(station_ids: tuple[str, ...]) -> str:
     """Stable digest of an ordered source set."""
     payload = ("\n".join(station_ids) + "\n").encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def write_json_lf(path: Path, payload: object) -> None:
+    """Write JSON as canonical UTF-8 bytes with LF newlines on every platform.
+
+    ``Path.write_text`` opens the file in text mode, so on Windows every
+    newline is translated to CRLF. Git stores these committed outputs with LF,
+    so a manifest hashed from a text-mode write records a representation that
+    no LF checkout can reproduce. Writing bytes keeps the hashed file
+    byte-identical on Windows, macOS and Linux.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+    path.write_bytes(text.encode("utf-8"))
 
 
 def write_deterministic_npz(path: Path, arrays: list[tuple[str, np.ndarray]]) -> None:

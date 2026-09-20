@@ -412,10 +412,41 @@ def main() -> int:  # noqa: PLR0915 - validator intentionally enumerates gates
         "manifest rejects additive causal decomposition",
     )
     output_hashes_ok = True
+    stale_hashes: list[str] = []
     for relative_path, metadata in analysis_manifest["output_files"].items():
         path = cfg.REPO_ROOT / relative_path
-        output_hashes_ok &= path.exists() and cfg.sha256_file(path) == metadata["sha256"]
-    check(output_hashes_ok, "all committed output hashes match the manifest")
+        matched = path.exists() and cfg.sha256_file(path) == metadata["sha256"]
+        output_hashes_ok &= matched
+        if not matched:
+            stale_hashes.append(Path(relative_path).name)
+    check(
+        output_hashes_ok,
+        "all committed output hashes match the manifest",
+        ", ".join(stale_hashes) if stale_hashes else None,
+    )
+    # A manifest SHA is only reproducible if the hashed bytes are identical on
+    # every platform. These files are generated as canonical UTF-8 LF bytes and
+    # pinned with -text in .gitattributes so no checkout can reintroduce CRLF.
+    for canonical_path in (
+        cfg.PHASE2_ROUTING_STATES_FILE,
+        cfg.PHASE2_ANALYSIS_MANIFEST_PATH,
+    ):
+        raw = canonical_path.read_bytes()
+        crlf_count = raw.count(b"\r\n")
+        check(
+            b"\r\n" not in raw and b"\r" not in raw,
+            f"{canonical_path.name} is stored with LF newlines and no CR bytes",
+            f"{crlf_count} CRLF",
+        )
+        try:
+            raw.decode("utf-8")
+            decodable = True
+        except UnicodeDecodeError:
+            decodable = False
+        check(
+            decodable and raw.endswith(b"\n") and not raw.endswith(b"\n\n"),
+            f"{canonical_path.name} is UTF-8 and ends with exactly one LF",
+        )
     check(
         cfg.sha256_file(cfg.PHASE2_DISTANCE_CACHE)
         == analysis_manifest["distance_cache"]["sha256"],
