@@ -8,7 +8,9 @@ No repository data or network download is used.
 
 from __future__ import annotations
 
+import json
 import sys
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -121,12 +123,95 @@ def test_opening_year_selects_nested_states():
     return "opening years produce 1 -> 3 -> 4 nested station states"
 
 
+def test_json_writer_emits_canonical_lf_bytes():
+    payload = {"state": "metro_state_29", "years": [2015, 2016], "nested": {"cells": 3456}}
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "routing_states.json"
+        ta.write_json_lf(path, payload)
+        first = path.read_bytes()
+        ta.write_json_lf(path, payload)
+        second = path.read_bytes()
+
+    first.decode("utf-8")
+    assert b"\r\n" not in first, "canonical JSON must not contain CRLF"
+    assert b"\r" not in first, "canonical JSON must not contain a bare CR"
+    assert b"\n" in first, "canonical JSON must be newline delimited"
+    assert first.endswith(b"}\n"), "canonical JSON must end with exactly one LF"
+    assert not first.endswith(b"\n\n"), "canonical JSON must not end with a blank line"
+    assert json.loads(first.decode("utf-8")) == payload
+    assert first == second, "repeated writes must be byte-identical"
+    lf_count = first.count(b"\n")
+    return f"{len(first)} bytes, {lf_count} LF, 0 CRLF, byte-stable on rewrite"
+
+
+def test_canonical_hash_ignores_checkout_newlines():
+    body = "district_id,year,population\nTK01,2015,1000\nTK02,2015,2000\n"
+    with tempfile.TemporaryDirectory() as directory:
+        lf_path = Path(directory) / "lf.csv"
+        crlf_path = Path(directory) / "crlf.csv"
+        lf_path.write_bytes(body.encode("utf-8"))
+        crlf_path.write_bytes(body.replace("\n", "\r\n").encode("utf-8"))
+
+        lf_canonical = ta.canonical_utf8_lf_sha256(lf_path)
+        crlf_canonical = ta.canonical_utf8_lf_sha256(crlf_path)
+        lf_raw = ta.raw_file_sha256(lf_path)
+        crlf_raw = ta.raw_file_sha256(crlf_path)
+        lf_record = ta.provenance_record(lf_path, ta.HASH_BASIS_CANONICAL_TEXT)
+        crlf_record = ta.provenance_record(crlf_path, ta.HASH_BASIS_CANONICAL_TEXT)
+
+        assert lf_canonical == crlf_canonical, "canonical hash must ignore CRLF"
+        assert lf_raw != crlf_raw, "raw hash must stay byte-sensitive"
+        assert lf_record["size_bytes"] == crlf_record["size_bytes"] == len(body)
+        assert crlf_path.read_bytes().count(b"\r\n") == 3, "fixture must really be CRLF"
+
+        changed = Path(directory) / "changed.csv"
+        changed.write_bytes(body.replace("2000", "2001").encode("utf-8"))
+        assert ta.canonical_utf8_lf_sha256(changed) != lf_canonical, (
+            "canonical hash must still react to a real content change"
+        )
+    return f"CRLF and LF share canonical {lf_canonical[:12]}, raw digests differ"
+
+
+def test_bare_cr_is_rejected_not_normalized():
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "bare_cr.csv"
+        path.write_bytes(b"district_id,year\rTK01,2015\n")
+        try:
+            ta.canonical_utf8_lf_sha256(path)
+        except ValueError as error:
+            message = str(error)
+        else:
+            raise AssertionError("a bare CR must not be silently normalized")
+    assert "bare CR" in message
+    return "a lone CR raises instead of being folded into LF"
+
+
+def test_provenance_record_rejects_unknown_basis():
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "input.csv"
+        path.write_bytes(b"a,b\n1,2\n")
+        raw = ta.provenance_record(path, ta.HASH_BASIS_RAW_BYTES)
+        assert raw["size_bytes"] == 8 and raw["hash_basis"] == ta.HASH_BASIS_RAW_BYTES
+        try:
+            ta.provenance_record(path, "sha256_of_whatever_was_on_disk")
+        except ValueError as error:
+            message = str(error)
+        else:
+            raise AssertionError("an unknown hash basis must not be accepted")
+    assert "unknown hash basis" in message
+    return "raw basis recorded; an unrecognized basis raises"
+
+
 TESTS = [
     ("adding a source cannot increase cell distance", test_adding_source_never_increases_distance),
     ("same-edge station and cell distance stays exact", test_same_edge_distance_is_exact),
     ("annual weights can change percentages with one mask", test_population_weights_can_change_pct_with_fixed_mask),
     ("annual missing population is excluded", test_missing_population_is_excluded),
     ("opening years select deterministic nested states", test_opening_year_selects_nested_states),
+    ("committed JSON is written as canonical LF bytes", test_json_writer_emits_canonical_lf_bytes),
+    ("canonical input hashing ignores checkout newlines", test_canonical_hash_ignores_checkout_newlines),
+    ("a bare CR is rejected rather than normalized", test_bare_cr_is_rejected_not_normalized),
+    ("an unknown hash basis is refused", test_provenance_record_rejects_unknown_basis),
 ]
 
 

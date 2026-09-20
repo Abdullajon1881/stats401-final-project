@@ -461,10 +461,12 @@
         "valid_to_nodata_cells": 0
       },
       "filename": "worldpop_temporal_mask_diagnostic.json",
+      "hash_basis": "canonical_utf8_lf",
       "maximum_absolute_growth_difference_pp": 0.064827716,
       "maximum_difference_district_id": "1726292",
       "production_method": "union_valid_with_annual_missing",
-      "sha256": "c6101bb3ecae1ccf9e43cc7b7b4da8898db4cb515ebd4d79bbeb04c5a5a199c2"
+      "sha256": "5de6eb82442010947da3b2d8ec4925e7e4d89c6f864fd7b74727bdc94e0bca30",
+      "size_bytes": 15528
     },
     "national_total_alignment": "UN World Population Prospects 2024",
     "product": "Global 2 constrained population counts, 100m (3 arc-second), individual countries",

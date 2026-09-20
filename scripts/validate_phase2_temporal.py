@@ -15,6 +15,7 @@ import rasterio
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import config as cfg
+import phase2_manifest as pm
 from pipeline_utils import enable_utf8_stdout
 
 PASSED: list[str] = []
@@ -403,13 +404,30 @@ def validate_provenance() -> None:
         check(all((cached_cells[column].dropna() >= 0).all()
                   for column in population_columns),
               "cell cache contains only non-negative finite population estimates or missing")
+    # The mask diagnostic is tracked text, so its on-disk newlines depend on the
+    # checkout. It is pinned by canonical UTF-8 LF bytes, and an unknown or
+    # missing basis fails rather than falling back to raw filesystem bytes.
     mask_record = worldpop.get("mask_diagnostic", {})
+    mask_basis = mask_record.get("hash_basis")
+    check(mask_basis == pm.HASH_BASIS_CANONICAL_TEXT,
+          "mask diagnostic declares the canonical UTF-8 LF hash basis")
+    try:
+        mask_provenance = pm.canonical_provenance(
+            cfg.WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE
+        )
+    except (ValueError, UnicodeDecodeError):
+        mask_provenance = None
+    check(mask_provenance is not None,
+          "mask diagnostic is canonical UTF-8 text with no bare CR")
     check(mask_record.get("filename") == cfg.WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE.name
           and mask_record.get("production_method")
           == "union_valid_with_annual_missing"
-          and mask_record.get("sha256")
-          == cfg.sha256_file(cfg.WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE),
+          and mask_provenance is not None
+          and mask_record.get("sha256") == mask_provenance["sha256"],
           "manifest pins the mask diagnostic and documented production method")
+    check(mask_provenance is not None
+          and mask_record.get("size_bytes") == mask_provenance["size_bytes"],
+          "mask diagnostic size describes the same canonical bytes as its hash")
     check(siat.get("dataset_id") == cfg.SIAT_ANNUAL_DATASET_ID,
           "manifest pins SIAT dataset 246")
     check(str(siat.get("landing_url", "")).startswith("https://")

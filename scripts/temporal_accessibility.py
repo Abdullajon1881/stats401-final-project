@@ -13,6 +13,8 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 import hashlib
+import json
+
 import numpy as np
 import pandas as pd
 
@@ -121,6 +123,81 @@ def active_station_ids_sha256(station_ids: tuple[str, ...]) -> str:
     """Stable digest of an ordered source set."""
     payload = ("\n".join(station_ids) + "\n").encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+HASH_BASIS_CANONICAL_TEXT = "canonical_utf8_lf"
+HASH_BASIS_RAW_BYTES = "raw_file_bytes"
+
+
+def canonical_utf8_lf_bytes(path: Path) -> bytes:
+    """Return a checkout-independent byte image of a tracked UTF-8 text input.
+
+    Git may store a tracked text file with LF and hand Windows a CRLF working
+    copy, so raw filesystem bytes are not a stable identity for it. Collapsing
+    CRLF to LF makes both representations hash alike while still reacting to
+    any real content change.
+    """
+    raw = path.read_bytes()
+    text = raw.decode("utf-8")
+    normalized = text.replace("\r\n", "\n")
+    if "\r" in normalized:
+        raise ValueError(
+            f"{path.name} contains a bare CR; refusing to normalize it silently "
+            "because that byte is content, not a line ending"
+        )
+    return normalized.encode("utf-8")
+
+
+def canonical_utf8_lf_sha256(path: Path) -> str:
+    """SHA-256 of the canonical UTF-8 LF image of a tracked text input."""
+    return hashlib.sha256(canonical_utf8_lf_bytes(path)).hexdigest()
+
+
+def raw_file_sha256(path: Path, chunk_size: int = 1 << 20) -> str:
+    """SHA-256 of the exact filesystem bytes, read in chunks."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(chunk_size), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def provenance_record(path: Path, hash_basis: str) -> dict[str, object]:
+    """Describe one input file under an explicitly named byte representation.
+
+    ``sha256`` and ``size_bytes`` always describe the same bytes, so a record
+    can never pair a canonical digest with a raw CRLF size. The basis is
+    recorded rather than inferred: ``tashkent_walk_network.graphml`` decodes as
+    UTF-8 yet is an external artifact that must be hashed raw.
+    """
+    if hash_basis == HASH_BASIS_CANONICAL_TEXT:
+        payload = canonical_utf8_lf_bytes(path)
+        return {
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
+            "hash_basis": hash_basis,
+        }
+    if hash_basis == HASH_BASIS_RAW_BYTES:
+        return {
+            "sha256": raw_file_sha256(path),
+            "size_bytes": path.stat().st_size,
+            "hash_basis": hash_basis,
+        }
+    raise ValueError(f"unknown hash basis: {hash_basis!r}")
+
+
+def write_json_lf(path: Path, payload: object) -> None:
+    """Write JSON as canonical UTF-8 bytes with LF newlines on every platform.
+
+    ``Path.write_text`` opens the file in text mode, so on Windows every
+    newline is translated to CRLF. Git stores these committed outputs with LF,
+    so a manifest hashed from a text-mode write records a representation that
+    no LF checkout can reproduce. Writing bytes keeps the hashed file
+    byte-identical on Windows, macOS and Linux.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+    path.write_bytes(text.encode("utf-8"))
 
 
 def write_deterministic_npz(path: Path, arrays: list[tuple[str, np.ndarray]]) -> None:

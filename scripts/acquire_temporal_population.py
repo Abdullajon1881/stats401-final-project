@@ -12,7 +12,6 @@ for unchanged inputs.
 from __future__ import annotations
 
 import gzip
-import json
 import os
 import sys
 from io import BytesIO
@@ -30,7 +29,7 @@ from rasterio.windows import Window, from_bounds
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import config as cfg
-from phase2_manifest import update_manifest
+from phase2_manifest import canonical_provenance, update_manifest, write_json_lf
 from pipeline_utils import enable_utf8_stdout, http_get, log, step
 
 
@@ -394,17 +393,13 @@ def _write_mask_diagnostic(
             "maximum_difference_district_name": maximum["district_name"],
         },
     }
-    payload = json.dumps(
-        diagnostic,
-        ensure_ascii=False,
-        indent=2,
-        sort_keys=True,
-        allow_nan=False,
-    ) + "\n"
-    cfg.WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE.write_text(payload, encoding="utf-8")
+    write_json_lf(cfg.WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE, diagnostic)
+    # The diagnostic is tracked text, so Git decides whether a checkout spells
+    # its newlines LF or CRLF. Pin it by canonical UTF-8 LF bytes instead of by
+    # whatever representation happens to be on this machine's disk.
     return {
         "filename": cfg.WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE.name,
-        "sha256": cfg.sha256_file(cfg.WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE),
+        **canonical_provenance(cfg.WORLDPOP_TEMPORAL_MASK_DIAGNOSTIC_FILE),
         "production_method": diagnostic["production_treatment"]["method"],
         "cell_counts": diagnostic["cell_counts"],
         "maximum_absolute_growth_difference_pp": diagnostic["sensitivity"][

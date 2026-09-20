@@ -4,3 +4,18 @@
 # would be off by one, so these paths are never line-ending converted.
 site/data/**   -text
 site/vendor/** -text
+
+# Phase 2B records a SHA-256 for every committed output in
+# data/phase2_analysis_manifest.json, and scripts/validate_phase2_accessibility.py
+# re-hashes each file on disk. The generator writes them as canonical UTF-8 LF
+# bytes, but with core.autocrlf enabled a checkout would rewrite their newlines
+# and every recorded hash would break, so these paths are never line-ending
+# converted. Phase 2A outputs are deliberately absent: data/phase2_source_manifest.json
+# pins data/processed/worldpop_temporal_mask_diagnostic.json to its CRLF form and
+# that frozen manifest is not regenerated here.
+data/processed/metro_access_temporal_city.csv           -text
+data/processed/metro_access_temporal_district.csv       -text
+data/processed/metro_access_temporal_events.csv         -text
+data/processed/metro_access_temporal_counterfactual.csv -text
+data/processed/metro_temporal_routing_states.json       -text
+data/phase2_analysis_manifest.json                      -text
