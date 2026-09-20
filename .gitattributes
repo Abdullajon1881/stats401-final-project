@@ -19,3 +19,15 @@ data/processed/metro_access_temporal_events.csv         -text
 data/processed/metro_access_temporal_counterfactual.csv -text
 data/processed/metro_temporal_routing_states.json       -text
 data/phase2_analysis_manifest.json                      -text
+
+# Phase 2C records a SHA-256 for every committed output in
+# data/phase2c_urban_dimensions_manifest.json, and
+# scripts/validate_phase2_urban_dimensions.py asserts those files are stored as
+# canonical UTF-8 LF bytes. The generator writes LF, but with core.autocrlf
+# enabled a checkout would rewrite their newlines, so these paths are never
+# line-ending converted.
+data/processed/healthcare_facilities.geojson -text
+data/processed/education_facilities.geojson  -text
+data/processed/urban_dimensions_city.csv     -text
+data/processed/urban_dimensions_district.csv -text
+data/phase2c_urban_dimensions_manifest.json  -text

@@ -273,6 +273,36 @@ PHASE2_CELL_SNAP_CACHE = EXTERNAL_DIR / "temporal_cell_network_snap.npz"
 PHASE2_ACCESS_DISTANCE_BUDGET_M = 800.0
 
 
+# ---------------------------------------------------------------------------
+# Phase 2C current urban dimensions
+# ---------------------------------------------------------------------------
+PHASE2C_ANALYSIS_VERSION = "phase2c-current-urban-dimensions-v1"
+HEALTHCARE_FACILITIES_FILE = PROCESSED_DIR / "healthcare_facilities.geojson"
+EDUCATION_FACILITIES_FILE = PROCESSED_DIR / "education_facilities.geojson"
+URBAN_DIMENSIONS_CITY_FILE = PROCESSED_DIR / "urban_dimensions_city.csv"
+URBAN_DIMENSIONS_DISTRICT_FILE = PROCESSED_DIR / "urban_dimensions_district.csv"
+PHASE2C_MANIFEST_PATH = DATA_DIR / "phase2c_urban_dimensions_manifest.json"
+PHASE2C_METHODOLOGY_FILE = DOCS_DIR / "phase2_urban_dimensions.md"
+
+# Rebuildable Phase 2C products. The external-data directory is gitignored.
+PHASE2C_DISTANCE_CACHE = EXTERNAL_DIR / "urban_dimensions_distances.npz"
+PHASE2C_HEALTHCARE_RAW_CACHE = OSM_CACHE_DIR / "phase2c_healthcare_overpass.json"
+PHASE2C_EDUCATION_RAW_CACHE = OSM_CACHE_DIR / "phase2c_education_overpass.json"
+
+# The same physical walking budget as the current headline, so metro,
+# healthcare, education and bazaar access are directly comparable.
+PHASE2C_ACCESS_DISTANCE_BUDGET_M = 800.0
+
+# Two facilities of the same category that share a non-empty normalized name
+# collapse to one institution when they lie within this projected distance.
+# Deliberately small: it targets the point-plus-polygon and duplicated-import
+# cases, not genuinely distinct branches of one operator.
+PHASE2C_NAME_DEDUPE_RADIUS_M = 150.0
+
+PHASE2C_HEALTHCARE_CATEGORIES = ("hospital", "clinic")
+PHASE2C_EDUCATION_CATEGORIES = ("school", "college", "university", "kindergarten")
+
+
 def worldpop_temporal_filename(year: int) -> str:
     """Return the pinned Global 2 filename for one requested model year."""
     if year not in TEMPORAL_YEARS:
