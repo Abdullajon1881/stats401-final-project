@@ -4,8 +4,8 @@
   "comparison_design": "standardized temporal comparison",
   "input_files": {
     "data/phase2_source_manifest.json": {
-      "sha256": "eefa48da2ec28cd6f0538b166c42aac09519fe5921c8f5bcfa7ba49994339483",
-      "size_bytes": 18083,
+      "sha256": "b89f2db2ca48d223845fb2379d5f76cd1beb90c8382091829aebbfb50feb5e22",
+      "size_bytes": 18151,
       "hash_basis": "canonical_utf8_lf"
     },
     "data/source_manifest.json": {
