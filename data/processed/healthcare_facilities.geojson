@@ -1627,6 +1627,34 @@
     {
       "geometry": {
         "coordinates": [
+          69.2575757,
+          41.3292615
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "clinic",
+        "district_assignment": "within",
+        "district_name": "Shaykhantakhur district",
+        "facility_category": "clinic",
+        "facility_id": "hc_node_4508166889",
+        "geometry_assembly": "osm_node",
+        "healthcare": "clinic",
+        "latitude": 41.3292615,
+        "longitude": 69.2575757,
+        "name": "Medion",
+        "normalized_name": "medion",
+        "operator": "Labzak Pro Med",
+        "osm_id": 4508166889,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
           69.2867811,
           41.362917
         ],
@@ -2803,6 +2831,34 @@
     {
       "geometry": {
         "coordinates": [
+          69.3447712,
+          41.3444759
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "clinic",
+        "district_assignment": "within",
+        "district_name": "Mirzo Ulugbek district",
+        "facility_category": "clinic",
+        "facility_id": "hc_node_5301565221",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.3444759,
+        "longitude": 69.3447712,
+        "name": "MEDIK AS",
+        "normalized_name": "medik as",
+        "operator": null,
+        "osm_id": 5301565221,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
           69.3058004,
           41.3345593
         ],
@@ -3130,6 +3186,34 @@
         "normalized_name": "невросервис",
         "operator": null,
         "osm_id": 5508957421,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          69.224659,
+          41.2022952
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "clinic",
+        "district_assignment": "within",
+        "district_name": "Yangikhayot district",
+        "facility_category": "clinic",
+        "facility_id": "hc_node_5508957422",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.2022952,
+        "longitude": 69.224659,
+        "name": "НевроСервис",
+        "normalized_name": "невросервис",
+        "operator": null,
+        "osm_id": 5508957422,
         "osm_relation_type": null,
         "osm_type": "node",
         "representative_point_method": "osm_node"
@@ -4222,6 +4306,34 @@
         "normalized_name": "филиал сп14",
         "operator": null,
         "osm_id": 6115570088,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          69.2278822,
+          41.3276757
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "clinic",
+        "district_assignment": "within",
+        "district_name": "Almazar district",
+        "facility_category": "clinic",
+        "facility_id": "hc_node_6128227089",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.3276757,
+        "longitude": 69.2278822,
+        "name": "Шифо нур",
+        "normalized_name": "шифо нур",
+        "operator": null,
+        "osm_id": 6128227089,
         "osm_relation_type": null,
         "osm_type": "node",
         "representative_point_method": "osm_node"
@@ -5575,6 +5687,34 @@
     {
       "geometry": {
         "coordinates": [
+          69.1766596,
+          41.3595275
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "hospital",
+        "district_assignment": "within",
+        "district_name": "Almazar district",
+        "facility_category": "hospital",
+        "facility_id": "hc_node_10272787255",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.3595275,
+        "longitude": 69.1766596,
+        "name": "Z Hospital",
+        "normalized_name": "z hospital",
+        "operator": null,
+        "osm_id": 10272787255,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
           69.1763002,
           41.3556469
         ],
@@ -5650,6 +5790,34 @@
         "normalized_name": "surunkali somatik kasalliklar",
         "operator": null,
         "osm_id": 10280063703,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          69.2601172,
+          41.3427931
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "clinic",
+        "district_assignment": "within",
+        "district_name": "Almazar district",
+        "facility_category": "clinic",
+        "facility_id": "hc_node_10316772922",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.3427931,
+        "longitude": 69.2601172,
+        "name": "Поликлиника",
+        "normalized_name": "поликлиника",
+        "operator": null,
+        "osm_id": 10316772922,
         "osm_relation_type": null,
         "osm_type": "node",
         "representative_point_method": "osm_node"
@@ -6303,6 +6471,34 @@
     {
       "geometry": {
         "coordinates": [
+          69.2921394,
+          41.3194745
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "clinic",
+        "district_assignment": "within",
+        "district_name": "Mirzo Ulugbek district",
+        "facility_category": "clinic",
+        "facility_id": "hc_node_11545864616",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.3194745,
+        "longitude": 69.2921394,
+        "name": "Клиника доктора Максудовой",
+        "normalized_name": "клиника доктора максудовой",
+        "operator": null,
+        "osm_id": 11545864616,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
           69.2896766,
           41.3586944
         ],
@@ -6546,6 +6742,34 @@
         "normalized_name": "clinic of emu",
         "operator": null,
         "osm_id": 12599951287,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          69.2084219,
+          41.3013117
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "clinic",
+        "district_assignment": "within",
+        "district_name": "Shaykhantakhur district",
+        "facility_category": "clinic",
+        "facility_id": "hc_node_12599981672",
+        "geometry_assembly": "osm_node",
+        "healthcare": "clinic",
+        "latitude": 41.3013117,
+        "longitude": 69.2084219,
+        "name": "Clinic of EMU",
+        "normalized_name": "clinic of emu",
+        "operator": null,
+        "osm_id": 12599981672,
         "osm_relation_type": null,
         "osm_type": "node",
         "representative_point_method": "osm_node"
@@ -7134,6 +7358,34 @@
         "normalized_name": "поликлиника гувд",
         "operator": null,
         "osm_id": 13534842068,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          69.3743825,
+          41.2500267
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "clinic",
+        "district_assignment": "within",
+        "district_name": "Bektemir district",
+        "facility_category": "clinic",
+        "facility_id": "hc_node_13543936737",
+        "geometry_assembly": "osm_node",
+        "healthcare": "clinic",
+        "latitude": 41.2500267,
+        "longitude": 69.3743825,
+        "name": "Поликлиника №",
+        "normalized_name": "поликлиника",
+        "operator": null,
+        "osm_id": 13543936737,
         "osm_relation_type": null,
         "osm_type": "node",
         "representative_point_method": "osm_node"
@@ -21538,24 +21790,28 @@
     "city_clipping_rule": "retained when the routing representative point lies within data/processed/tashkent_boundary.geojson",
     "clean": {
       "by_category": {
-        "clinic": 222,
-        "hospital": 205
+        "clinic": 230,
+        "hospital": 206
       },
-      "named": 394,
-      "total": 427,
+      "named": 403,
+      "total": 436,
       "unnamed": 33
     },
+    "dedupe_distance_max_m": 92.312547,
+    "dedupe_distance_median_m": 73.80383,
+    "dedupe_distance_min_m": 9.660945,
+    "dedupe_distance_units": "metres (EPSG:32642)",
     "dedupe_radius_m": 150.0,
     "dedupe_rule": "one object per OSM type/id; records sharing a category and a non-empty normalized name within 150 m collapse to the areal representation; unnamed facilities are never proximity-merged and categories are never merged",
     "district_scope_rule": "routing scope is the full current city boundary; supply scope is the 12 SIAT-matched analysis districts. A facility outside all 12 stays a routing source and is credited to no district supply",
-    "duplicates_removed": 13,
+    "duplicates_removed": 4,
     "elements_returned": 478,
     "facility_class": "healthcare",
     "geometry": {
       "assembly_methods": {
         "closed_way_polygon": 142,
         "multipolygon_polygonized": 24,
-        "osm_node": 261
+        "osm_node": 270
       },
       "multipolygon_line_fallback": 0,
       "multipolygon_relations": 24,
@@ -21568,6 +21824,9 @@
     },
     "osm_licence": "ODbL 1.0",
     "overpass_query": "[out:json][timeout:300];\n(\n  node[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n);\nout geom;",
+    "raw_cache_path": "data/external/osm_cache/phase2c_healthcare_overpass.json",
+    "raw_cache_sha256": "82f6ba9a3370f198c5504ad9248767b5bf2e96da03a2e856a62e2f200720e9be",
+    "raw_cache_size_bytes": 477524,
     "raw_in_city": {
       "by_category": {
         "clinic": 233,
@@ -21581,10 +21840,10 @@
     "representative_point_rule": "OSM node as-is; a closed way and a polygonized multipolygon relation use a representative point guaranteed inside the reconstructed area; only a genuine line feature uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
     "scope": {
       "boundary_tie": 0,
-      "in_analysis_districts": 423,
+      "in_analysis_districts": 432,
       "outside_analysis_districts": 4,
-      "routing_sources": 427,
-      "within": 423
+      "routing_sources": 436,
+      "within": 432
     }
   },
   "type": "FeatureCollection"

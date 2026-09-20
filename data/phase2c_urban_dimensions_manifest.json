@@ -15,14 +15,24 @@
   "analysis_version": "phase2c-current-urban-dimensions-v1",
   "city_access": {
     "bazaar_10min_pct": 14.435025214,
-    "education_10min_pct": 71.760660002,
-    "healthcare_10min_pct": 46.66046492,
-    "healthcare_and_education_10min_pct": 43.30140845
+    "education_10min_pct": 72.482732459,
+    "healthcare_10min_pct": 46.891988202,
+    "healthcare_and_education_10min_pct": 43.653596349
   },
   "city_clipping_rule": "a facility is retained when its routing representative point lies within data/processed/tashkent_boundary.geojson",
   "composite_score_or_ranking": false,
   "historical_facility_claims": false,
   "input_files": {
+    "data/external/osm_cache/phase2c_education_overpass.json": {
+      "hash_basis": "raw_file_bytes",
+      "sha256": "170cd6e09201d4fd90264dc8ada6f4fff23b8fbd9f3650cf813f05f9171097e3",
+      "size_bytes": 1779316
+    },
+    "data/external/osm_cache/phase2c_healthcare_overpass.json": {
+      "hash_basis": "raw_file_bytes",
+      "sha256": "82f6ba9a3370f198c5504ad9248767b5bf2e96da03a2e856a62e2f200720e9be",
+      "size_bytes": 477524
+    },
     "data/external/population_cells.parquet": {
       "hash_basis": "raw_file_bytes",
       "sha256": "948871e538fd0de66c4d30cf5d6c8c0deef3071c8e59d41581f96548e54a7c3b",
@@ -75,23 +85,23 @@
   "output_files": {
     "data/processed/education_facilities.geojson": {
       "hash_basis": "canonical_utf8_lf",
-      "sha256": "0b706cf6631f06cbd5167a033f39095682ac525fedd8531ed60ac192d8e4dbdc",
-      "size_bytes": 1762900
+      "sha256": "9204886049cd09520d431d19610dac5382c7f181e9631143df6cf54a965683c6",
+      "size_bytes": 1813921
     },
     "data/processed/healthcare_facilities.geojson": {
       "hash_basis": "canonical_utf8_lf",
-      "sha256": "588993e53a16ac62654342f2d35a2dedff34058cc101891891900463c3992dd6",
-      "size_bytes": 550135
+      "sha256": "fd62fc205e30a7d9874562422d064a796d1f8d3ef64a573ef52b53c15dd27558",
+      "size_bytes": 557701
     },
     "data/processed/urban_dimensions_city.csv": {
       "hash_basis": "canonical_utf8_lf",
-      "sha256": "a1f31a65c8720f239f9d6d134b19b7a24e174ce607f3be1f6b2b77b0b1ebc24a",
-      "size_bytes": 1033
+      "sha256": "2d2fdd75fb5b39138489ce6fdd54cc5c6468f76ad0aa83a667a0e0a78f32ebcb",
+      "size_bytes": 1036
     },
     "data/processed/urban_dimensions_district.csv": {
       "hash_basis": "canonical_utf8_lf",
-      "sha256": "1288c3ecd81f3ff18b4843cde261184d54c22473c2760abf88a65e1752111a03",
-      "size_bytes": 4149
+      "sha256": "af9903daaceb0c96cf13977618871957956313615b9848521ab530405b27cfde",
+      "size_bytes": 4157
     }
   },
   "pedestrian_network": {
@@ -123,24 +133,24 @@
         "p99_m": 116.13591378609671
       },
       "education": {
-        "count": 1179,
+        "count": 1215,
         "label": "education",
         "max_m": 117.65007636206134,
-        "mean_m": 34.26593310326675,
-        "median_m": 33.206111867485525,
+        "mean_m": 34.103830828100484,
+        "median_m": 33.04983138880656,
         "min_m": 0.0,
-        "p95_m": 69.64032011162277,
-        "p99_m": 85.70742117743013
+        "p95_m": 69.6439543399006,
+        "p99_m": 85.63149172554803
       },
       "healthcare": {
-        "count": 427,
+        "count": 436,
         "label": "healthcare",
         "max_m": 169.37005140425774,
-        "mean_m": 18.89193054487375,
-        "median_m": 14.996767913280078,
+        "mean_m": 18.76691239661709,
+        "median_m": 14.885222756582394,
         "min_m": 0.0,
-        "p95_m": 49.16267374642048,
-        "p99_m": 67.0990482427929
+        "p95_m": 48.972199899244664,
+        "p99_m": 66.66791724756648
       }
     },
     "destination_classes": [
@@ -163,19 +173,19 @@
         "max_sources_on_one_edge": 2
       },
       "education": {
-        "count": 1179,
-        "distinct_edges_containing_sources": 1141,
-        "effectively_at_an_endpoint": 202,
+        "count": 1215,
+        "distinct_edges_containing_sources": 1172,
+        "effectively_at_an_endpoint": 208,
         "endpoint_tolerance_m": 1.0,
-        "inserted_in_edge_interior": 977,
+        "inserted_in_edge_interior": 1007,
         "max_sources_on_one_edge": 4
       },
       "healthcare": {
-        "count": 427,
-        "distinct_edges_containing_sources": 403,
-        "effectively_at_an_endpoint": 55,
+        "count": 436,
+        "distinct_edges_containing_sources": 410,
+        "effectively_at_an_endpoint": 56,
         "endpoint_tolerance_m": 1.0,
-        "inserted_in_edge_interior": 372,
+        "inserted_in_edge_interior": 380,
         "max_sources_on_one_edge": 3
       }
     },
@@ -194,39 +204,46 @@
       "city_clipping_rule": "retained when the routing representative point lies within data/processed/tashkent_boundary.geojson",
       "clean": {
         "by_category": {
-          "college": 102,
-          "kindergarten": 467,
-          "school": 514,
-          "university": 96
+          "college": 104,
+          "kindergarten": 481,
+          "school": 532,
+          "university": 98
         },
-        "named": 1087,
-        "total": 1179,
+        "named": 1123,
+        "total": 1215,
         "unnamed": 92
       },
+      "dedupe_distance_max_m": 128.367403,
+      "dedupe_distance_median_m": 76.842376,
+      "dedupe_distance_min_m": 31.476017,
+      "dedupe_distance_units": "metres (EPSG:32642)",
       "dedupe_radius_m": 150.0,
       "dedupe_rule": "one object per OSM type/id; records sharing a category and a non-empty normalized name within 150 m collapse to the areal representation; unnamed facilities are never proximity-merged and categories are never merged",
       "district_scope_rule": "routing scope is the full current city boundary; supply scope is the 12 SIAT-matched analysis districts. A facility outside all 12 stays a routing source and is credited to no district supply",
-      "duplicates_removed": 40,
+      "duplicates_removed": 4,
       "elements_returned": 1333,
       "facility_class": "education",
       "geometry": {
         "assembly_methods": {
-          "closed_way_polygon": 905,
-          "multipolygon_polygonized": 74,
-          "osm_node": 200
+          "closed_way_polygon": 931,
+          "multipolygon_polygonized": 75,
+          "osm_node": 209
         },
         "multipolygon_line_fallback": 0,
-        "multipolygon_relations": 74,
+        "multipolygon_relations": 75,
         "relation_geometry_types": {
           "MultiPolygon": 2,
-          "Polygon": 72
+          "Polygon": 73
         },
         "relation_line_fallback": 0,
-        "relation_polygonal": 74,
-        "relations": 74
+        "relation_polygonal": 75,
+        "relations": 75
       },
       "osm_licence": "ODbL 1.0",
       "overpass_query": "[out:json][timeout:300];\n(\n  node[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n);\nout geom;",
+      "raw_cache_path": "data/external/osm_cache/phase2c_education_overpass.json",
+      "raw_cache_sha256": "170cd6e09201d4fd90264dc8ada6f4fff23b8fbd9f3650cf813f05f9171097e3",
+      "raw_cache_size_bytes": 1779316,
       "raw_in_city": {
         "by_category": {
           "college": 104,
@@ -240,35 +257,35 @@
       },
       "recounted_clean": {
         "by_category": {
-          "college": 102,
-          "kindergarten": 467,
-          "school": 514,
-          "university": 96
+          "college": 104,
+          "kindergarten": 481,
+          "school": 532,
+          "university": 98
         },
         "multipolygon_line_fallback": 0,
-        "multipolygon_relations": 74,
-        "named": 1087,
+        "multipolygon_relations": 75,
+        "named": 1123,
         "relation_line_fallback": 0,
-        "relation_polygonal": 74,
-        "relations": 74,
-        "total": 1179,
+        "relation_polygonal": 75,
+        "relations": 75,
+        "total": 1215,
         "unnamed": 92
       },
       "recounted_scope": {
         "boundary_tie": 0,
-        "in_analysis_districts": 1154,
+        "in_analysis_districts": 1190,
         "outside_analysis_districts": 25,
-        "routing_sources": 1179,
-        "within": 1154
+        "routing_sources": 1215,
+        "within": 1190
       },
       "relation_assembly_rule": "relation member linework is noded and polygonized by role, so an outer ring split across several member ways still closes; inner rings are subtracted so courtyards remain holes",
       "representative_point_rule": "OSM node as-is; a closed way and a polygonized multipolygon relation use a representative point guaranteed inside the reconstructed area; only a genuine line feature uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
       "scope": {
         "boundary_tie": 0,
-        "in_analysis_districts": 1154,
+        "in_analysis_districts": 1190,
         "outside_analysis_districts": 25,
-        "routing_sources": 1179,
-        "within": 1154
+        "routing_sources": 1215,
+        "within": 1190
       },
       "source_file": "data/processed/education_facilities.geojson"
     },
@@ -277,24 +294,28 @@
       "city_clipping_rule": "retained when the routing representative point lies within data/processed/tashkent_boundary.geojson",
       "clean": {
         "by_category": {
-          "clinic": 222,
-          "hospital": 205
+          "clinic": 230,
+          "hospital": 206
         },
-        "named": 394,
-        "total": 427,
+        "named": 403,
+        "total": 436,
         "unnamed": 33
       },
+      "dedupe_distance_max_m": 92.312547,
+      "dedupe_distance_median_m": 73.80383,
+      "dedupe_distance_min_m": 9.660945,
+      "dedupe_distance_units": "metres (EPSG:32642)",
       "dedupe_radius_m": 150.0,
       "dedupe_rule": "one object per OSM type/id; records sharing a category and a non-empty normalized name within 150 m collapse to the areal representation; unnamed facilities are never proximity-merged and categories are never merged",
       "district_scope_rule": "routing scope is the full current city boundary; supply scope is the 12 SIAT-matched analysis districts. A facility outside all 12 stays a routing source and is credited to no district supply",
-      "duplicates_removed": 13,
+      "duplicates_removed": 4,
       "elements_returned": 478,
       "facility_class": "healthcare",
       "geometry": {
         "assembly_methods": {
           "closed_way_polygon": 142,
           "multipolygon_polygonized": 24,
-          "osm_node": 261
+          "osm_node": 270
         },
         "multipolygon_line_fallback": 0,
         "multipolygon_relations": 24,
@@ -307,6 +328,9 @@
       },
       "osm_licence": "ODbL 1.0",
       "overpass_query": "[out:json][timeout:300];\n(\n  node[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n);\nout geom;",
+      "raw_cache_path": "data/external/osm_cache/phase2c_healthcare_overpass.json",
+      "raw_cache_sha256": "82f6ba9a3370f198c5504ad9248767b5bf2e96da03a2e856a62e2f200720e9be",
+      "raw_cache_size_bytes": 477524,
       "raw_in_city": {
         "by_category": {
           "clinic": 233,
@@ -318,33 +342,33 @@
       },
       "recounted_clean": {
         "by_category": {
-          "clinic": 222,
-          "hospital": 205
+          "clinic": 230,
+          "hospital": 206
         },
         "multipolygon_line_fallback": 0,
         "multipolygon_relations": 24,
-        "named": 394,
+        "named": 403,
         "relation_line_fallback": 0,
         "relation_polygonal": 24,
         "relations": 24,
-        "total": 427,
+        "total": 436,
         "unnamed": 33
       },
       "recounted_scope": {
         "boundary_tie": 0,
-        "in_analysis_districts": 423,
+        "in_analysis_districts": 432,
         "outside_analysis_districts": 4,
-        "routing_sources": 427,
-        "within": 423
+        "routing_sources": 436,
+        "within": 432
       },
       "relation_assembly_rule": "relation member linework is noded and polygonized by role, so an outer ring split across several member ways still closes; inner rings are subtracted so courtyards remain holes",
       "representative_point_rule": "OSM node as-is; a closed way and a polygonized multipolygon relation use a representative point guaranteed inside the reconstructed area; only a genuine line feature uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
       "scope": {
         "boundary_tie": 0,
-        "in_analysis_districts": 423,
+        "in_analysis_districts": 432,
         "outside_analysis_districts": 4,
-        "routing_sources": 427,
-        "within": 423
+        "routing_sources": 436,
+        "within": 432
       },
       "source_file": "data/processed/healthcare_facilities.geojson"
     }

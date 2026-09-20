@@ -283,6 +283,92 @@ def test_true_shared_boundary_is_a_deterministic_tie():
     return "a point on the shared border ties to the alphabetically first district"
 
 
+def wgs84_pair(offset_lon: float, *, name: str = "maktab", category: str = "school"):
+    """Two same-name, same-category nodes in EPSG:4326 near central Tashkent.
+
+    The layer really is built in degrees, so a metre threshold is only correct
+    if the helper projects these points itself.
+    """
+    base_lon, base_lat = 69.2401, 41.2995
+    first = Point(base_lon, base_lat)
+    second = Point(base_lon + offset_lon, base_lat)
+    rows = [
+        {"facility_id": "a", "osm_type": "node", "osm_id": 1,
+         "normalized_name": name, "facility_category": category, "geometry": first},
+        {"facility_id": "b", "osm_type": "node", "osm_id": 2,
+         "normalized_name": name, "facility_category": category, "geometry": second},
+    ]
+    geometries = [row.pop("geometry") for row in rows]
+    frame = gpd.GeoDataFrame(rows, geometry=geometries, crs=cfg.GEOGRAPHIC_CRS)
+    frame["representative_geometry"] = gpd.GeoSeries(
+        geometries, crs=cfg.GEOGRAPHIC_CRS
+    )
+    frame["geometry_rank"] = [2, 2]
+    return frame
+
+
+def wgs84_separation_m(frame: gpd.GeoDataFrame) -> float:
+    points = ud.projected_representative_points(frame)
+    return float(points.iloc[0].distance(points.iloc[1]))
+
+
+def test_wgs84_same_name_near_pair_collapses():
+    frame = wgs84_pair(0.0009)  # roughly 75 m of longitude at this latitude
+    separation = wgs84_separation_m(frame)
+    assert 40.0 < separation < 140.0, separation
+    kept, dropped = facility_dedupe(frame)
+    assert len(kept) == 1, kept.facility_id.tolist()
+    assert len(dropped) == 1
+    assert dropped.distance_m.iloc[0] <= cfg.PHASE2C_NAME_DEDUPE_RADIUS_M
+    return f"two same-name nodes {separation:.1f} m apart collapse to one"
+
+
+def test_wgs84_same_name_far_pair_stays_separate():
+    # Several kilometres apart. Under the old implementation the comparison
+    # ran in degrees, so 0.07 degrees read as "0.07 <= 150" and these merged.
+    frame = wgs84_pair(0.07)
+    separation = wgs84_separation_m(frame)
+    assert separation > 5_000.0, separation
+    kept, dropped = facility_dedupe(frame)
+    assert len(kept) == 2, "same-name facilities kilometres apart are distinct"
+    assert dropped.empty
+    return f"two same-name nodes {separation/1000:.1f} km apart both survive"
+
+
+def test_dedupe_projects_secondary_geometry_itself():
+    frame = wgs84_pair(0.0009)
+    # GeoDataFrame.to_crs only moves the active column: this is the defect the
+    # helper must not depend on.
+    naive = frame.to_crs(cfg.METRIC_CRS)
+    assert naive.geometry.crs.to_epsg() == 32642
+    assert naive["representative_geometry"].crs.to_epsg() == 4326, (
+        "fixture must reproduce the untransformed secondary column"
+    )
+    projected = ud.projected_representative_points(frame)
+    assert projected.crs.to_epsg() == 32642
+    assert projected.iloc[0].x > 1_000.0, "points must be in metres, not degrees"
+    naive_gap = naive["representative_geometry"].iloc[0].distance(
+        naive["representative_geometry"].iloc[1]
+    )
+    assert naive_gap < 1.0, "the untransformed gap is a degree value"
+    assert wgs84_separation_m(frame) > 40.0, "the projected gap is metres"
+    return "the helper projects representative points regardless of the active column"
+
+
+def test_dropped_pairs_report_a_valid_distance():
+    frame = wgs84_pair(0.0009)
+    _, dropped = facility_dedupe(frame)
+    assert list(dropped.columns) == ud.DEDUPE_DROPPED_COLUMNS
+    for value in dropped.distance_m:
+        assert 0.0 <= value <= cfg.PHASE2C_NAME_DEDUPE_RADIUS_M, value
+    summary = ud.dedupe_distance_summary(dropped)
+    assert summary["dedupe_distance_max_m"] <= cfg.PHASE2C_NAME_DEDUPE_RADIUS_M
+    assert summary["dedupe_distance_units"] == "metres (EPSG:32642)"
+    empty = ud.dedupe_distance_summary(dropped.iloc[0:0])
+    assert empty["dedupe_distance_max_m"] is None, "no pairs means an explicit null"
+    return "every collapsed pair reports a distance within the radius"
+
+
 def facility_dedupe(frame: gpd.GeoDataFrame):
     return ud.dedupe_facilities(frame, radius_m=cfg.PHASE2C_NAME_DEDUPE_RADIUS_M)
 
@@ -303,6 +389,10 @@ TESTS = [
     ("a multipolygon representative point is covered", test_multipolygon_representative_point_is_covered),
     ("outside-analysis points are never nearest-assigned", test_outside_analysis_districts_is_not_nearest_assigned),
     ("a true shared boundary is a deterministic tie", test_true_shared_boundary_is_a_deterministic_tie),
+    ("a WGS84 same-name near pair collapses", test_wgs84_same_name_near_pair_collapses),
+    ("a WGS84 same-name far pair stays separate", test_wgs84_same_name_far_pair_stays_separate),
+    ("dedupe projects the secondary geometry itself", test_dedupe_projects_secondary_geometry_itself),
+    ("dropped pairs report a valid metric distance", test_dropped_pairs_report_a_valid_distance),
 ]
 
 

@@ -68,9 +68,29 @@ def build_query(bbox: tuple[float, float, float, float], selectors) -> str:
 
 
 def fetch_cached(query: str, cache_path: Path, description: str) -> dict:
-    """Return the cached Overpass snapshot, downloading it once if absent."""
+    """Return the cached Overpass snapshot, downloading it once if absent.
+
+    A cache is only reused when it was produced by exactly the query being
+    requested. Silently reusing a snapshot taken under different tag or output
+    semantics would pin provenance to bytes that no longer describe the
+    analysis.
+    """
     if cache_path.exists():
         payload = json.loads(cache_path.read_bytes().decode("utf-8"))
+        missing = [k for k in ("acquired_at_utc", "query", "elements") if k not in payload]
+        if missing:
+            raise SystemExit(
+                f"{cache_path} is missing required keys {missing}; delete it to "
+                "take a fresh snapshot"
+            )
+        if not isinstance(payload["elements"], list):
+            raise SystemExit(f"{cache_path} does not store 'elements' as a list")
+        if payload["query"] != query:
+            raise SystemExit(
+                f"{cache_path} was produced by a different Overpass query than the "
+                "one now requested. Refusing to reuse a stale snapshot; review the "
+                "change and delete the cache deliberately to re-acquire."
+            )
         log(f"    reusing cached {description} snapshot "
             f"({len(payload['elements'])} elements, taken {payload['acquired_at_utc']})")
         return payload
@@ -262,6 +282,7 @@ def build_class(
     city_geom_metric,
     districts: gpd.GeoDataFrame,
     output_path: Path,
+    cache_path: Path,
 ) -> dict:
     """Classify, clip, deduplicate and write one facility class."""
     raw = elements_to_frame(payload, precedence, tag_keys, category_column, id_prefix)
@@ -275,8 +296,14 @@ def build_class(
         work, radius_m=cfg.PHASE2C_NAME_DEDUPE_RADIUS_M
     )
     kept = kept.rename(columns={"facility_category": category_column})
+    distances = ud.dedupe_distance_summary(dropped)
     log(f"    deduplicated {label}: {len(clipped)} raw -> {len(kept)} clean "
         f"({len(dropped)} duplicate representations removed)")
+    if len(dropped):
+        log(f"      collapsed-pair distance: min {distances['dedupe_distance_min_m']:.1f} m, "
+            f"median {distances['dedupe_distance_median_m']:.1f} m, "
+            f"max {distances['dedupe_distance_max_m']:.1f} m "
+            f"(limit {cfg.PHASE2C_NAME_DEDUPE_RADIUS_M:.0f} m)")
 
     kept = attach_district(kept, districts)
     kept = kept.sort_values(["osm_type", "osm_id"], kind="stable").reset_index(drop=True)
@@ -304,6 +331,10 @@ def build_class(
         "scope": district_summary(out),
         "duplicates_removed": int(len(dropped)),
         "dedupe_radius_m": cfg.PHASE2C_NAME_DEDUPE_RADIUS_M,
+        **distances,
+        "raw_cache_path": str(cache_path.relative_to(cfg.REPO_ROOT)).replace("\\", "/"),
+        "raw_cache_sha256": ud.raw_file_sha256(cache_path),
+        "raw_cache_size_bytes": cache_path.stat().st_size,
         "dedupe_rule": (
             "one object per OSM type/id; records sharing a category and a "
             f"non-empty normalized name within {cfg.PHASE2C_NAME_DEDUPE_RADIUS_M:.0f} m "
@@ -366,6 +397,7 @@ def main() -> int:
         city_geom_metric=city_geom_metric,
         districts=districts,
         output_path=cfg.HEALTHCARE_FACILITIES_FILE,
+        cache_path=cfg.PHASE2C_HEALTHCARE_RAW_CACHE,
     )
 
     step("EDUCATION  amenity school, college, university and kindergarten")
@@ -385,6 +417,7 @@ def main() -> int:
         city_geom_metric=city_geom_metric,
         districts=districts,
         output_path=cfg.EDUCATION_FACILITIES_FILE,
+        cache_path=cfg.PHASE2C_EDUCATION_RAW_CACHE,
     )
 
     step("Phase 2C source acquisition complete")

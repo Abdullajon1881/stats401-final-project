@@ -200,11 +200,66 @@ def main() -> int:  # noqa: PLR0915 - validator intentionally enumerates gates
               f"{label} category subtotals sum to the layer total")
         check(isinstance(record.get("dedupe_rule"), str) and record["dedupe_rule"],
               f"{label} documents its dedupe semantics")
+        check(record.get("dedupe_radius_m") == 150.0,
+              f"{label} dedupe radius is exactly 150 m",
+              str(record.get("dedupe_radius_m")))
+        check(record.get("dedupe_distance_units") == "metres (EPSG:32642)",
+              f"{label} dedupe distances are declared in projected metres")
+        distances = [record.get(f"dedupe_distance_{k}_m") for k in ("min", "median", "max")]
+        if removed:
+            check(all(d is not None and d >= 0 for d in distances),
+                  f"{label} dedupe distances are present and non-negative",
+                  str(distances))
+            check(record["dedupe_distance_max_m"] <= 150.0 + 1e-6,
+                  f"{label} no collapsed pair exceeds the 150 m radius",
+                  f"max {record['dedupe_distance_max_m']}")
+            check(record["dedupe_distance_min_m"] <= record["dedupe_distance_median_m"]
+                  <= record["dedupe_distance_max_m"],
+                  f"{label} dedupe distance summary is ordered")
+        else:
+            check(all(d is None for d in distances),
+                  f"{label} records explicit nulls when nothing was collapsed")
         check(record.get("osm_licence") == "ODbL 1.0", f"{label} records the OSM licence")
         check("out geom" in record.get("overpass_query", ""),
               f"{label} records the exact Overpass query")
         check(bool(record.get("acquired_at_utc")),
               f"{label} records its source acquisition timestamp")
+
+    section("Raw Overpass snapshots")
+    for label, key, cache in (("healthcare", "healthcare", cfg.PHASE2C_HEALTHCARE_RAW_CACHE),
+                              ("education", "education", cfg.PHASE2C_EDUCATION_RAW_CACHE)):
+        record = manifest["sources"][key]
+        relative_cache = str(cache.relative_to(cfg.REPO_ROOT)).replace("\\", "/")
+        check(cache.exists(), f"the {label} raw Overpass snapshot is present",
+              relative_cache)
+        if not cache.exists():
+            continue
+        entry = manifest["input_files"].get(relative_cache)
+        check(entry is not None,
+              f"the {label} raw snapshot is declared as a Phase 2C input")
+        if entry is None:
+            continue
+        check(entry.get("hash_basis") == ud.HASH_BASIS_RAW_BYTES,
+              f"the {label} raw snapshot is hashed as raw file bytes",
+              str(entry.get("hash_basis")))
+        actual_sha = ud.raw_file_sha256(cache)
+        check(entry.get("sha256") == actual_sha,
+              f"the {label} raw snapshot SHA matches the manifest")
+        check(entry.get("size_bytes") == cache.stat().st_size,
+              f"the {label} raw snapshot size matches the manifest")
+        check(record.get("raw_cache_sha256") == actual_sha,
+              f"the {label} source record pins the same raw snapshot SHA")
+        check(record.get("raw_cache_path") == relative_cache,
+              f"the {label} source record names the raw snapshot path")
+        payload = json.loads(cache.read_bytes().decode("utf-8"))
+        check(payload.get("query") == record.get("overpass_query"),
+              f"the cached {label} query equals the recorded Overpass query")
+        check(payload.get("acquired_at_utc") == record.get("acquired_at_utc"),
+              f"the cached {label} acquisition timestamp matches the source record")
+        check(isinstance(payload.get("elements"), list)
+              and len(payload["elements"]) == record.get("elements_returned"),
+              f"the cached {label} element count matches the source record",
+              f"{len(payload.get('elements', []))} vs {record.get('elements_returned')}")
 
     section("Current population")
     cells = pd.read_parquet(cfg.POPULATION_CELLS_CACHE)

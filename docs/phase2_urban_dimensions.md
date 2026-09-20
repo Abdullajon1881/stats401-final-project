@@ -178,15 +178,44 @@ rules:
 
 1. one object per OSM element type and id;
 2. records sharing a category **and** a non-empty normalized name within
-   **150 m** collapse to a single facility, keeping the areal representation
-   over a bare node;
+   **150 projected metres** collapse to a single facility, keeping the areal
+   representation over a bare node;
 3. unnamed facilities are **never** proximity-merged — two adjacent unnamed
    kindergartens are not evidence of one kindergarten;
 4. different categories are **never** merged.
 
+The distance is measured in **EPSG:32642 metres**, and the representative
+points are projected explicitly for that comparison.
+`GeoDataFrame.to_crs` reprojects only the *active* geometry column, so a
+secondary geometry column silently keeps its original CRS; comparing those
+untransformed points against a metre threshold compares degrees against metres
+and merges facilities kilometres apart. The helper therefore rebuilds
+`representative_geometry` as its own `GeoSeries` and projects it itself, and
+every collapsed pair records the actual projected `distance_m`, which the
+validator requires to be within the radius.
+
 Name normalization folds case, whitespace and the several apostrophe characters
-OSM uses for Uzbek names. Raw, cleaned and removed counts are recorded per
-category in the manifest and travel with each committed layer.
+OSM uses for Uzbek names. Raw, cleaned and removed counts, plus the minimum,
+median and maximum collapsed-pair distance, are recorded per category in the
+manifest and travel with each committed layer.
+
+## Snapshot provenance
+
+The exact raw Overpass responses are Phase 2C source inputs, not scratch files.
+They are gitignored but SHA-256 pinned in the manifest under
+`hash_basis: raw_file_bytes`, alongside the derived facility layers, so the
+chain from query to committed output is fully identifiable:
+
+| recorded | meaning |
+|---|---|
+| `overpass_query` | the exact query text |
+| `acquired_at_utc` | when the snapshot was taken |
+| `raw_cache_sha256` / `raw_cache_size_bytes` | the exact raw response bytes |
+| `output_files` entries | the exact derived layer bytes |
+
+A cached snapshot is reused **only** when its stored query is identical to the
+query currently requested; a mismatch stops the run rather than silently
+pinning provenance to bytes taken under different tag or output semantics.
 
 ## Walk-network density
 

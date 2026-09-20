@@ -269,6 +269,37 @@ def display_name(value) -> str | None:
 # ---------------------------------------------------------------------------
 # Deduplication
 # ---------------------------------------------------------------------------
+DEDUPE_DROPPED_COLUMNS = [
+    "kept_facility_id", "dropped_facility_id", "facility_category",
+    "normalized_name", "distance_m",
+]
+
+
+def projected_representative_points(gdf: gpd.GeoDataFrame) -> gpd.GeoSeries:
+    """Return ``representative_geometry`` explicitly projected to metres.
+
+    ``GeoDataFrame.to_crs`` reprojects only the active geometry column, so a
+    secondary geometry column silently keeps its original CRS. Comparing those
+    untransformed points against a metre threshold compares degrees against
+    metres, which quietly merges facilities kilometres apart. The column is
+    therefore rebuilt as its own GeoSeries and projected on its own.
+    """
+    column = gdf["representative_geometry"]
+    crs = getattr(column, "crs", None) or gdf.crs
+    if crs is None:
+        raise ValueError(
+            "representative geometry carries no CRS, so distances cannot be "
+            "measured in metres"
+        )
+    points = gpd.GeoSeries(list(column), index=gdf.index, crs=crs).to_crs(
+        cfg.METRIC_CRS
+    )
+    coords = np.column_stack([points.x.to_numpy(), points.y.to_numpy()])
+    if not np.isfinite(coords).all():
+        raise ValueError("projected representative points contain non-finite coordinates")
+    return points
+
+
 def dedupe_facilities(
     gdf: gpd.GeoDataFrame,
     *,
@@ -277,17 +308,20 @@ def dedupe_facilities(
 ) -> tuple[gpd.GeoDataFrame, pd.DataFrame]:
     """Collapse duplicate representations of one institution.
 
-    Two records merge only when they share a category and a non-empty
-    normalized name and lie within ``radius_m`` of each other. A polygon or
-    relation outranks a bare node, so the richer representation survives.
-    Unnamed facilities are never proximity-merged: two adjacent kindergartens
-    with no name are not evidence of one kindergarten.
+    Two records merge only when they share a category, share a non-empty
+    normalized name, and lie within ``radius_m`` **projected metres** of each
+    other. A polygon or relation outranks a bare node, so the richer
+    representation survives. Unnamed facilities are never proximity-merged: two
+    adjacent kindergartens with no name are not evidence of one kindergarten.
+    Two branches of one school chain kilometres apart stay separate.
     """
+    if radius_m < 0:
+        raise ValueError(f"dedupe radius must be non-negative, got {radius_m}")
     if gdf.empty:
-        return gdf.copy(), pd.DataFrame(columns=["kept_facility_id", "dropped_facility_id"])
+        return gdf.copy(), pd.DataFrame(columns=DEDUPE_DROPPED_COLUMNS)
 
-    work = gdf.to_crs(cfg.METRIC_CRS).copy()
-    work = work.sort_values(
+    metric_points = projected_representative_points(gdf)
+    work = gdf.sort_values(
         [geometry_rank_column, "osm_type", "osm_id"], kind="stable"
     )
 
@@ -300,14 +334,19 @@ def dedupe_facilities(
     for idx, row in work.iterrows():
         key = row["normalized_name"]
         category = row["facility_category"]
-        point = row["representative_geometry"]
+        point = metric_points.loc[idx]
         duplicate_of = None
+        duplicate_distance = None
         if key:
             for position, other in enumerate(kept_points):
                 if kept_keys[position] != (category, key):
                     continue
-                if point.distance(other) <= radius_m:
+                distance = float(point.distance(other))
+                if not np.isfinite(distance) or distance < 0:
+                    raise ValueError(f"invalid dedupe distance: {distance}")
+                if distance <= radius_m:
                     duplicate_of = kept_ids[position]
+                    duplicate_distance = distance
                     break
         if duplicate_of is None:
             kept_index.append(idx)
@@ -321,14 +360,30 @@ def dedupe_facilities(
                     "dropped_facility_id": row["facility_id"],
                     "facility_category": category,
                     "normalized_name": key,
+                    "distance_m": duplicate_distance,
                 }
             )
 
     kept = gdf.loc[kept_index].copy()
-    return kept, pd.DataFrame(
-        dropped, columns=["kept_facility_id", "dropped_facility_id",
-                          "facility_category", "normalized_name"]
-    )
+    return kept, pd.DataFrame(dropped, columns=DEDUPE_DROPPED_COLUMNS)
+
+
+def dedupe_distance_summary(dropped: pd.DataFrame) -> dict[str, object]:
+    """Projected-metre statistics for the collapsed pairs, or nulls if none."""
+    if dropped.empty:
+        return {
+            "dedupe_distance_min_m": None,
+            "dedupe_distance_median_m": None,
+            "dedupe_distance_max_m": None,
+            "dedupe_distance_units": "metres (EPSG:32642)",
+        }
+    values = dropped.distance_m.to_numpy(dtype=np.float64)
+    return {
+        "dedupe_distance_min_m": round(float(values.min()), 6),
+        "dedupe_distance_median_m": round(float(np.median(values)), 6),
+        "dedupe_distance_max_m": round(float(values.max()), 6),
+        "dedupe_distance_units": "metres (EPSG:32642)",
+    }
 
 
 DISTRICT_ASSIGNMENTS = ("within", "boundary_tie", "outside_analysis_districts")

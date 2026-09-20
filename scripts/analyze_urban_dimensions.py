@@ -528,6 +528,11 @@ def main() -> int:  # noqa: PLR0915 - linear analysis pipeline is intentional
                 (cfg.DISTRICT_ACCESS_METRICS_FILE, ud.HASH_BASIS_CANONICAL_TEXT),
                 (cfg.WALK_GRAPH_FILE, ud.HASH_BASIS_RAW_BYTES),
                 (cfg.POPULATION_CELLS_CACHE, ud.HASH_BASIS_RAW_BYTES),
+                # The exact raw Overpass responses are genuine Phase 2C source
+                # inputs: they pin which snapshot the facility layers derive
+                # from. Gitignored, so hashed as raw bytes.
+                (cfg.PHASE2C_HEALTHCARE_RAW_CACHE, ud.HASH_BASIS_RAW_BYTES),
+                (cfg.PHASE2C_EDUCATION_RAW_CACHE, ud.HASH_BASIS_RAW_BYTES),
             )
         },
         "output_files": {

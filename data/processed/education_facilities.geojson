@@ -563,6 +563,34 @@
     {
       "geometry": {
         "coordinates": [
+          69.3598926,
+          41.2991248
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Yashnabad district",
+        "education_category": "school",
+        "facility_id": "ed_node_4417623691",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.2991248,
+        "longitude": 69.3598926,
+        "name": "Музыкальная школа",
+        "normalized_name": "музыкальная школа",
+        "operator": null,
+        "osm_id": 4417623691,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
           69.3362562,
           41.3496141
         ],
@@ -1627,6 +1655,34 @@
     {
       "geometry": {
         "coordinates": [
+          69.2750183,
+          41.2989863
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Mirabad district",
+        "education_category": "school",
+        "facility_id": "ed_node_5029228621",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.2989863,
+        "longitude": 69.2750183,
+        "name": "Musiqa maktabi",
+        "normalized_name": "musiqa maktabi",
+        "operator": "Государство",
+        "osm_id": 5029228621,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
           69.3416688,
           41.2931949
         ],
@@ -2066,6 +2122,34 @@
         "normalized_name": "your elite school for ielts",
         "operator": null,
         "osm_id": 5472013226,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          69.4629209,
+          41.4081229
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Mirzo Ulugbek district",
+        "education_category": "school",
+        "facility_id": "ed_node_5500410122",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.4081229,
+        "longitude": 69.4629209,
+        "name": "Музыкальная школа",
+        "normalized_name": "музыкальная школа",
+        "operator": null,
+        "osm_id": 5500410122,
         "osm_relation_type": null,
         "osm_type": "node",
         "representative_point_method": "osm_node"
@@ -3027,6 +3111,34 @@
     {
       "geometry": {
         "coordinates": [
+          69.2737559,
+          41.2964373
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Mirabad district",
+        "education_category": "school",
+        "facility_id": "ed_node_7014223986",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.2964373,
+        "longitude": 69.2737559,
+        "name": "Thompson School",
+        "normalized_name": "thompson school",
+        "operator": "Thompson School",
+        "osm_id": 7014223986,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
           69.2050324,
           41.2762204
         ],
@@ -3046,6 +3158,34 @@
         "normalized_name": "",
         "operator": null,
         "osm_id": 7126647585,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          69.2221184,
+          41.3511481
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Almazar district",
+        "education_category": "school",
+        "facility_id": "ed_node_7128077385",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.3511481,
+        "longitude": 69.2221184,
+        "name": "Учебный Центр",
+        "normalized_name": "учебный центр",
+        "operator": "Ilkhamov",
+        "osm_id": 7128077385,
         "osm_relation_type": null,
         "osm_type": "node",
         "representative_point_method": "osm_node"
@@ -3615,6 +3755,34 @@
     {
       "geometry": {
         "coordinates": [
+          69.2450972,
+          41.3081255
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Chilanzar district",
+        "education_category": "school",
+        "facility_id": "ed_node_8772421817",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.3081255,
+        "longitude": 69.2450972,
+        "name": "Кингдом Эдукейшн",
+        "normalized_name": "кингдом эдукейшн",
+        "operator": null,
+        "osm_id": 8772421817,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
           69.2666509,
           41.2893457
         ],
@@ -3858,6 +4026,34 @@
         "normalized_name": "",
         "operator": null,
         "osm_id": 10211850438,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          69.1704879,
+          41.318182
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Uchtepa district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_node_10253260009",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.318182,
+        "longitude": 69.1704879,
+        "name": "Частный детский сад",
+        "normalized_name": "частный детский сад",
+        "operator": null,
+        "osm_id": 10253260009,
         "osm_relation_type": null,
         "osm_type": "node",
         "representative_point_method": "osm_node"
@@ -4343,6 +4539,34 @@
     {
       "geometry": {
         "coordinates": [
+          69.1667491,
+          41.2669789
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Chilanzar district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_node_10803693643",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.2669789,
+        "longitude": 69.1667491,
+        "name": "Kamalak",
+        "normalized_name": "kamalak",
+        "operator": null,
+        "osm_id": 10803693643,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
           69.2104006,
           41.264153
         ],
@@ -4390,6 +4614,34 @@
         "normalized_name": "детский сад 375 звёздочка",
         "operator": null,
         "osm_id": 11113799005,
+        "osm_relation_type": null,
+        "osm_type": "node",
+        "representative_point_method": "osm_node"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          69.2572358,
+          41.3286214
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Shaykhantakhur district",
+        "education_category": "school",
+        "facility_id": "ed_node_11290219807",
+        "geometry_assembly": "osm_node",
+        "healthcare": null,
+        "latitude": 41.3286214,
+        "longitude": 69.2572358,
+        "name": "Evrika",
+        "normalized_name": "evrika",
+        "operator": "+998 (71) 241‒88‒82",
+        "osm_id": 11290219807,
         "osm_relation_type": null,
         "osm_type": "node",
         "representative_point_method": "osm_node"
@@ -11079,6 +11331,142 @@
         "coordinates": [
           [
             [
+              69.1703484,
+              41.3484633
+            ],
+            [
+              69.1703496,
+              41.3486597
+            ],
+            [
+              69.1703638,
+              41.3491347
+            ],
+            [
+              69.1703679,
+              41.3506264
+            ],
+            [
+              69.1703797,
+              41.350788
+            ],
+            [
+              69.1704582,
+              41.3518656
+            ],
+            [
+              69.1704615,
+              41.3519112
+            ],
+            [
+              69.1709398,
+              41.3527298
+            ],
+            [
+              69.1695233,
+              41.3543366
+            ],
+            [
+              69.1713499,
+              41.354314
+            ],
+            [
+              69.171473,
+              41.3545794
+            ],
+            [
+              69.171784,
+              41.3547857
+            ],
+            [
+              69.1744989,
+              41.3547422
+            ],
+            [
+              69.174474,
+              41.3529506
+            ],
+            [
+              69.174609,
+              41.352529
+            ],
+            [
+              69.1746267,
+              41.3516712
+            ],
+            [
+              69.174619,
+              41.350637
+            ],
+            [
+              69.1745948,
+              41.3491595
+            ],
+            [
+              69.1746177,
+              41.3488077
+            ],
+            [
+              69.1736235,
+              41.3488054
+            ],
+            [
+              69.1736248,
+              41.3486982
+            ],
+            [
+              69.1733355,
+              41.3486938
+            ],
+            [
+              69.1731263,
+              41.3486588
+            ],
+            [
+              69.1712824,
+              41.3486667
+            ],
+            [
+              69.170551,
+              41.3486741
+            ],
+            [
+              69.170549,
+              41.3484619
+            ],
+            [
+              69.1703484,
+              41.3484633
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "university",
+        "district_assignment": "within",
+        "district_name": "Almazar district",
+        "education_category": "university",
+        "facility_id": "ed_relation_8337398",
+        "geometry_assembly": "multipolygon_polygonized",
+        "healthcare": null,
+        "latitude": 41.3512296,
+        "longitude": 69.1725176,
+        "name": "Toshkent davlat tibbiyot universiteti",
+        "normalized_name": "toshkent davlat tibbiyot universiteti",
+        "operator": null,
+        "osm_id": 8337398,
+        "osm_relation_type": "multipolygon",
+        "osm_type": "relation",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.1897728,
               41.3545401
             ],
@@ -13178,6 +13566,66 @@
         "normalized_name": "toshkent davlat sharqshunoslik instituti",
         "operator": null,
         "osm_id": 31963256,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.2744478,
+              41.298818
+            ],
+            [
+              69.2744886,
+              41.2987822
+            ],
+            [
+              69.2743934,
+              41.2987298
+            ],
+            [
+              69.2749402,
+              41.298227
+            ],
+            [
+              69.2748034,
+              41.298143
+            ],
+            [
+              69.2742207,
+              41.2986787
+            ],
+            [
+              69.2743487,
+              41.2987572
+            ],
+            [
+              69.2744478,
+              41.298818
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "university",
+        "district_assignment": "within",
+        "district_name": "Mirabad district",
+        "education_category": "university",
+        "facility_id": "ed_way_31972673",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.2984529,
+        "longitude": 69.2745805,
+        "name": "Toshkent davlat sharqshunoslik universiteti",
+        "normalized_name": "toshkent davlat sharqshunoslik universiteti",
+        "operator": null,
+        "osm_id": 31972673,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -23001,6 +23449,70 @@
         "coordinates": [
           [
             [
+              69.3452466,
+              41.2991423
+            ],
+            [
+              69.3453531,
+              41.2992326
+            ],
+            [
+              69.3455159,
+              41.2991241
+            ],
+            [
+              69.3454607,
+              41.2990773
+            ],
+            [
+              69.3455679,
+              41.2990059
+            ],
+            [
+              69.3451398,
+              41.298643
+            ],
+            [
+              69.3450233,
+              41.2987206
+            ],
+            [
+              69.3454002,
+              41.2990401
+            ],
+            [
+              69.3452466,
+              41.2991423
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Yashnabad district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_108331882",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.2988632,
+        "longitude": 69.3452956,
+        "name": "Детский сад",
+        "normalized_name": "детский сад",
+        "operator": null,
+        "osm_id": 108331882,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.3200586,
               41.2598811
             ],
@@ -29313,6 +29825,54 @@
         "coordinates": [
           [
             [
+              69.3246414,
+              41.3333053
+            ],
+            [
+              69.3252087,
+              41.3333607
+            ],
+            [
+              69.3252319,
+              41.3332265
+            ],
+            [
+              69.3246646,
+              41.3331712
+            ],
+            [
+              69.3246414,
+              41.3333053
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Mirzo Ulugbek district",
+        "education_category": "school",
+        "facility_id": "ed_way_151988427",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3332659,
+        "longitude": 69.3249367,
+        "name": "Музыкальная Школа",
+        "normalized_name": "музыкальная школа",
+        "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
+        "osm_id": 151988427,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.2621064,
               41.2716613
             ],
@@ -29546,6 +30106,70 @@
         "normalized_name": "77 maktab",
         "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
         "osm_id": 152771959,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.250689,
+              41.3246531
+            ],
+            [
+              69.2515114,
+              41.3245934
+            ],
+            [
+              69.2514962,
+              41.3244758
+            ],
+            [
+              69.2507425,
+              41.3245305
+            ],
+            [
+              69.2507201,
+              41.324357
+            ],
+            [
+              69.2505725,
+              41.3243677
+            ],
+            [
+              69.2505913,
+              41.3245141
+            ],
+            [
+              69.2506704,
+              41.3245083
+            ],
+            [
+              69.250689,
+              41.3246531
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Shaykhantakhur district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_153416631",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3244921,
+        "longitude": 69.2513853,
+        "name": "Детский сад",
+        "normalized_name": "детский сад",
+        "operator": null,
+        "osm_id": 153416631,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -32026,6 +32650,134 @@
         "normalized_name": "детсад 75",
         "operator": null,
         "osm_id": 175031890,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.2338418,
+              41.3082875
+            ],
+            [
+              69.2342842,
+              41.3080166
+            ],
+            [
+              69.2344708,
+              41.3078389
+            ],
+            [
+              69.2350365,
+              41.3078699
+            ],
+            [
+              69.2350081,
+              41.3080195
+            ],
+            [
+              69.2353583,
+              41.3082333
+            ],
+            [
+              69.2354994,
+              41.3080825
+            ],
+            [
+              69.2355142,
+              41.3077784
+            ],
+            [
+              69.2364272,
+              41.3077863
+            ],
+            [
+              69.2366234,
+              41.307788
+            ],
+            [
+              69.2369307,
+              41.3081338
+            ],
+            [
+              69.2368098,
+              41.3081986
+            ],
+            [
+              69.237044,
+              41.3085459
+            ],
+            [
+              69.2371383,
+              41.3086649
+            ],
+            [
+              69.2370731,
+              41.3086982
+            ],
+            [
+              69.2370199,
+              41.3087254
+            ],
+            [
+              69.2369666,
+              41.3086774
+            ],
+            [
+              69.2358585,
+              41.3087307
+            ],
+            [
+              69.2349804,
+              41.3092171
+            ],
+            [
+              69.2347812,
+              41.3091735
+            ],
+            [
+              69.234716,
+              41.3091617
+            ],
+            [
+              69.2343707,
+              41.3088368
+            ],
+            [
+              69.234422,
+              41.3088008
+            ],
+            [
+              69.2343387,
+              41.3087271
+            ],
+            [
+              69.2338418,
+              41.3082875
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Shaykhantakhur district",
+        "education_category": "school",
+        "facility_id": "ed_way_175194267",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3084167,
+        "longitude": 69.2354724,
+        "name": "maktab",
+        "normalized_name": "maktab",
+        "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
+        "osm_id": 175194267,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -34565,6 +35317,62 @@
         "coordinates": [
           [
             [
+              69.1807958,
+              41.2781241
+            ],
+            [
+              69.1825017,
+              41.2763697
+            ],
+            [
+              69.1843897,
+              41.2774067
+            ],
+            [
+              69.1834228,
+              41.2784006
+            ],
+            [
+              69.1827112,
+              41.2791322
+            ],
+            [
+              69.1826834,
+              41.2791608
+            ],
+            [
+              69.1807958,
+              41.2781241
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "college",
+        "district_assignment": "within",
+        "district_name": "Uchtepa district",
+        "education_category": "college",
+        "facility_id": "ed_way_189800493",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.2777654,
+        "longitude": 69.1825927,
+        "name": "Yuridik kolleji",
+        "normalized_name": "yuridik kolleji",
+        "operator": null,
+        "osm_id": 189800493,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.1991632,
               41.2853004
             ],
@@ -36030,6 +36838,54 @@
         "normalized_name": "школа 71а",
         "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
         "osm_id": 202404856,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.4392135,
+              41.3345903
+            ],
+            [
+              69.4392656,
+              41.3344365
+            ],
+            [
+              69.4396984,
+              41.3345192
+            ],
+            [
+              69.4396463,
+              41.334673
+            ],
+            [
+              69.4392135,
+              41.3345903
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Yashnabad district",
+        "education_category": "school",
+        "facility_id": "ed_way_202769077",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3345548,
+        "longitude": 69.4394559,
+        "name": "maktab",
+        "normalized_name": "maktab",
+        "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
+        "osm_id": 202769077,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -38073,6 +38929,142 @@
         "coordinates": [
           [
             [
+              69.2385886,
+              41.3185363
+            ],
+            [
+              69.2386165,
+              41.318782
+            ],
+            [
+              69.2384306,
+              41.3189677
+            ],
+            [
+              69.2384473,
+              41.3191087
+            ],
+            [
+              69.237951,
+              41.319138
+            ],
+            [
+              69.2379398,
+              41.3190375
+            ],
+            [
+              69.2376331,
+              41.3188616
+            ],
+            [
+              69.2376071,
+              41.3186271
+            ],
+            [
+              69.2385886,
+              41.3185363
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Shaykhantakhur district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_282879747",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3188218,
+        "longitude": 69.2381027,
+        "name": "Детский сад",
+        "normalized_name": "детский сад",
+        "operator": null,
+        "osm_id": 282879747,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.2350669,
+              41.3194439
+            ],
+            [
+              69.2352974,
+              41.3194328
+            ],
+            [
+              69.23529,
+              41.3192192
+            ],
+            [
+              69.2353699,
+              41.3191424
+            ],
+            [
+              69.2353457,
+              41.318852
+            ],
+            [
+              69.2350428,
+              41.3188717
+            ],
+            [
+              69.2346579,
+              41.3188967
+            ],
+            [
+              69.2344873,
+              41.3189508
+            ],
+            [
+              69.2345092,
+              41.3191284
+            ],
+            [
+              69.23473,
+              41.3191458
+            ],
+            [
+              69.2350669,
+              41.3194439
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Shaykhantakhur district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_282879748",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3191825,
+        "longitude": 69.2350498,
+        "name": "Детский сад",
+        "normalized_name": "детский сад",
+        "operator": null,
+        "osm_id": 282879748,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.1881879,
               41.2791495
             ],
@@ -38322,6 +39314,94 @@
         "normalized_name": "школа 127",
         "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
         "osm_id": 303743326,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.2541012,
+              41.2383796
+            ],
+            [
+              69.254624,
+              41.2377647
+            ],
+            [
+              69.254911,
+              41.237926
+            ],
+            [
+              69.2557588,
+              41.2377362
+            ],
+            [
+              69.2561621,
+              41.2383295
+            ],
+            [
+              69.256536,
+              41.2383554
+            ],
+            [
+              69.256406,
+              41.2387276
+            ],
+            [
+              69.2563643,
+              41.2387648
+            ],
+            [
+              69.2554637,
+              41.2392368
+            ],
+            [
+              69.2550212,
+              41.2394405
+            ],
+            [
+              69.2547905,
+              41.2390492
+            ],
+            [
+              69.2543613,
+              41.2385168
+            ],
+            [
+              69.2543131,
+              41.2385269
+            ],
+            [
+              69.2542111,
+              41.238426
+            ],
+            [
+              69.2541012,
+              41.2383796
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Sergeli district",
+        "education_category": "school",
+        "facility_id": "ed_way_304768344",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.2386272,
+        "longitude": 69.2554457,
+        "name": "29-maktab",
+        "normalized_name": "29 maktab",
+        "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
+        "osm_id": 304768344,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -39242,6 +40322,62 @@
         "normalized_name": "12 maktab",
         "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
         "osm_id": 334989139,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.2515931,
+              41.3913277
+            ],
+            [
+              69.2519792,
+              41.3910594
+            ],
+            [
+              69.2523096,
+              41.3913308
+            ],
+            [
+              69.2527521,
+              41.3909656
+            ],
+            [
+              69.2534259,
+              41.3914478
+            ],
+            [
+              69.2526876,
+              41.3921237
+            ],
+            [
+              69.2515931,
+              41.3913277
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Yunusabad district",
+        "education_category": "school",
+        "facility_id": "ed_way_334989141",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3917857,
+        "longitude": 69.2526398,
+        "name": "Школа №18",
+        "normalized_name": "школа 18",
+        "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
+        "osm_id": 334989141,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -44301,6 +45437,62 @@
         "coordinates": [
           [
             [
+              69.2496395,
+              41.340698
+            ],
+            [
+              69.250825,
+              41.3404423
+            ],
+            [
+              69.2510074,
+              41.3416102
+            ],
+            [
+              69.2495939,
+              41.3416565
+            ],
+            [
+              69.2496261,
+              41.3412316
+            ],
+            [
+              69.2496288,
+              41.3410786
+            ],
+            [
+              69.2496395,
+              41.340698
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Almazar district",
+        "education_category": "school",
+        "facility_id": "ed_way_408809980",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3408883,
+        "longitude": 69.2502644,
+        "name": "maktab",
+        "normalized_name": "maktab",
+        "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
+        "osm_id": 408809980,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.1865301,
               41.3258036
             ],
@@ -44358,6 +45550,54 @@
         "normalized_name": "школа 106",
         "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
         "osm_id": 408823198,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.3458816,
+              41.2539953
+            ],
+            [
+              69.3460878,
+              41.2534049
+            ],
+            [
+              69.3452189,
+              41.2532334
+            ],
+            [
+              69.3450127,
+              41.2538238
+            ],
+            [
+              69.3458816,
+              41.2539953
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Yashnabad district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_409068059",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.2536143,
+        "longitude": 69.3455503,
+        "name": "Детский сад №???",
+        "normalized_name": "детский сад",
+        "operator": null,
+        "osm_id": 409068059,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -45461,6 +46701,78 @@
         "coordinates": [
           [
             [
+              69.3820551,
+              41.2546708
+            ],
+            [
+              69.3817171,
+              41.2544712
+            ],
+            [
+              69.3817627,
+              41.25432
+            ],
+            [
+              69.3811887,
+              41.2538945
+            ],
+            [
+              69.3809648,
+              41.254083
+            ],
+            [
+              69.3799697,
+              41.2533672
+            ],
+            [
+              69.3802111,
+              41.2531797
+            ],
+            [
+              69.3799911,
+              41.2530183
+            ],
+            [
+              69.3806134,
+              41.2525142
+            ],
+            [
+              69.3827779,
+              41.2541012
+            ],
+            [
+              69.3820551,
+              41.2546708
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "college",
+        "district_assignment": "within",
+        "district_name": "Bektemir district",
+        "education_category": "college",
+        "facility_id": "ed_way_417204027",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.2536309,
+        "longitude": 69.3812363,
+        "name": "Akademik litsey",
+        "normalized_name": "akademik litsey",
+        "operator": null,
+        "osm_id": 417204027,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.3658146,
               41.2250974
             ],
@@ -46022,6 +47334,62 @@
         "normalized_name": "vosiq international school and kindergarten",
         "operator": null,
         "osm_id": 418898711,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.3459257,
+              41.2966116
+            ],
+            [
+              69.3466124,
+              41.2971839
+            ],
+            [
+              69.3468484,
+              41.2970186
+            ],
+            [
+              69.3477657,
+              41.296668
+            ],
+            [
+              69.3471461,
+              41.2961581
+            ],
+            [
+              69.3465265,
+              41.2962025
+            ],
+            [
+              69.3459257,
+              41.2966116
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Yashnabad district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_419666974",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.2968433,
+        "longitude": 69.3467554,
+        "name": "Детский сад",
+        "normalized_name": "детский сад",
+        "operator": null,
+        "osm_id": 419666974,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -52249,6 +53617,66 @@
         "coordinates": [
           [
             [
+              69.26592,
+              41.2980655
+            ],
+            [
+              69.2665223,
+              41.2982816
+            ],
+            [
+              69.2669231,
+              41.2983101
+            ],
+            [
+              69.2669435,
+              41.2982604
+            ],
+            [
+              69.267165,
+              41.2978913
+            ],
+            [
+              69.2673166,
+              41.2976567
+            ],
+            [
+              69.2667738,
+              41.2973426
+            ],
+            [
+              69.26592,
+              41.2980655
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Yakkasaray district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_458975358",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.297774,
+        "longitude": 69.2667525,
+        "name": "№12 bolalar bog'chasi",
+        "normalized_name": "12 bolalar bogchasi",
+        "operator": null,
+        "osm_id": 458975358,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.17482,
               41.2755468
             ],
@@ -52506,6 +53934,54 @@
         "normalized_name": "502 bolalar bogchasi",
         "operator": null,
         "osm_id": 459759632,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.2678488,
+              41.3706095
+            ],
+            [
+              69.2686937,
+              41.3710765
+            ],
+            [
+              69.2682457,
+              41.3715072
+            ],
+            [
+              69.2674304,
+              41.3710261
+            ],
+            [
+              69.2678488,
+              41.3706095
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Yunusabad district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_459759633",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3710513,
+        "longitude": 69.2680606,
+        "name": "506-Bolalar bogʻchasi",
+        "normalized_name": "506 bolalar bogchasi",
+        "operator": null,
+        "osm_id": 459759633,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -52802,6 +54278,62 @@
         "normalized_name": "toshkent davlat sharqshunoslik instituti akademik litseyi",
         "operator": null,
         "osm_id": 461921665,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.3724522,
+              41.3372878
+            ],
+            [
+              69.3727512,
+              41.3390664
+            ],
+            [
+              69.3738167,
+              41.3388671
+            ],
+            [
+              69.37485,
+              41.3386025
+            ],
+            [
+              69.3744189,
+              41.3373271
+            ],
+            [
+              69.374376,
+              41.3371901
+            ],
+            [
+              69.3724522,
+              41.3372878
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Mirzo Ulugbek district",
+        "education_category": "school",
+        "facility_id": "ed_way_464046402",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3379648,
+        "longitude": 69.3736002,
+        "name": "maktab",
+        "normalized_name": "maktab",
+        "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
+        "osm_id": 464046402,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -57049,6 +58581,78 @@
         "coordinates": [
           [
             [
+              69.1857374,
+              41.3297314
+            ],
+            [
+              69.1857004,
+              41.3291194
+            ],
+            [
+              69.1856887,
+              41.3289262
+            ],
+            [
+              69.1860908,
+              41.3289058
+            ],
+            [
+              69.1864928,
+              41.3288855
+            ],
+            [
+              69.1864979,
+              41.3290434
+            ],
+            [
+              69.1865038,
+              41.329206
+            ],
+            [
+              69.1865066,
+              41.3293639
+            ],
+            [
+              69.1865092,
+              41.3295328
+            ],
+            [
+              69.1865119,
+              41.3297167
+            ],
+            [
+              69.1857374,
+              41.3297314
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Shaykhantakhur district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_556014356",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.329285,
+        "longitude": 69.1861078,
+        "name": "Детский сад №",
+        "normalized_name": "детский сад",
+        "operator": null,
+        "osm_id": 556014356,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.2690764,
               41.2980391
             ],
@@ -59930,6 +61534,66 @@
         "normalized_name": "детский сад 484",
         "operator": null,
         "osm_id": 673139465,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.25176,
+              41.3246079
+            ],
+            [
+              69.251699,
+              41.3240645
+            ],
+            [
+              69.2504931,
+              41.3241606
+            ],
+            [
+              69.2504347,
+              41.3241652
+            ],
+            [
+              69.2504506,
+              41.324284
+            ],
+            [
+              69.2505322,
+              41.3249041
+            ],
+            [
+              69.251369,
+              41.3248435
+            ],
+            [
+              69.25176,
+              41.3246079
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Shaykhantakhur district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_673139466",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3244459,
+        "longitude": 69.2511069,
+        "name": "№484 bolalar bog'chasi",
+        "normalized_name": "484 bolalar bogchasi",
+        "operator": null,
+        "osm_id": 673139466,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -64445,6 +66109,134 @@
         "coordinates": [
           [
             [
+              69.2299402,
+              41.2354342
+            ],
+            [
+              69.2290913,
+              41.2358505
+            ],
+            [
+              69.229485,
+              41.2362329
+            ],
+            [
+              69.2291364,
+              41.2364488
+            ],
+            [
+              69.2295045,
+              41.2365959
+            ],
+            [
+              69.2297056,
+              41.2364164
+            ],
+            [
+              69.2306264,
+              41.2368553
+            ],
+            [
+              69.2309367,
+              41.2364796
+            ],
+            [
+              69.2299402,
+              41.2354342
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Sergeli district",
+        "education_category": "school",
+        "facility_id": "ed_way_1083856395",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.2360417,
+        "longitude": 69.2299037,
+        "name": "23-maktab",
+        "normalized_name": "23 maktab",
+        "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
+        "osm_id": 1083856395,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.2792579,
+              41.229136
+            ],
+            [
+              69.2797945,
+              41.2294998
+            ],
+            [
+              69.2805263,
+              41.2298087
+            ],
+            [
+              69.2806117,
+              41.2298087
+            ],
+            [
+              69.2809776,
+              41.2292644
+            ],
+            [
+              69.2809613,
+              41.2289556
+            ],
+            [
+              69.2808759,
+              41.2286468
+            ],
+            [
+              69.2804734,
+              41.2283685
+            ],
+            [
+              69.2792579,
+              41.229136
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Sergeli district",
+        "education_category": "school",
+        "facility_id": "ed_way_1083906846",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.2290458,
+        "longitude": 69.2801834,
+        "name": "26-maktab",
+        "normalized_name": "26 maktab",
+        "operator": "O‘zbekiston Respublikasi maktabgacha va maktab ta'limi vazirligi",
+        "osm_id": 1083906846,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.185195,
               41.2085224
             ],
@@ -66729,6 +68521,70 @@
         "coordinates": [
           [
             [
+              69.1968835,
+              41.2154022
+            ],
+            [
+              69.1966153,
+              41.2150728
+            ],
+            [
+              69.1964159,
+              41.2148403
+            ],
+            [
+              69.196488,
+              41.2148053
+            ],
+            [
+              69.1975119,
+              41.2143284
+            ],
+            [
+              69.1981086,
+              41.2150852
+            ],
+            [
+              69.1981521,
+              41.2151375
+            ],
+            [
+              69.1974124,
+              41.2154941
+            ],
+            [
+              69.1968835,
+              41.2154022
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Yangikhayot district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_1210854849",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.2149565,
+        "longitude": 69.1972614,
+        "name": "-bolalar bog'chasi",
+        "normalized_name": "bolalar bogchasi",
+        "operator": null,
+        "osm_id": 1210854849,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.2534653,
               41.3332883
             ],
@@ -66842,6 +68698,86 @@
         "normalized_name": "школа 303",
         "operator": null,
         "osm_id": 1212686630,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
+              69.2098665,
+              41.3702519
+            ],
+            [
+              69.2099144,
+              41.3702541
+            ],
+            [
+              69.2110938,
+              41.370255
+            ],
+            [
+              69.2111037,
+              41.3687111
+            ],
+            [
+              69.210641,
+              41.3686976
+            ],
+            [
+              69.2103373,
+              41.3686953
+            ],
+            [
+              69.2100453,
+              41.3686791
+            ],
+            [
+              69.2099075,
+              41.3686472
+            ],
+            [
+              69.2098948,
+              41.3688983
+            ],
+            [
+              69.2092216,
+              41.3689043
+            ],
+            [
+              69.2092162,
+              41.3694357
+            ],
+            [
+              69.20986,
+              41.3694317
+            ],
+            [
+              69.2098665,
+              41.3702519
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Almazar district",
+        "education_category": "school",
+        "facility_id": "ed_way_1215885914",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.3698438,
+        "longitude": 69.2104799,
+        "name": "Школа №243",
+        "normalized_name": "школа 243",
+        "operator": null,
+        "osm_id": 1215885914,
         "osm_relation_type": null,
         "osm_type": "way",
         "representative_point_method": "polygon_representative_point"
@@ -68945,6 +70881,54 @@
         "coordinates": [
           [
             [
+              69.2294556,
+              41.2726879
+            ],
+            [
+              69.2286449,
+              41.2719735
+            ],
+            [
+              69.2290254,
+              41.2717297
+            ],
+            [
+              69.2298359,
+              41.2724441
+            ],
+            [
+              69.2294556,
+              41.2726879
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "kindergarten",
+        "district_assignment": "within",
+        "district_name": "Yakkasaray district",
+        "education_category": "kindergarten",
+        "facility_id": "ed_way_1434498803",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.2722088,
+        "longitude": 69.2292404,
+        "name": "237-sonli Bolalar Bog'chasi",
+        "normalized_name": "237 sonli bolalar bogchasi",
+        "operator": null,
+        "osm_id": 1434498803,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.2312891,
               41.2737781
             ],
@@ -70665,6 +72649,78 @@
         "coordinates": [
           [
             [
+              69.3727725,
+              41.3564673
+            ],
+            [
+              69.3730353,
+              41.3566787
+            ],
+            [
+              69.3734189,
+              41.3569163
+            ],
+            [
+              69.3738427,
+              41.3571277
+            ],
+            [
+              69.3741913,
+              41.3567009
+            ],
+            [
+              69.3733223,
+              41.3558895
+            ],
+            [
+              69.3729619,
+              41.3561174
+            ],
+            [
+              69.3730308,
+              41.3561803
+            ],
+            [
+              69.3728043,
+              41.3563289
+            ],
+            [
+              69.3728771,
+              41.3563963
+            ],
+            [
+              69.3727725,
+              41.3564673
+            ]
+          ]
+        ],
+        "type": "Polygon"
+      },
+      "properties": {
+        "amenity": "school",
+        "district_assignment": "within",
+        "district_name": "Mirzo Ulugbek district",
+        "education_category": "school",
+        "facility_id": "ed_way_1509364258",
+        "geometry_assembly": "closed_way_polygon",
+        "healthcare": null,
+        "latitude": 41.356573,
+        "longitude": 69.3734791,
+        "name": "Oxbridge International School",
+        "normalized_name": "oxbridge international school",
+        "operator": null,
+        "osm_id": 1509364258,
+        "osm_relation_type": null,
+        "osm_type": "way",
+        "representative_point_method": "polygon_representative_point"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            [
               69.2305825,
               41.2664894
             ],
@@ -71726,39 +73782,46 @@
     "city_clipping_rule": "retained when the routing representative point lies within data/processed/tashkent_boundary.geojson",
     "clean": {
       "by_category": {
-        "college": 102,
-        "kindergarten": 467,
-        "school": 514,
-        "university": 96
+        "college": 104,
+        "kindergarten": 481,
+        "school": 532,
+        "university": 98
       },
-      "named": 1087,
-      "total": 1179,
+      "named": 1123,
+      "total": 1215,
       "unnamed": 92
     },
+    "dedupe_distance_max_m": 128.367403,
+    "dedupe_distance_median_m": 76.842376,
+    "dedupe_distance_min_m": 31.476017,
+    "dedupe_distance_units": "metres (EPSG:32642)",
     "dedupe_radius_m": 150.0,
     "dedupe_rule": "one object per OSM type/id; records sharing a category and a non-empty normalized name within 150 m collapse to the areal representation; unnamed facilities are never proximity-merged and categories are never merged",
     "district_scope_rule": "routing scope is the full current city boundary; supply scope is the 12 SIAT-matched analysis districts. A facility outside all 12 stays a routing source and is credited to no district supply",
-    "duplicates_removed": 40,
+    "duplicates_removed": 4,
     "elements_returned": 1333,
     "facility_class": "education",
     "geometry": {
       "assembly_methods": {
-        "closed_way_polygon": 905,
-        "multipolygon_polygonized": 74,
-        "osm_node": 200
+        "closed_way_polygon": 931,
+        "multipolygon_polygonized": 75,
+        "osm_node": 209
       },
       "multipolygon_line_fallback": 0,
-      "multipolygon_relations": 74,
+      "multipolygon_relations": 75,
       "relation_geometry_types": {
         "MultiPolygon": 2,
-        "Polygon": 72
+        "Polygon": 73
       },
       "relation_line_fallback": 0,
-      "relation_polygonal": 74,
-      "relations": 74
+      "relation_polygonal": 75,
+      "relations": 75
     },
     "osm_licence": "ODbL 1.0",
     "overpass_query": "[out:json][timeout:300];\n(\n  node[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n);\nout geom;",
+    "raw_cache_path": "data/external/osm_cache/phase2c_education_overpass.json",
+    "raw_cache_sha256": "170cd6e09201d4fd90264dc8ada6f4fff23b8fbd9f3650cf813f05f9171097e3",
+    "raw_cache_size_bytes": 1779316,
     "raw_in_city": {
       "by_category": {
         "college": 104,
@@ -71774,10 +73837,10 @@
     "representative_point_rule": "OSM node as-is; a closed way and a polygonized multipolygon relation use a representative point guaranteed inside the reconstructed area; only a genuine line feature uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
     "scope": {
       "boundary_tie": 0,
-      "in_analysis_districts": 1154,
+      "in_analysis_districts": 1190,
       "outside_analysis_districts": 25,
-      "routing_sources": 1179,
-      "within": 1154
+      "routing_sources": 1215,
+      "within": 1190
     }
   },
   "type": "FeatureCollection"
