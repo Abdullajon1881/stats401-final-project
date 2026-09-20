@@ -4,36 +4,44 @@
   "comparison_design": "standardized temporal comparison",
   "input_files": {
     "data/phase2_source_manifest.json": {
-      "sha256": "c3d86638d8a8f2d27bf3be535128b595ede3fd4e3415a661ce429ed067a7e760",
-      "size_bytes": 18581
+      "sha256": "eefa48da2ec28cd6f0538b166c42aac09519fe5921c8f5bcfa7ba49994339483",
+      "size_bytes": 18083,
+      "hash_basis": "canonical_utf8_lf"
     },
     "data/source_manifest.json": {
-      "sha256": "756f8c99a98b668a5ae8cacb547dfb57b5fd5ff700f6c3556c02104f29cc41c4",
-      "size_bytes": 17233
+      "sha256": "94cb93c0b6146b9a029db6fd45ba74e3ae0c4c12ac39e4f0b6f4b4f8e548dcb4",
+      "size_bytes": 16849,
+      "hash_basis": "canonical_utf8_lf"
     },
     "data/analysis_manifest.json": {
-      "sha256": "de013284a04aa029ab34f0dcc76c731e96732e7c37bc0429830d7899a4e53678",
-      "size_bytes": 30306
+      "sha256": "664eb2ead164a7c568188f38b73145bef1ba7e99e7daa6fb2f6afb234de12054",
+      "size_bytes": 29546,
+      "hash_basis": "canonical_utf8_lf"
     },
     "data/external/worldpop_temporal_cells.csv.gz": {
       "sha256": "255659e12093cfb1d4df6ef3ba422d22b6acb9e5a6fa724d2d855c00f6814715",
-      "size_bytes": 4080636
+      "size_bytes": 4080636,
+      "hash_basis": "raw_file_bytes"
     },
     "data/external/tashkent_walk_network.graphml": {
       "sha256": "948da22f9a608b8d795c07bb8c8b8d04ca5abcbc429b51b1c99f5546772e9c41",
-      "size_bytes": 112934536
+      "size_bytes": 112934536,
+      "hash_basis": "raw_file_bytes"
     },
     "data/processed/metro_station_history.csv": {
-      "sha256": "317a50417255f02b7cd81e2882ea9815223a3f97575c29196cc827ac41bfcba9",
-      "size_bytes": 15904
+      "sha256": "d044388f0f680d0f083f97c903bf3bf4e58f3bad883e07dfe22f1c0ab21b6184",
+      "size_bytes": 15853,
+      "hash_basis": "canonical_utf8_lf"
     },
     "data/processed/worldpop_district_year.csv": {
-      "sha256": "cd59bea377eccd1c702b133c2dc0828f1ab14ff1c28aa484fc7525f18a975ca4",
-      "size_bytes": 50623
+      "sha256": "44548d61b8b9046fea677c7ed3e6319ed0e167dfb28c04a762e052e9efb45fc7",
+      "size_bytes": 50478,
+      "hash_basis": "canonical_utf8_lf"
     },
     "data/processed/tashkent_districts.geojson": {
-      "sha256": "7f60b2b28d650f0ca4a9ec24bef54cd0ca31336b7901db7a6fdb8ff08d6d6dd6",
-      "size_bytes": 172208
+      "sha256": "92311611710bba1d6e12d7033d8d413834f3528aa6ae584dfcde629ebc55bc26",
+      "size_bytes": 172188,
+      "hash_basis": "canonical_utf8_lf"
     }
   },
   "cell_cache": {

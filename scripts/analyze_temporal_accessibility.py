@@ -570,17 +570,22 @@ def main() -> int:  # noqa: PLR0915 - linear analysis pipeline is intentional
         "analysis": "Phase 2B standardized temporal metro accessibility",
         "analysis_version": cfg.PHASE2_ACCESS_ANALYSIS_VERSION,
         "comparison_design": "standardized temporal comparison",
+        # Each input states the byte representation its SHA describes. Tracked
+        # repository text is hashed as canonical UTF-8 LF so a Windows CRLF
+        # checkout and a Git LF checkout agree; external artifacts keep their
+        # exact filesystem bytes. The basis is declared here rather than
+        # sniffed: the GraphML decodes as UTF-8 but is not repository text.
         "input_files": {
-            relative(path): {"sha256": cfg.sha256_file(path), "size_bytes": path.stat().st_size}
-            for path in (
-                cfg.PHASE2_SOURCE_MANIFEST_PATH,
-                cfg.MANIFEST_PATH,
-                cfg.ANALYSIS_MANIFEST_PATH,
-                cfg.WORLDPOP_TEMPORAL_CELL_CACHE,
-                cfg.WALK_GRAPH_FILE,
-                cfg.METRO_STATION_HISTORY_FILE,
-                cfg.WORLDPOP_DISTRICT_YEAR_FILE,
-                cfg.DISTRICTS_FILE,
+            relative(path): ta.provenance_record(path, basis)
+            for path, basis in (
+                (cfg.PHASE2_SOURCE_MANIFEST_PATH, ta.HASH_BASIS_CANONICAL_TEXT),
+                (cfg.MANIFEST_PATH, ta.HASH_BASIS_CANONICAL_TEXT),
+                (cfg.ANALYSIS_MANIFEST_PATH, ta.HASH_BASIS_CANONICAL_TEXT),
+                (cfg.WORLDPOP_TEMPORAL_CELL_CACHE, ta.HASH_BASIS_RAW_BYTES),
+                (cfg.WALK_GRAPH_FILE, ta.HASH_BASIS_RAW_BYTES),
+                (cfg.METRO_STATION_HISTORY_FILE, ta.HASH_BASIS_CANONICAL_TEXT),
+                (cfg.WORLDPOP_DISTRICT_YEAR_FILE, ta.HASH_BASIS_CANONICAL_TEXT),
+                (cfg.DISTRICTS_FILE, ta.HASH_BASIS_CANONICAL_TEXT),
             )
         },
         "cell_cache": {

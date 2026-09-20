@@ -140,11 +140,62 @@ def main() -> int:  # noqa: PLR0915 - validator intentionally enumerates gates
     check(len(stations) == 50, "station history has 50 rows")
     check(stations.station_id.nunique() == 50, "station IDs are unique")
     check(cfg.WALK_GRAPH_FILE.exists(), "current pedestrian graph is available")
+    # Every input must name the byte representation its SHA describes, and the
+    # recorded size must describe those same bytes. An unknown or missing basis
+    # is a failure rather than a silent fall back to raw filesystem bytes.
     input_hashes_ok = True
+    input_basis_ok = True
+    input_sizes_ok = True
+    input_problems: list[str] = []
     for relative_path, metadata in analysis_manifest["input_files"].items():
         path = cfg.REPO_ROOT / relative_path
-        input_hashes_ok &= path.exists() and cfg.sha256_file(path) == metadata["sha256"]
-    check(input_hashes_ok, "all manifest input hashes match current source files")
+        basis = metadata.get("hash_basis")
+        if basis not in (ta.HASH_BASIS_CANONICAL_TEXT, ta.HASH_BASIS_RAW_BYTES):
+            input_basis_ok = False
+            input_problems.append(f"{Path(relative_path).name}: basis {basis!r}")
+            continue
+        if not path.exists():
+            input_hashes_ok = False
+            input_problems.append(f"{Path(relative_path).name}: missing")
+            continue
+        try:
+            record = ta.provenance_record(path, basis)
+        except (ValueError, UnicodeDecodeError) as error:
+            input_hashes_ok = False
+            input_problems.append(f"{Path(relative_path).name}: {error}")
+            continue
+        if record["sha256"] != metadata["sha256"]:
+            input_hashes_ok = False
+            input_problems.append(f"{Path(relative_path).name}: sha")
+        if record["size_bytes"] != metadata.get("size_bytes"):
+            input_sizes_ok = False
+            input_problems.append(f"{Path(relative_path).name}: size")
+    check(
+        input_basis_ok,
+        "every manifest input declares a known hash basis",
+        "; ".join(input_problems) if not input_basis_ok else None,
+    )
+    check(
+        input_hashes_ok,
+        "all manifest input hashes match current source files",
+        "; ".join(input_problems) if not input_hashes_ok else None,
+    )
+    check(
+        input_sizes_ok,
+        "every manifest input size describes the same bytes as its hash",
+        "; ".join(input_problems) if not input_sizes_ok else None,
+    )
+    check(
+        any(
+            metadata.get("hash_basis") == ta.HASH_BASIS_CANONICAL_TEXT
+            for metadata in analysis_manifest["input_files"].values()
+        )
+        and any(
+            metadata.get("hash_basis") == ta.HASH_BASIS_RAW_BYTES
+            for metadata in analysis_manifest["input_files"].values()
+        ),
+        "manifest separates canonical-text inputs from raw-byte inputs",
+    )
     current_manifest = json.loads(cfg.ANALYSIS_MANIFEST_PATH.read_text(encoding="utf-8"))
     network_meta = analysis_manifest["pedestrian_network"]
     check(network_meta["fixed_current_snapshot"] is True, "manifest fixes the current network")
