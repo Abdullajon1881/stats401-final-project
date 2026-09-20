@@ -1,0 +1,284 @@
+{
+  "analysis": "Phase 2C current urban dimensions",
+  "analysis_geography": {
+    "districts": 12,
+    "excluded": "Yangi Toshkent Tumani has no matching official SIAT population row",
+    "official_population": 3212200.0
+  },
+  "analysis_version": "phase2c-current-urban-dimensions-v1",
+  "city_access": {
+    "bazaar_10min_pct": 14.435025214,
+    "education_10min_pct": 71.967058017,
+    "healthcare_10min_pct": 46.751228892,
+    "healthcare_and_education_10min_pct": 43.406684997
+  },
+  "city_clipping_rule": "a facility is retained when its routing representative point lies within data/processed/tashkent_boundary.geojson",
+  "composite_score_or_ranking": false,
+  "historical_facility_claims": false,
+  "input_files": {
+    "data/external/population_cells.parquet": {
+      "hash_basis": "raw_file_bytes",
+      "sha256": "948871e538fd0de66c4d30cf5d6c8c0deef3071c8e59d41581f96548e54a7c3b",
+      "size_bytes": 5659759
+    },
+    "data/external/tashkent_walk_network.graphml": {
+      "hash_basis": "raw_file_bytes",
+      "sha256": "948da22f9a608b8d795c07bb8c8b8d04ca5abcbc429b51b1c99f5546772e9c41",
+      "size_bytes": 112934536
+    },
+    "data/processed/analysis_boundary.geojson": {
+      "hash_basis": "canonical_utf8_lf",
+      "sha256": "31e19d4165c0c114968549efa3afdd76c5f32f3255197578301c7a9ac648aeca",
+      "size_bytes": 28173
+    },
+    "data/processed/bazaars.geojson": {
+      "hash_basis": "canonical_utf8_lf",
+      "sha256": "fbfcbf422ac8edc171608c06b00346a9976e764601fc3642a094c6be821cf56c",
+      "size_bytes": 29303
+    },
+    "data/processed/district_access_metrics.csv": {
+      "hash_basis": "canonical_utf8_lf",
+      "sha256": "2f6baa393d671b399afba05687d75b9c78930ad6ff70e38bbbb023559e39cd85",
+      "size_bytes": 2557
+    },
+    "data/processed/tashkent_boundary.geojson": {
+      "hash_basis": "canonical_utf8_lf",
+      "sha256": "774955462534731c0cb0e5735895374f3d981847757dd87f9442f49e96ea8450",
+      "size_bytes": 28162
+    },
+    "data/processed/tashkent_districts.geojson": {
+      "hash_basis": "canonical_utf8_lf",
+      "sha256": "92311611710bba1d6e12d7033d8d413834f3528aa6ae584dfcde629ebc55bc26",
+      "size_bytes": 172188
+    }
+  },
+  "limitations": [
+    "Healthcare, education and bazaar layers are current OpenStreetMap snapshots.",
+    "OpenStreetMap facility coverage is incomplete and is not a census.",
+    "Facility counts are mapped OSM objects after documented deduplication.",
+    "Representative points are routing proxies, not verified pedestrian entrances.",
+    "Ten-minute access is physical pedestrian-network proximity only.",
+    "No measure of quality, capacity, staffing, opening hours, affordability, eligibility, catchment rules or specialization is implied.",
+    "Bazaar coverage remains an amenity=marketplace mapped lower bound.",
+    "Walk-network density is a network-density proxy, not a general walkability score.",
+    "Transit supply counts do not measure service frequency or quality.",
+    "No historical healthcare, education or bazaar availability is computed."
+  ],
+  "osm_licence": "ODbL 1.0",
+  "output_files": {
+    "data/processed/education_facilities.geojson": {
+      "hash_basis": "canonical_utf8_lf",
+      "sha256": "f2c441eaf5adc419d776e86a1268d5e0c1ede26b4352d90b23427f6d4ce79e44",
+      "size_bytes": 1658047
+    },
+    "data/processed/healthcare_facilities.geojson": {
+      "hash_basis": "canonical_utf8_lf",
+      "sha256": "af48db0cf0796166180b72c036317a38610e4b3026db76c40ed4ecbda561fbed",
+      "size_bytes": 517074
+    },
+    "data/processed/urban_dimensions_city.csv": {
+      "hash_basis": "canonical_utf8_lf",
+      "sha256": "24f005c0a25f6a562363e11a4cae817f6acce2f87f42ddc4211f9c6d2a562b7d",
+      "size_bytes": 769
+    },
+    "data/processed/urban_dimensions_district.csv": {
+      "hash_basis": "canonical_utf8_lf",
+      "sha256": "33402a23c6a33e82b48e2d93ab91a80e81919bb0b3b874e21f0a75e6d6da7063",
+      "size_bytes": 4154
+    }
+  },
+  "pedestrian_network": {
+    "canonical_routing_edges": 154133,
+    "fixed_current_snapshot": true,
+    "nodes": 111386,
+    "path": "data/external/tashkent_walk_network.graphml",
+    "routing_crs": "EPSG:32642",
+    "stored_edge_records": 308272
+  },
+  "period": "current",
+  "population": {
+    "cache": "data/external/population_cells.parquet",
+    "cells": 65169,
+    "method": "WorldPop 2026 cells calibrated independently within each district to SIAT 2026-Q2 district totals; identical to the current headline",
+    "total": 3212200.0
+  },
+  "routing": {
+    "classification": "unrounded network distance <= 800.0 m",
+    "connector_diagnostics": {
+      "bazaar": {
+        "count": 83,
+        "label": "bazaar",
+        "max_m": 255.26772266525595,
+        "mean_m": 18.917964166761788,
+        "median_m": 12.946157144434446,
+        "min_m": 0.05230760030054103,
+        "p95_m": 44.34863408195933,
+        "p99_m": 116.13591378609671
+      },
+      "education": {
+        "count": 1179,
+        "label": "education",
+        "max_m": 111.27193911605636,
+        "mean_m": 33.5426785106546,
+        "median_m": 32.62687401347382,
+        "min_m": 0.0,
+        "p95_m": 68.57134852365184,
+        "p99_m": 85.43391943981953
+      },
+      "healthcare": {
+        "count": 427,
+        "label": "healthcare",
+        "max_m": 169.37005140425774,
+        "mean_m": 18.37504886749885,
+        "median_m": 14.778444532560144,
+        "min_m": 0.0,
+        "p95_m": 44.73041064675514,
+        "p99_m": 62.82028207532742
+      }
+    },
+    "destination_classes": [
+      "bazaar",
+      "education",
+      "healthcare"
+    ],
+    "dijkstra_runs": 3,
+    "distance_budget_m": 800.0,
+    "engine": "scripts/accessibility_utils.py edge-aware primitives",
+    "source_representative_point_rule": "OSM node as-is; polygon or multipolygon uses a representative point guaranteed inside the feature; line uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
+    "source_snap_placement": {
+      "bazaar": {
+        "count": 83,
+        "distinct_edges_containing_sources": 82,
+        "effectively_at_an_endpoint": 10,
+        "endpoint_tolerance_m": 1.0,
+        "inserted_in_edge_interior": 73,
+        "max_sources_on_one_edge": 2
+      },
+      "education": {
+        "count": 1179,
+        "distinct_edges_containing_sources": 1139,
+        "effectively_at_an_endpoint": 196,
+        "endpoint_tolerance_m": 1.0,
+        "inserted_in_edge_interior": 983,
+        "max_sources_on_one_edge": 4
+      },
+      "healthcare": {
+        "count": 427,
+        "distinct_edges_containing_sources": 405,
+        "effectively_at_an_endpoint": 53,
+        "endpoint_tolerance_m": 1.0,
+        "inserted_in_edge_interior": 374,
+        "max_sources_on_one_edge": 2
+      }
+    },
+    "walking_speed_kmh": 4.8,
+    "walking_time_minutes": 10
+  },
+  "sources": {
+    "bazaars": {
+      "count": 83,
+      "coverage": "mapped lower bound, not a census",
+      "definition": "amenity=marketplace only",
+      "reused_existing_layer": "data/processed/bazaars.geojson"
+    },
+    "education": {
+      "acquired_at_utc": "2026-09-20T14:10:34Z",
+      "city_clipping_rule": "retained when the routing representative point lies within data/processed/tashkent_boundary.geojson",
+      "clean": {
+        "by_category": {
+          "college": 102,
+          "kindergarten": 467,
+          "school": 514,
+          "university": 96
+        },
+        "named": 1087,
+        "total": 1179,
+        "unnamed": 92
+      },
+      "dedupe_radius_m": 150.0,
+      "dedupe_rule": "one object per OSM type/id; records sharing a category and a non-empty normalized name within 150 m collapse to the areal representation; unnamed facilities are never proximity-merged and categories are never merged",
+      "duplicates_removed": 40,
+      "elements_returned": 1333,
+      "facility_class": "education",
+      "osm_licence": "ODbL 1.0",
+      "overpass_query": "[out:json][timeout:300];\n(\n  node[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n);\nout geom;",
+      "raw_in_city": {
+        "by_category": {
+          "college": 104,
+          "kindergarten": 482,
+          "school": 534,
+          "university": 99
+        },
+        "named": 1127,
+        "total": 1219,
+        "unnamed": 92
+      },
+      "recounted_clean": {
+        "by_category": {
+          "college": 102,
+          "kindergarten": 467,
+          "school": 514,
+          "university": 96
+        },
+        "named": 1087,
+        "total": 1179,
+        "unnamed": 92
+      },
+      "representative_point_rule": "OSM node as-is; polygon or multipolygon uses a representative point guaranteed inside the feature; line uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
+      "source_file": "data/processed/education_facilities.geojson"
+    },
+    "healthcare": {
+      "acquired_at_utc": "2026-09-20T14:10:23Z",
+      "city_clipping_rule": "retained when the routing representative point lies within data/processed/tashkent_boundary.geojson",
+      "clean": {
+        "by_category": {
+          "clinic": 222,
+          "hospital": 205
+        },
+        "named": 394,
+        "total": 427,
+        "unnamed": 33
+      },
+      "dedupe_radius_m": 150.0,
+      "dedupe_rule": "one object per OSM type/id; records sharing a category and a non-empty normalized name within 150 m collapse to the areal representation; unnamed facilities are never proximity-merged and categories are never merged",
+      "duplicates_removed": 13,
+      "elements_returned": 478,
+      "facility_class": "healthcare",
+      "osm_licence": "ODbL 1.0",
+      "overpass_query": "[out:json][timeout:300];\n(\n  node[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n);\nout geom;",
+      "raw_in_city": {
+        "by_category": {
+          "clinic": 233,
+          "hospital": 207
+        },
+        "named": 407,
+        "total": 440,
+        "unnamed": 33
+      },
+      "recounted_clean": {
+        "by_category": {
+          "clinic": 222,
+          "hospital": 205
+        },
+        "named": 394,
+        "total": 427,
+        "unnamed": 33
+      },
+      "representative_point_rule": "OSM node as-is; polygon or multipolygon uses a representative point guaranteed inside the feature; line uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
+      "source_file": "data/processed/healthcare_facilities.geojson"
+    }
+  },
+  "walk_network_density": {
+    "district_clipped_total_km": 8946.844384,
+    "district_union_clipped_km": 8946.844384,
+    "double_counting_guard": "canonical undirected edges are used, never the stored directional GraphML records",
+    "edges_touching_multiple_districts": 2560,
+    "label": "walk-network density, not a walkability score",
+    "method": "canonical undirected routing edges, projected EPSG:32642 geometry clipped to each district polygon, summed and divided by district area",
+    "reconciliation_difference_km": 0.0,
+    "shared_border_km": 53.390294,
+    "shared_border_rule": "Tashkent district boundaries follow major roads, so each edge is partitioned individually and border-coincident length is assigned to the alphabetically first district covering it. District lengths are therefore a partition of the network.",
+    "stored_analysis_boundary_clipped_km": 8946.142015,
+    "stored_boundary_note": "analysis_boundary.geojson stores the same area with GeoJSON-rounded coordinates, so it clips a marginally different length; the district union is the reconciliation target"
+  }
+}
