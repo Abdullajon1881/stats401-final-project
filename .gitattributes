@@ -10,9 +10,9 @@ site/vendor/** -text
 # re-hashes each file on disk. The generator writes them as canonical UTF-8 LF
 # bytes, but with core.autocrlf enabled a checkout would rewrite their newlines
 # and every recorded hash would break, so these paths are never line-ending
-# converted. Phase 2A outputs are deliberately absent: data/phase2_source_manifest.json
-# pins data/processed/worldpop_temporal_mask_diagnostic.json to its CRLF form and
-# that frozen manifest is not regenerated here.
+# converted. Phase 2A outputs are deliberately absent: they are pinned by
+# canonical UTF-8 LF hashes instead, so their provenance already survives either
+# checkout representation without a -text rule.
 data/processed/metro_access_temporal_city.csv           -text
 data/processed/metro_access_temporal_district.csv       -text
 data/processed/metro_access_temporal_events.csv         -text

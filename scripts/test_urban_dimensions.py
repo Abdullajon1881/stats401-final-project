@@ -181,6 +181,108 @@ def test_and_mask_and_per_capita_rate():
     return "AND mask keeps only cells served by both classes; 25/125k = 2.0 per 10k"
 
 
+def relation_element(members: list[dict], relation_type: str = "multipolygon") -> dict:
+    return {
+        "type": "relation",
+        "id": 1,
+        "tags": {"type": relation_type, "amenity": "school"},
+        "members": members,
+    }
+
+
+def member(coords: list[tuple[float, float]], role: str = "outer") -> dict:
+    return {
+        "type": "way",
+        "role": role,
+        "geometry": [{"lon": x, "lat": y} for x, y in coords],
+    }
+
+
+def test_split_outer_ring_becomes_a_polygon():
+    # One square outer ring mapped as four separate member ways, none closed.
+    element = relation_element([
+        member([(0, 0), (10, 0)]),
+        member([(10, 0), (10, 10)]),
+        member([(10, 10), (0, 10)]),
+        member([(0, 10), (0, 0)]),
+    ])
+    geometry, assembly = ud.element_geometry(element)
+    assert geometry is not None
+    assert geometry.geom_type in ("Polygon", "MultiPolygon"), geometry.geom_type
+    assert assembly == "multipolygon_polygonized", assembly
+    assert abs(geometry.area - 100.0) < TOL, geometry.area
+    for way in element["members"]:
+        coords = [(p["lon"], p["lat"]) for p in way["geometry"]]
+        assert coords[0] != coords[-1], "each member must be open on its own"
+    return "a square split across four open member ways closes into a polygon"
+
+
+def test_inner_ring_is_preserved_as_a_hole():
+    # Outer square, and an inner courtyard also split across two member ways.
+    element = relation_element([
+        member([(0, 0), (30, 0), (30, 30), (0, 30), (0, 0)]),
+        member([(10, 10), (20, 10), (20, 20)], role="inner"),
+        member([(20, 20), (10, 20), (10, 10)], role="inner"),
+    ])
+    geometry, assembly = ud.element_geometry(element)
+    assert geometry.geom_type in ("Polygon", "MultiPolygon"), geometry.geom_type
+    assert assembly == "multipolygon_polygonized"
+    assert abs(geometry.area - (900.0 - 100.0)) < TOL, geometry.area
+    hole_centre = Point(15, 15)
+    assert not geometry.contains(hole_centre), "the courtyard must stay excluded"
+    point, method = ud.representative_point(geometry)
+    assert geometry.covers(point), "representative point must lie in the facility"
+    assert not Point(point.x, point.y).within(
+        Polygon([(10, 10), (20, 10), (20, 20), (10, 20)])
+    ), "representative point must not fall inside the hole"
+    assert method == "polygon_representative_point"
+    return "a split inner ring stays a hole and the routing point avoids it"
+
+
+def test_multipolygon_representative_point_is_covered():
+    element = relation_element([
+        member([(0, 0), (10, 0), (10, 10), (0, 10), (0, 0)]),
+        member([(50, 50), (60, 50), (60, 60), (50, 60), (50, 50)]),
+    ])
+    geometry, _ = ud.element_geometry(element)
+    assert geometry.geom_type == "MultiPolygon", geometry.geom_type
+    point, method = ud.representative_point(geometry)
+    assert geometry.covers(point)
+    assert method == "polygon_representative_point"
+    return "a two-part multipolygon yields a covered representative point"
+
+
+def test_outside_analysis_districts_is_not_nearest_assigned():
+    west = Polygon([(0, 0), (100, 0), (100, 100), (0, 100)])
+    east = Polygon([(100, 0), (200, 0), (200, 100), (100, 100)])
+    polygons = {"east district": east, "west district": west}
+
+    inside = ud.assign_analysis_district(Point(50, 50), polygons)
+    assert inside == ("west district", "within"), inside
+
+    # 5 km beyond every analysis district: a real facility in the excluded
+    # geometry, not a boundary tie.
+    far = ud.assign_analysis_district(Point(5_000, 50), polygons)
+    assert far == (None, "outside_analysis_districts"), far
+    # Even a facility only 90 m out stays unassigned.
+    near = ud.assign_analysis_district(Point(290, 50), polygons)
+    assert near == (None, "outside_analysis_districts"), near
+    return "a point outside every district is unassigned, never nearest-assigned"
+
+
+def test_true_shared_boundary_is_a_deterministic_tie():
+    west = Polygon([(0, 0), (100, 0), (100, 100), (0, 100)])
+    east = Polygon([(100, 0), (200, 0), (200, 100), (100, 100)])
+    polygons = {"east district": east, "west district": west}
+    name, assignment = ud.assign_analysis_district(Point(100, 50), polygons)
+    assert assignment == "boundary_tie", assignment
+    assert name == "east district", "ties resolve alphabetically"
+    assert west.covers(Point(100, 50)) and east.covers(Point(100, 50))
+    repeated = {ud.assign_analysis_district(Point(100, 50), polygons) for _ in range(5)}
+    assert len(repeated) == 1, "the tie must be deterministic"
+    return "a point on the shared border ties to the alphabetically first district"
+
+
 def facility_dedupe(frame: gpd.GeoDataFrame):
     return ud.dedupe_facilities(frame, radius_m=cfg.PHASE2C_NAME_DEDUPE_RADIUS_M)
 
@@ -196,6 +298,11 @@ TESTS = [
     ("clipping across districts conserves length", test_clipping_across_two_districts_conserves_length),
     ("the threshold is unrounded 800.0 m", test_threshold_uses_unrounded_800_m),
     ("AND mask and per-10k rate are correct", test_and_mask_and_per_capita_rate),
+    ("a split outer ring becomes a polygon", test_split_outer_ring_becomes_a_polygon),
+    ("a split inner ring is preserved as a hole", test_inner_ring_is_preserved_as_a_hole),
+    ("a multipolygon representative point is covered", test_multipolygon_representative_point_is_covered),
+    ("outside-analysis points are never nearest-assigned", test_outside_analysis_districts_is_not_nearest_assigned),
+    ("a true shared boundary is a deterministic tie", test_true_shared_boundary_is_a_deterministic_tie),
 ]
 
 

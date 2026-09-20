@@ -87,6 +87,64 @@ The existing audited `data/processed/bazaars.geojson` layer is reused
 unchanged: `amenity=marketplace` only, 83 mapped features. Phase 2C does not
 reacquire it and does not broaden the definition.
 
+## Two spatial scopes
+
+Phase 2C keeps two scopes explicitly separate, because conflating them
+fabricates supply:
+
+| scope | geometry | used for |
+|---|---|---|
+| **routing sources** | the full current Tashkent city boundary | which facilities a resident can walk to |
+| **population and supply** | the 12 SIAT-matched analysis districts | the denominator, district counts and every percentage |
+
+A facility can legitimately sit inside the current city boundary yet outside
+every analysis district, because Yangi Toshkent Tumani is excluded from the
+population denominator. Such a facility **remains a routing source** — a
+resident near the edge should not be blocked from walking to a destination just
+because that destination lies outside their analytical district — but it is
+**credited to no district supply count** and its `district_name` is null.
+
+Facilities are therefore assigned one of exactly three values:
+
+| `district_assignment` | meaning |
+|---|---|
+| `within` | inside exactly one analysis district |
+| `boundary_tie` | on a boundary shared by analysis districts, resolved alphabetically |
+| `outside_analysis_districts` | outside all 12; `district_name` is null |
+
+A nearest-district fallback is **never** used. The boundary tolerance is 1 mm,
+enough for projection and floating-point noise at a true shared boundary and
+far too small to capture a facility that genuinely sits outside.
+
+Consequently `sum(district healthcare_total)` does **not** equal the full
+routing-source count, and it is not supposed to. The city table reports both
+scopes under explicit names: `healthcare_routing_sources`,
+`healthcare_facilities_in_analysis_districts`,
+`healthcare_facilities_outside_analysis_districts`, and the education
+equivalents. In the current snapshot 4 healthcare and 25 education facilities
+lie outside the analysis districts; all 83 bazaars fall inside them.
+
+## Geometry assembly
+
+| OSM element | geometry | `geometry_assembly` |
+|---|---|---|
+| node | point | `osm_node` |
+| closed way | polygon | `closed_way_polygon` |
+| open way | line | `open_way_line` |
+| relation | polygon or multipolygon | `multipolygon_polygonized` |
+| relation that cannot form an area | line | `line_fallback` |
+
+An OSM multipolygon ring is routinely mapped as **several member ways that only
+close when joined end to end**, so no member may be treated as a candidate ring
+on its own. Member linework is collected by role, noded with `unary_union`,
+merged and then run through `polygonize`, which closes rings split across any
+number of member ways. Inner linework is polygonized the same way and
+subtracted, so a courtyard stays a hole rather than being filled in.
+
+In the current snapshot every relation in both layers is `type=multipolygon`
+and every one assembles into area geometry: 24 of 24 for healthcare and 74 of
+74 for education, with **zero** line fallbacks.
+
 ## Representative points
 
 OpenStreetMap does not provide audited pedestrian entrances for these
@@ -95,11 +153,15 @@ facilities. Routing therefore uses a deterministic representative point:
 | geometry | routing point |
 |---|---|
 | node | the node itself |
-| polygon or multipolygon | shapely representative point, guaranteed inside the feature |
-| line | the line midpoint |
+| closed way polygon | shapely representative point, inside the polygon |
+| polygonized multipolygon relation | shapely representative point, inside the reconstructed area |
+| genuine line feature | the line midpoint |
 
 A bounding-box centre is **not** used, because it can fall outside a concave
-building.
+building, and a hole is excluded from the polygon before the point is taken so
+a routing point never lands in a courtyard. The validator checks
+`geometry.covers(point)` on every committed areal feature rather than assuming
+it.
 
 > **Facility representative points are routing proxies, not verified pedestrian
 > entrances.**

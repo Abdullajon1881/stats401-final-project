@@ -135,14 +135,40 @@ def route_class(
 def district_supply(
     facilities: gpd.GeoDataFrame, column: str, categories, districts: list[str]
 ) -> pd.DataFrame:
-    """Per-district counts for one facility class."""
+    """Per-district counts for one facility class.
+
+    Only facilities actually assigned to an analysis district contribute. A
+    facility inside the city but outside all 12 districts remains a routing
+    source and is credited to no district, so these counts deliberately do not
+    sum to the full routing-source total.
+    """
+    assigned = facilities.loc[
+        facilities.district_assignment.isin(("within", "boundary_tie"))
+        & facilities.district_name.notna()
+    ]
     table = pd.DataFrame(index=pd.Index(districts, name="district_name"))
     for category in categories:
-        subset = facilities.loc[facilities[column] == category, "district_name"]
+        subset = assigned.loc[assigned[column] == category, "district_name"]
         table[f"{category}s" if not category.endswith("s") else category] = (
             subset.value_counts().reindex(districts).fillna(0).astype(int)
         )
     return table.reset_index()
+
+
+def scope_counts(facilities: gpd.GeoDataFrame) -> dict[str, int]:
+    """Split a facility layer into routing scope and analysis-district scope."""
+    counts = facilities.district_assignment.value_counts().to_dict()
+    within = int(counts.get("within", 0))
+    tie = int(counts.get("boundary_tie", 0))
+    return {
+        "routing_sources": int(len(facilities)),
+        "in_analysis_districts": within + tie,
+        "within": within,
+        "boundary_tie": tie,
+        "outside_analysis_districts": int(
+            counts.get("outside_analysis_districts", 0)
+        ),
+    }
 
 
 def main() -> int:  # noqa: PLR0915 - linear analysis pipeline is intentional
@@ -256,8 +282,18 @@ def main() -> int:  # noqa: PLR0915 - linear analysis pipeline is intentional
         + district.universitys + district.kindergartens
     )
     district = district.rename(columns={"universitys": "universities"})
-    log(f"  healthcare {int(district.healthcare_total.sum())}, "
-        f"education {int(district.education_total.sum())}")
+    healthcare_scope = scope_counts(healthcare)
+    education_scope = scope_counts(education)
+    log(f"  healthcare: {healthcare_scope['routing_sources']} routing sources, "
+        f"{healthcare_scope['in_analysis_districts']} in analysis districts, "
+        f"{healthcare_scope['outside_analysis_districts']} outside")
+    log(f"  education:  {education_scope['routing_sources']} routing sources, "
+        f"{education_scope['in_analysis_districts']} in analysis districts, "
+        f"{education_scope['outside_analysis_districts']} outside")
+    if int(district.healthcare_total.sum()) != healthcare_scope["in_analysis_districts"]:
+        raise SystemExit("healthcare district supply does not match in-analysis sources")
+    if int(district.education_total.sum()) != education_scope["in_analysis_districts"]:
+        raise SystemExit("education district supply does not match in-analysis sources")
 
     step("STEP 7  Walk-network density")
     edges = ud.canonical_edge_geometries(network)
@@ -342,9 +378,24 @@ def main() -> int:  # noqa: PLR0915 - linear analysis pipeline is intentional
     city_row["walk_network_density_km_per_km2"] = round(
         union_km / float(district.area_km2.sum()), 9
     )
-    city_row["healthcare_facilities"] = int(district.healthcare_total.sum())
-    city_row["education_facilities"] = int(district.education_total.sum())
-    city_row["bazaars"] = int(district.bazaars.sum())
+    # Routing scope is the full city boundary; supply scope is the 12 analysis
+    # districts. The two counts differ, so neither name may be ambiguous.
+    city_row["healthcare_routing_sources"] = healthcare_scope["routing_sources"]
+    city_row["healthcare_facilities_in_analysis_districts"] = healthcare_scope[
+        "in_analysis_districts"
+    ]
+    city_row["healthcare_facilities_outside_analysis_districts"] = healthcare_scope[
+        "outside_analysis_districts"
+    ]
+    city_row["education_routing_sources"] = education_scope["routing_sources"]
+    city_row["education_facilities_in_analysis_districts"] = education_scope[
+        "in_analysis_districts"
+    ]
+    city_row["education_facilities_outside_analysis_districts"] = education_scope[
+        "outside_analysis_districts"
+    ]
+    city_row["bazaar_routing_sources"] = int(len(bazaars))
+    city_row["bazaar_facilities_in_analysis_districts"] = int(district.bazaars.sum())
     city = pd.DataFrame([city_row])
     ud.write_csv_lf(city, cfg.URBAN_DIMENSIONS_CITY_FILE)
     log(f"  wrote {cfg.URBAN_DIMENSIONS_CITY_FILE.name}: {len(city)} row")
@@ -373,6 +424,14 @@ def main() -> int:  # noqa: PLR0915 - linear analysis pipeline is intentional
             "districts": len(district_names),
             "excluded": "Yangi Toshkent Tumani has no matching official SIAT population row",
             "official_population": official_total,
+            "scope_separation": (
+                "routing sources come from the full current city boundary; "
+                "population, district supply and all percentages come from the "
+                "12 SIAT-matched analysis districts. A facility outside all 12 "
+                "is never credited to a nearest district."
+            ),
+            "district_assignment_values": list(ud.DISTRICT_ASSIGNMENTS),
+            "boundary_tie_tolerance_m": ud.BOUNDARY_TIE_TOLERANCE_M,
         },
         "population": {
             "method": (
@@ -400,9 +459,16 @@ def main() -> int:  # noqa: PLR0915 - linear analysis pipeline is intentional
             "dijkstra_runs": len(classes),
             "destination_classes": sorted(classes),
             "source_representative_point_rule": (
-                "OSM node as-is; polygon or multipolygon uses a representative "
-                "point guaranteed inside the feature; line uses its midpoint. "
-                "These are routing proxies, not verified pedestrian entrances."
+                "OSM node as-is; a closed way and a polygonized multipolygon "
+                "relation use a representative point guaranteed inside the "
+                "reconstructed area; only a genuine line feature uses its "
+                "midpoint. These are routing proxies, not verified pedestrian "
+                "entrances."
+            ),
+            "source_scope": (
+                "all clean facilities retained inside the full current Tashkent "
+                "city boundary route as sources, including those outside the 12 "
+                "analysis districts"
             ),
             "connector_diagnostics": connector_diagnostics,
             "source_snap_placement": placements,
@@ -505,12 +571,26 @@ def _class_metadata(
     """
     provenance = dict(ud.read_geojson_provenance(path))
     named = int(frame["name"].notna().sum())
+    relations = frame[frame.osm_type == "relation"]
+    multipolygon = relations[relations.osm_relation_type == "multipolygon"]
     provenance["recounted_clean"] = {
         "total": int(len(frame)),
         "by_category": {c: int((frame[column] == c).sum()) for c in categories},
         "named": named,
         "unnamed": int(len(frame) - named),
+        "relations": int(len(relations)),
+        "multipolygon_relations": int(len(multipolygon)),
+        "relation_polygonal": int(
+            relations.geometry.geom_type.isin(["Polygon", "MultiPolygon"]).sum()
+        ),
+        "relation_line_fallback": int(
+            (relations.geometry_assembly == "line_fallback").sum()
+        ),
+        "multipolygon_line_fallback": int(
+            (multipolygon.geometry_assembly == "line_fallback").sum()
+        ),
     }
+    provenance["recounted_scope"] = scope_counts(frame)
     provenance["source_file"] = relative(path)
     return provenance
 

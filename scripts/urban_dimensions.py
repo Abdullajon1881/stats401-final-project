@@ -15,8 +15,8 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from shapely.geometry import LineString, MultiPolygon, Point, Polygon
-from shapely.ops import unary_union
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import linemerge, polygonize, unary_union
 
 import config as cfg
 from pipeline_utils import name_key, normalise_name
@@ -109,28 +109,53 @@ def read_geojson_provenance(path: Path) -> dict:
 # ---------------------------------------------------------------------------
 # OSM element geometry
 # ---------------------------------------------------------------------------
-def element_geometry(element: dict):
-    """Build a shapely geometry from one Overpass ``out geom`` element.
+GEOMETRY_ASSEMBLY_METHODS = (
+    "osm_node",
+    "open_way_line",
+    "closed_way_polygon",
+    "multipolygon_polygonized",
+    "line_fallback",
+)
+
+
+def element_geometry(element: dict) -> tuple[object, str]:
+    """Build geometry from one Overpass ``out geom`` element, plus its method.
 
     Nodes become points. A closed way becomes a polygon and an open way stays a
-    line. A relation is assembled from the geometry of its outer members, and
-    falls back to the union of whatever member geometry exists when those
-    members do not close into rings.
+    line. A relation is polygonized from its member linework so that rings
+    split across several member ways still close, and only falls back to line
+    geometry when the source genuinely cannot form an area.
     """
     kind = element.get("type")
     if kind == "node":
         lon, lat = element.get("lon"), element.get("lat")
         if lon is None or lat is None:
-            return None
-        return Point(float(lon), float(lat))
+            return None, "osm_node"
+        return Point(float(lon), float(lat)), "osm_node"
 
     if kind == "way":
         coords = [(float(p["lon"]), float(p["lat"])) for p in element.get("geometry") or []]
-        return _way_geometry(coords)
+        geometry = _way_geometry(coords)
+        if geometry is None:
+            return None, "open_way_line"
+        method = (
+            "closed_way_polygon"
+            if geometry.geom_type in ("Polygon", "MultiPolygon")
+            else "open_way_line"
+        )
+        return geometry, method
 
     if kind == "relation":
-        return _relation_geometry(element)
-    return None
+        geometry = _relation_geometry(element)
+        if geometry is None:
+            return None, "line_fallback"
+        method = (
+            "multipolygon_polygonized"
+            if geometry.geom_type in ("Polygon", "MultiPolygon")
+            else "line_fallback"
+        )
+        return geometry, method
+    return None, "line_fallback"
 
 
 def _way_geometry(coords: list[tuple[float, float]]):
@@ -145,32 +170,58 @@ def _way_geometry(coords: list[tuple[float, float]]):
     return LineString(coords)
 
 
+def _polygonize_role(lines: list[LineString]):
+    """Build area geometry from linework whose rings may be split across ways.
+
+    An OSM multipolygon ring is routinely mapped as several member ways that
+    only close when joined end to end, so each member must never be treated as
+    a candidate ring on its own. Noding the linework with ``unary_union`` and
+    then running ``polygonize`` closes those split rings; ``line_merge`` first
+    keeps the noded input tidy for the common two-way case.
+    """
+    if not lines:
+        return None
+    noded = unary_union(lines)
+    if noded.is_empty:
+        return None
+    # linemerge only accepts multi-part linework; a single noded LineString is
+    # already as merged as it can be.
+    merged = linemerge(noded) if noded.geom_type == "MultiLineString" else noded
+    faces = list(polygonize(merged))
+    if not faces:
+        faces = list(polygonize(noded))
+    if not faces:
+        return None
+    area = unary_union(faces)
+    if area.is_empty or area.area <= 0:
+        return None
+    return area
+
+
 def _relation_geometry(element: dict):
-    outer, other = [], []
+    """Assemble an OSM relation into area geometry, preserving inner holes."""
+    outer_lines, inner_lines = [], []
     for member in element.get("members") or []:
         coords = [(float(p["lon"]), float(p["lat"])) for p in member.get("geometry") or []]
         if len(coords) < 2:
             continue
-        target = outer if member.get("role") in ("outer", "") else other
-        target.append(coords)
+        line = LineString(coords)
+        if member.get("role") == "inner":
+            inner_lines.append(line)
+        else:
+            outer_lines.append(line)
 
-    polygons = []
-    for coords in outer:
-        if len(coords) >= 4 and coords[0] == coords[-1]:
-            polygon = Polygon(coords)
-            if not polygon.is_valid:
-                polygon = polygon.buffer(0)
-            if not polygon.is_empty and polygon.area > 0:
-                polygons.append(polygon)
-    if polygons:
-        merged = unary_union(polygons)
-        if isinstance(merged, Polygon):
-            return merged
-        if isinstance(merged, MultiPolygon):
-            return merged
-        return merged
+    outer_area = _polygonize_role(outer_lines)
+    if outer_area is not None:
+        inner_area = _polygonize_role(inner_lines)
+        if inner_area is not None:
+            outer_area = outer_area.difference(inner_area)
+        if not outer_area.is_valid:
+            outer_area = outer_area.buffer(0)
+        if not outer_area.is_empty and outer_area.area > 0:
+            return outer_area
 
-    lines = [LineString(c) for c in (outer + other) if len(c) >= 2]
+    lines = outer_lines + inner_lines
     if not lines:
         return None
     return unary_union(lines)
@@ -278,6 +329,41 @@ def dedupe_facilities(
         dropped, columns=["kept_facility_id", "dropped_facility_id",
                           "facility_category", "normalized_name"]
     )
+
+
+DISTRICT_ASSIGNMENTS = ("within", "boundary_tie", "outside_analysis_districts")
+
+# Only absorbs projection and floating-point noise at a true shared boundary.
+# Far too small to capture a facility that genuinely sits outside the analysis
+# districts, which is the whole point.
+BOUNDARY_TIE_TOLERANCE_M = 0.001
+
+
+def assign_analysis_district(
+    point: Point, polygons: dict[str, object], *, tolerance_m: float = BOUNDARY_TIE_TOLERANCE_M
+) -> tuple[str | None, str]:
+    """Assign a routing point to one of the 12 analysis districts, or to none.
+
+    A facility can legitimately sit inside the current city boundary yet
+    outside every analysis district, because Yangi Toshkent Tumani is excluded
+    from the population denominator. Such a facility stays a routing source but
+    must not be credited to whichever district happens to be nearest: that
+    fabricates supply. It is returned unassigned instead.
+    """
+    names = sorted(polygons)
+    inside = [name for name in names if polygons[name].contains(point)]
+    if len(inside) == 1:
+        return inside[0], "within"
+    if inside:
+        return inside[0], "boundary_tie"
+
+    touching = [
+        name for name in names
+        if polygons[name].distance(point) <= tolerance_m
+    ]
+    if touching:
+        return touching[0], "boundary_tie"
+    return None, "outside_analysis_districts"
 
 
 def geometry_rank(geometry) -> int:

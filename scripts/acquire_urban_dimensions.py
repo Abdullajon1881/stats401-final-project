@@ -113,7 +113,7 @@ def elements_to_frame(
         if category is None:
             continue
 
-        geometry = ud.element_geometry(element)
+        geometry, assembly = ud.element_geometry(element)
         if geometry is None or geometry.is_empty:
             continue
         point, method = ud.representative_point(geometry)
@@ -130,6 +130,8 @@ def elements_to_frame(
                 "amenity": tags.get("amenity"),
                 "healthcare": tags.get("healthcare"),
                 "operator": ud.display_name(tags.get("operator")),
+                "osm_relation_type": tags.get("type") if osm_type == "relation" else None,
+                "geometry_assembly": assembly,
                 "representative_point_method": method,
                 "longitude": round(float(point.x), 7),
                 "latitude": round(float(point.y), 7),
@@ -157,45 +159,41 @@ def clip_to_city(frame: gpd.GeoDataFrame, city_geom_metric, label: str) -> gpd.G
 
 
 def attach_district(frame: gpd.GeoDataFrame, districts: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Label each facility with the district containing its routing point.
+    """Label each facility with its analysis district, or with none.
 
-    A facility sitting exactly on a shared border is inside neither polygon
-    under a within test, so it resolves to the nearest district, chosen
-    alphabetically when two are equidistant to keep the result deterministic.
+    Routing scope is the full current city boundary; population and supply
+    scope is the 12 SIAT-matched districts. A facility inside the city but
+    outside every analysis district — Yangi Toshkent Tumani is excluded from
+    the population denominator — stays a routing source and is left unassigned
+    rather than credited to the nearest district.
     """
     if frame.empty:
         frame["district_name"] = pd.Series(dtype="object")
         frame["district_assignment"] = pd.Series(dtype="object")
         return frame
 
-    points = gpd.GeoDataFrame(
-        geometry=gpd.GeoSeries(frame["representative_geometry"], crs=cfg.GEOGRAPHIC_CRS),
-        index=frame.index,
+    projected = districts.to_crs(cfg.METRIC_CRS)
+    polygons = {row.district_name: row.geometry for row in projected.itertuples()}
+    points = gpd.GeoSeries(
+        frame["representative_geometry"], crs=cfg.GEOGRAPHIC_CRS
     ).to_crs(cfg.METRIC_CRS)
-    right = districts.to_crs(cfg.METRIC_CRS)[["district_name", "geometry"]]
 
-    joined = gpd.sjoin(points, right, how="left", predicate="within")
-    joined = joined[~joined.index.duplicated(keep="first")]
-    assigned = joined["district_name"].reindex(frame.index)
-    assignment = pd.Series("within", index=frame.index, dtype="object")
-
-    missing = assigned.isna()
-    if missing.any():
-        nearest = gpd.sjoin_nearest(
-            points.loc[missing, ["geometry"]], right, how="left", distance_col="_dist"
-        )
-        nearest = nearest.sort_values(["_dist", "district_name"], kind="stable")
-        nearest = nearest[~nearest.index.duplicated(keep="first")]
-        assigned.loc[missing] = nearest["district_name"].reindex(
-            assigned.loc[missing].index
-        )
-        assignment.loc[missing] = "boundary_nearest"
-        log(f"    {int(missing.sum())} facility(ies) lay on a district border; "
-            f"assigned to the nearest district")
+    names, assignments = [], []
+    for point in points:
+        name, assignment = ud.assign_analysis_district(point, polygons)
+        names.append(name)
+        assignments.append(assignment)
 
     out = frame.copy()
-    out["district_name"] = assigned
-    out["district_assignment"] = assignment
+    out["district_name"] = names
+    out["district_assignment"] = assignments
+    ties = assignments.count("boundary_tie")
+    outside = assignments.count("outside_analysis_districts")
+    if ties:
+        log(f"    {ties} facility(ies) sit on a shared analysis-district boundary")
+    if outside:
+        log(f"    {outside} facility(ies) lie outside the 12 analysis districts; "
+            f"kept as routing sources, credited to no district supply")
     return out
 
 
@@ -208,6 +206,47 @@ def summarize(frame: gpd.GeoDataFrame, category_column: str, categories) -> dict
         "by_category": counts,
         "named": named,
         "unnamed": int(len(frame) - named),
+    }
+
+
+def geometry_summary(frame: gpd.GeoDataFrame) -> dict:
+    """Relation assembly counts, used to prove multipolygons were rebuilt."""
+    relations = frame[frame.osm_type == "relation"]
+    multipolygon = relations[relations.osm_relation_type == "multipolygon"]
+    kinds = relations.geometry.geom_type.value_counts().to_dict()
+    return {
+        "relations": int(len(relations)),
+        "multipolygon_relations": int(len(multipolygon)),
+        "relation_geometry_types": {k: int(v) for k, v in sorted(kinds.items())},
+        "relation_polygonal": int(
+            relations.geometry.geom_type.isin(["Polygon", "MultiPolygon"]).sum()
+        ),
+        "relation_line_fallback": int(
+            (relations.geometry_assembly == "line_fallback").sum()
+        ),
+        "multipolygon_line_fallback": int(
+            (multipolygon.geometry_assembly == "line_fallback").sum()
+        ),
+        "assembly_methods": {
+            k: int(v) for k, v in sorted(
+                frame.geometry_assembly.value_counts().to_dict().items()
+            )
+        },
+    }
+
+
+def district_summary(frame: gpd.GeoDataFrame) -> dict:
+    """Split the routing scope from the 12-district supply scope."""
+    counts = frame.district_assignment.value_counts().to_dict()
+    within = int(counts.get("within", 0))
+    tie = int(counts.get("boundary_tie", 0))
+    outside = int(counts.get("outside_analysis_districts", 0))
+    return {
+        "routing_sources": int(len(frame)),
+        "in_analysis_districts": within + tie,
+        "within": within,
+        "boundary_tie": tie,
+        "outside_analysis_districts": outside,
     }
 
 
@@ -246,6 +285,7 @@ def build_class(
     columns = [
         "facility_id", "osm_type", "osm_id", "name", "normalized_name",
         category_column, "amenity", "healthcare", "operator",
+        "osm_relation_type", "geometry_assembly",
         "representative_point_method", "longitude", "latitude",
         "district_name", "district_assignment", "geometry",
     ]
@@ -260,6 +300,8 @@ def build_class(
         "elements_returned": int(len(payload["elements"])),
         "raw_in_city": raw_summary,
         "clean": clean_summary,
+        "geometry": geometry_summary(out),
+        "scope": district_summary(out),
         "duplicates_removed": int(len(dropped)),
         "dedupe_radius_m": cfg.PHASE2C_NAME_DEDUPE_RADIUS_M,
         "dedupe_rule": (
@@ -269,13 +311,24 @@ def build_class(
             "proximity-merged and categories are never merged"
         ),
         "representative_point_rule": (
-            "OSM node as-is; polygon or multipolygon uses a representative point "
-            "guaranteed inside the feature; line uses its midpoint. These are "
-            "routing proxies, not verified pedestrian entrances."
+            "OSM node as-is; a closed way and a polygonized multipolygon relation "
+            "use a representative point guaranteed inside the reconstructed area; "
+            "only a genuine line feature uses its midpoint. These are routing "
+            "proxies, not verified pedestrian entrances."
+        ),
+        "relation_assembly_rule": (
+            "relation member linework is noded and polygonized by role, so an "
+            "outer ring split across several member ways still closes; inner "
+            "rings are subtracted so courtyards remain holes"
         ),
         "city_clipping_rule": (
             "retained when the routing representative point lies within "
             "data/processed/tashkent_boundary.geojson"
+        ),
+        "district_scope_rule": (
+            "routing scope is the full current city boundary; supply scope is "
+            "the 12 SIAT-matched analysis districts. A facility outside all 12 "
+            "stays a routing source and is credited to no district supply"
         ),
     }
     ud.write_geojson_lf(out, output_path, extra={"provenance": provenance})
@@ -340,6 +393,17 @@ def main() -> int:
             f"{summary['clean']['total']}, removed {summary['duplicates_removed']}")
         log(f"    by category: {summary['clean']['by_category']}")
         log(f"    named {summary['clean']['named']}, unnamed {summary['clean']['unnamed']}")
+        geometry = summary["geometry"]
+        log(f"    relations {geometry['relations']} "
+            f"({geometry['multipolygon_relations']} type=multipolygon); "
+            f"polygonal {geometry['relation_polygonal']}, "
+            f"line fallback {geometry['relation_line_fallback']} "
+            f"(multipolygon fallbacks {geometry['multipolygon_line_fallback']})")
+        scope = summary["scope"]
+        log(f"    routing sources {scope['routing_sources']}; in analysis districts "
+            f"{scope['in_analysis_districts']} (within {scope['within']}, "
+            f"boundary tie {scope['boundary_tie']}); outside "
+            f"{scope['outside_analysis_districts']}")
     log("  Next: python scripts/analyze_urban_dimensions.py")
     return 0
 

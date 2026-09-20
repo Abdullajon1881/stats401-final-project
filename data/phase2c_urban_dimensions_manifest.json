@@ -1,16 +1,23 @@
 {
   "analysis": "Phase 2C current urban dimensions",
   "analysis_geography": {
+    "boundary_tie_tolerance_m": 0.001,
+    "district_assignment_values": [
+      "within",
+      "boundary_tie",
+      "outside_analysis_districts"
+    ],
     "districts": 12,
     "excluded": "Yangi Toshkent Tumani has no matching official SIAT population row",
-    "official_population": 3212200.0
+    "official_population": 3212200.0,
+    "scope_separation": "routing sources come from the full current city boundary; population, district supply and all percentages come from the 12 SIAT-matched analysis districts. A facility outside all 12 is never credited to a nearest district."
   },
   "analysis_version": "phase2c-current-urban-dimensions-v1",
   "city_access": {
     "bazaar_10min_pct": 14.435025214,
-    "education_10min_pct": 71.967058017,
-    "healthcare_10min_pct": 46.751228892,
-    "healthcare_and_education_10min_pct": 43.406684997
+    "education_10min_pct": 71.760660002,
+    "healthcare_10min_pct": 46.66046492,
+    "healthcare_and_education_10min_pct": 43.30140845
   },
   "city_clipping_rule": "a facility is retained when its routing representative point lies within data/processed/tashkent_boundary.geojson",
   "composite_score_or_ranking": false,
@@ -68,23 +75,23 @@
   "output_files": {
     "data/processed/education_facilities.geojson": {
       "hash_basis": "canonical_utf8_lf",
-      "sha256": "f2c441eaf5adc419d776e86a1268d5e0c1ede26b4352d90b23427f6d4ce79e44",
-      "size_bytes": 1658047
+      "sha256": "0b706cf6631f06cbd5167a033f39095682ac525fedd8531ed60ac192d8e4dbdc",
+      "size_bytes": 1762900
     },
     "data/processed/healthcare_facilities.geojson": {
       "hash_basis": "canonical_utf8_lf",
-      "sha256": "af48db0cf0796166180b72c036317a38610e4b3026db76c40ed4ecbda561fbed",
-      "size_bytes": 517074
+      "sha256": "588993e53a16ac62654342f2d35a2dedff34058cc101891891900463c3992dd6",
+      "size_bytes": 550135
     },
     "data/processed/urban_dimensions_city.csv": {
       "hash_basis": "canonical_utf8_lf",
-      "sha256": "24f005c0a25f6a562363e11a4cae817f6acce2f87f42ddc4211f9c6d2a562b7d",
-      "size_bytes": 769
+      "sha256": "a1f31a65c8720f239f9d6d134b19b7a24e174ce607f3be1f6b2b77b0b1ebc24a",
+      "size_bytes": 1033
     },
     "data/processed/urban_dimensions_district.csv": {
       "hash_basis": "canonical_utf8_lf",
-      "sha256": "33402a23c6a33e82b48e2d93ab91a80e81919bb0b3b874e21f0a75e6d6da7063",
-      "size_bytes": 4154
+      "sha256": "1288c3ecd81f3ff18b4843cde261184d54c22473c2760abf88a65e1752111a03",
+      "size_bytes": 4149
     }
   },
   "pedestrian_network": {
@@ -118,22 +125,22 @@
       "education": {
         "count": 1179,
         "label": "education",
-        "max_m": 111.27193911605636,
-        "mean_m": 33.5426785106546,
-        "median_m": 32.62687401347382,
+        "max_m": 117.65007636206134,
+        "mean_m": 34.26593310326675,
+        "median_m": 33.206111867485525,
         "min_m": 0.0,
-        "p95_m": 68.57134852365184,
-        "p99_m": 85.43391943981953
+        "p95_m": 69.64032011162277,
+        "p99_m": 85.70742117743013
       },
       "healthcare": {
         "count": 427,
         "label": "healthcare",
         "max_m": 169.37005140425774,
-        "mean_m": 18.37504886749885,
-        "median_m": 14.778444532560144,
+        "mean_m": 18.89193054487375,
+        "median_m": 14.996767913280078,
         "min_m": 0.0,
-        "p95_m": 44.73041064675514,
-        "p99_m": 62.82028207532742
+        "p95_m": 49.16267374642048,
+        "p99_m": 67.0990482427929
       }
     },
     "destination_classes": [
@@ -144,7 +151,8 @@
     "dijkstra_runs": 3,
     "distance_budget_m": 800.0,
     "engine": "scripts/accessibility_utils.py edge-aware primitives",
-    "source_representative_point_rule": "OSM node as-is; polygon or multipolygon uses a representative point guaranteed inside the feature; line uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
+    "source_representative_point_rule": "OSM node as-is; a closed way and a polygonized multipolygon relation use a representative point guaranteed inside the reconstructed area; only a genuine line feature uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
+    "source_scope": "all clean facilities retained inside the full current Tashkent city boundary route as sources, including those outside the 12 analysis districts",
     "source_snap_placement": {
       "bazaar": {
         "count": 83,
@@ -156,19 +164,19 @@
       },
       "education": {
         "count": 1179,
-        "distinct_edges_containing_sources": 1139,
-        "effectively_at_an_endpoint": 196,
+        "distinct_edges_containing_sources": 1141,
+        "effectively_at_an_endpoint": 202,
         "endpoint_tolerance_m": 1.0,
-        "inserted_in_edge_interior": 983,
+        "inserted_in_edge_interior": 977,
         "max_sources_on_one_edge": 4
       },
       "healthcare": {
         "count": 427,
-        "distinct_edges_containing_sources": 405,
-        "effectively_at_an_endpoint": 53,
+        "distinct_edges_containing_sources": 403,
+        "effectively_at_an_endpoint": 55,
         "endpoint_tolerance_m": 1.0,
-        "inserted_in_edge_interior": 374,
-        "max_sources_on_one_edge": 2
+        "inserted_in_edge_interior": 372,
+        "max_sources_on_one_edge": 3
       }
     },
     "walking_speed_kmh": 4.8,
@@ -197,9 +205,26 @@
       },
       "dedupe_radius_m": 150.0,
       "dedupe_rule": "one object per OSM type/id; records sharing a category and a non-empty normalized name within 150 m collapse to the areal representation; unnamed facilities are never proximity-merged and categories are never merged",
+      "district_scope_rule": "routing scope is the full current city boundary; supply scope is the 12 SIAT-matched analysis districts. A facility outside all 12 stays a routing source and is credited to no district supply",
       "duplicates_removed": 40,
       "elements_returned": 1333,
       "facility_class": "education",
+      "geometry": {
+        "assembly_methods": {
+          "closed_way_polygon": 905,
+          "multipolygon_polygonized": 74,
+          "osm_node": 200
+        },
+        "multipolygon_line_fallback": 0,
+        "multipolygon_relations": 74,
+        "relation_geometry_types": {
+          "MultiPolygon": 2,
+          "Polygon": 72
+        },
+        "relation_line_fallback": 0,
+        "relation_polygonal": 74,
+        "relations": 74
+      },
       "osm_licence": "ODbL 1.0",
       "overpass_query": "[out:json][timeout:300];\n(\n  node[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"school\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"college\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"university\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"kindergarten\"](41.1577334,69.121797,41.4224955,69.525908);\n);\nout geom;",
       "raw_in_city": {
@@ -220,11 +245,31 @@
           "school": 514,
           "university": 96
         },
+        "multipolygon_line_fallback": 0,
+        "multipolygon_relations": 74,
         "named": 1087,
+        "relation_line_fallback": 0,
+        "relation_polygonal": 74,
+        "relations": 74,
         "total": 1179,
         "unnamed": 92
       },
-      "representative_point_rule": "OSM node as-is; polygon or multipolygon uses a representative point guaranteed inside the feature; line uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
+      "recounted_scope": {
+        "boundary_tie": 0,
+        "in_analysis_districts": 1154,
+        "outside_analysis_districts": 25,
+        "routing_sources": 1179,
+        "within": 1154
+      },
+      "relation_assembly_rule": "relation member linework is noded and polygonized by role, so an outer ring split across several member ways still closes; inner rings are subtracted so courtyards remain holes",
+      "representative_point_rule": "OSM node as-is; a closed way and a polygonized multipolygon relation use a representative point guaranteed inside the reconstructed area; only a genuine line feature uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
+      "scope": {
+        "boundary_tie": 0,
+        "in_analysis_districts": 1154,
+        "outside_analysis_districts": 25,
+        "routing_sources": 1179,
+        "within": 1154
+      },
       "source_file": "data/processed/education_facilities.geojson"
     },
     "healthcare": {
@@ -241,9 +286,25 @@
       },
       "dedupe_radius_m": 150.0,
       "dedupe_rule": "one object per OSM type/id; records sharing a category and a non-empty normalized name within 150 m collapse to the areal representation; unnamed facilities are never proximity-merged and categories are never merged",
+      "district_scope_rule": "routing scope is the full current city boundary; supply scope is the 12 SIAT-matched analysis districts. A facility outside all 12 stays a routing source and is credited to no district supply",
       "duplicates_removed": 13,
       "elements_returned": 478,
       "facility_class": "healthcare",
+      "geometry": {
+        "assembly_methods": {
+          "closed_way_polygon": 142,
+          "multipolygon_polygonized": 24,
+          "osm_node": 261
+        },
+        "multipolygon_line_fallback": 0,
+        "multipolygon_relations": 24,
+        "relation_geometry_types": {
+          "Polygon": 24
+        },
+        "relation_line_fallback": 0,
+        "relation_polygonal": 24,
+        "relations": 24
+      },
       "osm_licence": "ODbL 1.0",
       "overpass_query": "[out:json][timeout:300];\n(\n  node[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"amenity\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"healthcare\"=\"hospital\"](41.1577334,69.121797,41.4224955,69.525908);\n  node[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  way[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n  relation[\"healthcare\"=\"clinic\"](41.1577334,69.121797,41.4224955,69.525908);\n);\nout geom;",
       "raw_in_city": {
@@ -260,11 +321,31 @@
           "clinic": 222,
           "hospital": 205
         },
+        "multipolygon_line_fallback": 0,
+        "multipolygon_relations": 24,
         "named": 394,
+        "relation_line_fallback": 0,
+        "relation_polygonal": 24,
+        "relations": 24,
         "total": 427,
         "unnamed": 33
       },
-      "representative_point_rule": "OSM node as-is; polygon or multipolygon uses a representative point guaranteed inside the feature; line uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
+      "recounted_scope": {
+        "boundary_tie": 0,
+        "in_analysis_districts": 423,
+        "outside_analysis_districts": 4,
+        "routing_sources": 427,
+        "within": 423
+      },
+      "relation_assembly_rule": "relation member linework is noded and polygonized by role, so an outer ring split across several member ways still closes; inner rings are subtracted so courtyards remain holes",
+      "representative_point_rule": "OSM node as-is; a closed way and a polygonized multipolygon relation use a representative point guaranteed inside the reconstructed area; only a genuine line feature uses its midpoint. These are routing proxies, not verified pedestrian entrances.",
+      "scope": {
+        "boundary_tie": 0,
+        "in_analysis_districts": 423,
+        "outside_analysis_districts": 4,
+        "routing_sources": 427,
+        "within": 423
+      },
       "source_file": "data/processed/healthcare_facilities.geojson"
     }
   },

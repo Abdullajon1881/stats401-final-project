@@ -115,9 +115,58 @@ def main() -> int:  # noqa: PLR0915 - validator intentionally enumerates gates
         check(methods <= {"osm_node", "polygon_representative_point", "line_midpoint",
                           "collection_representative_point"},
               f"{label} records a known representative-point rule", str(sorted(methods)))
-        check(set(frame.district_name.dropna()) <= set(
-                  gpd.read_file(cfg.DISTRICTS_FILE).district_name),
+        analysis_names = set(
+            gpd.read_file(cfg.DISTRICTS_FILE).query("in_siat").district_name
+        )
+        check(set(frame.district_name.dropna()) <= analysis_names,
               f"{label} districts are analysis districts")
+
+        # --- relation geometry -------------------------------------------
+        relations = frame[frame.osm_type == "relation"]
+        multipolygon = relations[relations.osm_relation_type == "multipolygon"]
+        check(bool(frame.loc[frame.osm_type != "relation", "osm_relation_type"].isna().all()),
+              f"{label} nodes and ways carry no relation type")
+        check(bool(relations.osm_relation_type.notna().all()),
+              f"{label} every relation records its OSM relation type")
+        check(set(frame.geometry_assembly) <= set(ud.GEOMETRY_ASSEMBLY_METHODS),
+              f"{label} uses a known geometry-assembly vocabulary",
+              str(sorted(set(frame.geometry_assembly))))
+        bad_line = multipolygon[
+            multipolygon.geometry.geom_type.isin(["LineString", "MultiLineString"])
+        ]
+        check(len(bad_line) == 0,
+              f"no {label} type=multipolygon relation is line geometry",
+              f"{len(bad_line)} relations")
+        check(int((multipolygon.geometry_assembly == "line_fallback").sum()) == 0,
+              f"no {label} type=multipolygon relation falls back to a line")
+        check(int((multipolygon.representative_point_method == "line_midpoint").sum()) == 0,
+              f"no {label} type=multipolygon relation routes from a line midpoint")
+        areal = frame[frame.geometry.geom_type.isin(["Polygon", "MultiPolygon"])]
+        points = gpd.GeoSeries(
+            gpd.points_from_xy(areal.longitude, areal.latitude),
+            crs=cfg.GEOGRAPHIC_CRS, index=areal.index,
+        )
+        covered = [
+            geom.covers(pt) for geom, pt in zip(areal.geometry, points)
+        ]
+        check(all(covered),
+              f"every areal {label} representative point is covered by its geometry",
+              f"{covered.count(False)} not covered")
+
+        # --- district assignment scope ------------------------------------
+        assignments = set(frame.district_assignment)
+        check(assignments <= set(ud.DISTRICT_ASSIGNMENTS),
+              f"{label} uses only the allowed district-assignment values",
+              str(sorted(assignments)))
+        check("boundary_nearest" not in assignments,
+              f"no {label} facility is assigned by unrestricted nearest district")
+        outside = frame[frame.district_assignment == "outside_analysis_districts"]
+        check(bool(outside.district_name.isna().all()),
+              f"{label} outside-analysis rows carry a null district",
+              f"{int(outside.district_name.notna().sum())} named")
+        inside = frame[frame.district_assignment.isin(["within", "boundary_tie"])]
+        check(bool(inside.district_name.notna().all()),
+              f"{label} in-analysis rows carry a district name")
 
     city_geom = gpd.read_file(cfg.BOUNDARY_FILE).to_crs(cfg.METRIC_CRS).geometry.iloc[0]
     for label, frame in (("healthcare", healthcare), ("education", education)):
@@ -207,6 +256,18 @@ def main() -> int:  # noqa: PLR0915 - validator intentionally enumerates gates
           <= min(float(row.healthcare_10min_population),
                  float(row.education_10min_population)) + POP_TOL,
           "the healthcare-and-education population cannot exceed either class")
+    for label, frame in (("healthcare", healthcare), ("education", education)):
+        check(int(row[f"{label}_routing_sources"]) == len(frame),
+              f"city {label} routing sources match the committed layer")
+        check(int(row[f"{label}_routing_sources"])
+              == int(row[f"{label}_facilities_in_analysis_districts"])
+              + int(row[f"{label}_facilities_outside_analysis_districts"]),
+              f"city {label} routing sources split into in-analysis and outside")
+    check("healthcare_facilities" not in city.columns
+          and "education_facilities" not in city.columns,
+          "ambiguous facility-count columns are replaced by explicit scope names")
+    check(int(row.bazaar_facilities_in_analysis_districts) == len(bazaars),
+          "all bazaars reconcile to the analysis districts")
 
     section("Districts")
     district = pd.read_csv(cfg.URBAN_DIMENSIONS_DISTRICT_FILE)
@@ -223,10 +284,49 @@ def main() -> int:  # noqa: PLR0915 - validator intentionally enumerates gates
     check(bool((district.schools + district.colleges + district.universities
                 + district.kindergartens == district.education_total).all()),
           "education subtotals reconcile")
-    check(int(district.healthcare_total.sum()) == len(healthcare),
-          "district healthcare counts sum to the committed layer")
-    check(int(district.education_total.sum()) == len(education),
-          "district education counts sum to the committed layer")
+    # District supply counts only facilities assigned to an analysis district,
+    # so they deliberately do not equal the full routing-source totals.
+    districts_gdf_all = gpd.read_file(cfg.DISTRICTS_FILE)
+    analysis_polygons = {
+        r.district_name: r.geometry
+        for r in districts_gdf_all.query("in_siat").to_crs(cfg.METRIC_CRS).itertuples()
+    }
+    for label, frame, total_column in (("healthcare", healthcare, "healthcare_total"),
+                                       ("education", education, "education_total")):
+        in_analysis = int(frame.district_assignment.isin(
+            ["within", "boundary_tie"]
+        ).sum())
+        check(int(district[total_column].sum()) == in_analysis,
+              f"district {label} supply equals the in-analysis source count",
+              f"{int(district[total_column].sum())} vs {in_analysis}")
+        outside_rows = frame[frame.district_assignment == "outside_analysis_districts"]
+        check(int(district[total_column].sum()) + len(outside_rows) == len(frame),
+              f"{label} routing sources split exactly into in-analysis and outside")
+        # Every outside facility really is outside every analysis district.
+        if len(outside_rows):
+            pts = gpd.GeoSeries(
+                gpd.points_from_xy(outside_rows.longitude, outside_rows.latitude),
+                crs=cfg.GEOGRAPHIC_CRS,
+            ).to_crs(cfg.METRIC_CRS)
+            covered = [
+                any(poly.covers(p) for poly in analysis_polygons.values()) for p in pts
+            ]
+            check(not any(covered),
+                  f"no {label} outside-analysis facility actually lies in a district",
+                  f"{covered.count(True)} inside")
+        ties = frame[frame.district_assignment == "boundary_tie"]
+        if len(ties):
+            pts = gpd.GeoSeries(
+                gpd.points_from_xy(ties.longitude, ties.latitude),
+                crs=cfg.GEOGRAPHIC_CRS,
+            ).to_crs(cfg.METRIC_CRS)
+            ok = [
+                analysis_polygons[name].distance(p) <= ud.BOUNDARY_TIE_TOLERANCE_M
+                for name, p in zip(ties.district_name, pts)
+            ]
+            check(all(ok), f"{label} boundary ties touch the district they name")
+        else:
+            check(True, f"{label} has no boundary ties to verify")
     check(int(district.bazaars.sum()) == len(bazaars),
           "district bazaar counts sum to the existing bazaar layer")
 
