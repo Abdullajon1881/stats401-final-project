@@ -1530,10 +1530,14 @@ def validate_story_shell() -> None:
 # ---------------------------------------------------------------------------
 # 11. the standardized temporal story
 # ---------------------------------------------------------------------------
-# The commit this chapter was built on. The current map and the shared store
-# must come through the chapter byte-identical: moving through the years is a
-# local view, never a change to "what does access look like now?".
+# The chapter changed neither the current map nor the shared store: moving
+# through the years is a local view, never a change to "what does access look
+# like now?". That is a fact about the chapter itself, so it is checked over the
+# fixed range from its base to its approved implementation head. Both ends are
+# commits, not the working tree, so later work on these files cannot
+# retroactively invalidate it.
 PHASE_C_BASE = "643bd39cc2c8d6ec345d9758357d82eb45dfdcee"
+PHASE_C_IMPLEMENTATION_HEAD = "8a2fcd53b4a7f64b7c27a3a04c3b89e72f690c5a"
 PHASE_C_FROZEN = ("site/js/state.js", "site/js/map.js")
 # Field names that carry the baseline year in their name. They are read, not
 # typed values, so the literal-year scan ignores them.
@@ -1557,8 +1561,9 @@ def strip_js_comments(text: str) -> str:
     return re.sub(r"(?<![:\w])//[^\n]*", "", re.sub(r"/\*.*?\*/", "", text, flags=re.S))
 
 
-def git_unchanged_since(base: str, path: str) -> bool | None:
-    result = subprocess.run(["git", "diff", "--quiet", base, "--", path],
+def git_unchanged_between(base: str, head: str, path: str) -> bool | None:
+    """Whether `path` is identical at two fixed commits; None if git cannot tell."""
+    result = subprocess.run(["git", "diff", "--quiet", base, head, "--", path],
                             cwd=cfg.REPO_ROOT, capture_output=True)
     return {0: True, 1: False}.get(result.returncode)
 
@@ -1610,10 +1615,11 @@ def validate_temporal_story() -> None:
 
     # --- isolation ------------------------------------------------------
     for path in PHASE_C_FROZEN:
-        unchanged = git_unchanged_since(PHASE_C_BASE, path)
+        unchanged = git_unchanged_between(PHASE_C_BASE, PHASE_C_IMPLEMENTATION_HEAD, path)
+        state = {True: "no change", False: "changed", None: "git could not compare"}[unchanged]
         check(unchanged is True,
-              f"{path} is unchanged since the temporal chapter's base "
-              f"({'unchanged' if unchanged else 'changed' if unchanged is False else 'git unavailable'})")
+              f"Phase C introduced no change to {path} "
+              f"({PHASE_C_BASE[:7]} -> {PHASE_C_IMPLEMENTATION_HEAD[:7]}: {state})")
     check("./state.js" not in temporal and "./map.js" not in temporal
           and "./ui.js" not in temporal and "store." not in temporal_code,
           "the temporal module does not touch the shared store, the map or the UI module")
