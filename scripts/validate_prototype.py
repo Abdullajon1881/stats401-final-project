@@ -18,6 +18,8 @@ import csv
 import json
 import math
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -1202,6 +1204,324 @@ def validate_contract() -> dict[str, int]:
 
 
 # ---------------------------------------------------------------------------
+# 10. story shell and the two same-year metric reconciliation
+# ---------------------------------------------------------------------------
+STORY_SECTION_IDS = ("hero", "current-access", "metric-bridge", "district-analysis")
+# Web assets that belong to later sections of the story. The shell must not
+# fetch them at start-up: they would add weight for views that do not exist yet.
+DEFERRED_ASSETS = (
+    "temporal_district.json", "temporal_events.json", "temporal_counterfactual.json",
+    "metro_station_history.geojson", "healthcare_points.geojson",
+    "education_points.geojson", "urban_dimensions_city.json",
+    "urban_dimensions_district.json",
+)
+# Exact values the story shows. Each must reach the page from site/data; none
+# may be typed into the application source.
+STORY_LITERALS = (
+    "13.563595724255597", "13.5636", "435689.82", "435,689.8", "10.028085007",
+    "10.028", "10.03%", "10.03", "2026-Q2", "3.21M", "January 1", "50 stations",
+)
+# Wording that would rank one method above the other.
+RANKING_PHRASES = ("more accurate", "more correct", "the real number", "better estimate",
+                   "true value", "the correct number", "more reliable")
+
+
+def opening_tag(html: str, element_id: str) -> str:
+    match = re.search(rf'<[a-z0-9]+[^>]*\bid="{element_id}"[^>]*>', html)
+    return match.group(0) if match else ""
+
+
+# Runs the real story.js under Node against the real temporal_city.json and
+# mutated copies of it. Reading the source proves the shape of the code; this
+# proves what it does with a malformed series.
+LATEST_HARNESS = r"""
+import fs from 'node:fs';
+const [storyUrl, dataPath] = process.argv.slice(1);
+const { latestStandardized } = await import(storyUrl);
+const real = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+const rows = () => real.records.map((r) => ({ ...r }));
+const top = Math.max(...real.records.map((r) => r.year));
+const early = Math.min(...real.records.map((r) => r.year));
+const patch = (year, change) => rows().map((r) => (r.year === year ? { ...r, ...change } : r));
+const shuffled = rows().reverse();
+shuffled.push(shuffled.shift());
+const cases = {
+  shuffled_valid: shuffled,
+  empty: [],
+  invalid_latest_row: patch(top, { metro_access_pct_standardized: NaN }),
+  invalid_earlier_row: patch(early, { metro_access_pct_standardized: 'x' }),
+  duplicate_latest_year: [...rows(), { ...real.records.find((r) => r.year === top) }],
+  duplicate_earlier_year: [...rows(), { ...real.records.find((r) => r.year === early) }],
+  missing_temporal_reference: patch(early + 1, { temporal_reference: undefined }),
+  empty_temporal_reference: patch(top, { temporal_reference: '' }),
+  invalid_population: patch(early, { population_modelled_available: -1 }),
+};
+const out = {};
+for (const [name, records] of Object.entries(cases)) {
+  try {
+    const got = latestStandardized({ ...real, records });
+    out[name] = { threw: false, year: got.year };
+  } catch (error) {
+    out[name] = { threw: true, message: String(error.message) };
+  }
+}
+out.expected_year = top;
+console.log(JSON.stringify(out));
+"""
+
+
+def validate_latest_standardized_behaviour() -> None:
+    node = shutil.which("node")
+    if node is None:
+        check(False, "Node.js is available to exercise latestStandardized() "
+                     "(behavioural checks skipped)", critical=False)
+        return
+    story_url = (SITE_DIR / "js" / "story.js").resolve().as_uri()
+    data_path = str(WEB_DATA_DIR / WEB_FILES["temporal_city"])
+    result = subprocess.run(
+        [node, "--input-type=module", "-e", LATEST_HARNESS, story_url, data_path],
+        capture_output=True, text=True, encoding="utf-8",
+    )
+    if not check(result.returncode == 0,
+                 f"latestStandardized() runs under Node "
+                 f"({result.stderr.strip()[:160] or 'ok'})"):
+        return
+    out = json.loads(result.stdout.strip().splitlines()[-1])
+    shuffled = out["shuffled_valid"]
+    check(not shuffled["threw"] and shuffled["year"] == out["expected_year"],
+          f"shuffled valid records return the highest year ({shuffled})")
+    for name, label in (
+        ("empty", "an empty series"),
+        ("invalid_latest_row", "a non-finite value in the latest row, instead of an older year"),
+        ("invalid_earlier_row", "a malformed earlier row"),
+        ("duplicate_latest_year", "a repeated latest year"),
+        ("duplicate_earlier_year", "a repeated earlier year"),
+        ("missing_temporal_reference", "a record with no temporal reference"),
+        ("empty_temporal_reference", "a blank temporal reference"),
+        ("invalid_population", "a negative modelled population"),
+    ):
+        case = out[name]
+        check(case["threw"],
+              f"latestStandardized() throws on {label} "
+              f"({case.get('message') or 'returned ' + str(case.get('year'))})")
+
+
+def validate_story_shell() -> None:
+    section("10. Story shell: hero, current access, metric bridge")
+    html = (SITE_DIR / "index.html").read_text(encoding="utf-8")
+    sources = js_sources()
+    story = sources.get("story.js", "")
+    app = sources.get("app.js", "")
+    ui = sources.get("ui.js", "")
+    data_js = sources.get("data.js", "")
+    css = (SITE_DIR / "styles.css").read_text(encoding="utf-8")
+    markup = re.sub(r"<!--.*?-->", "", html, flags=re.S)
+
+    # --- architecture ---------------------------------------------------
+    check(len(re.findall(r"<main\b", markup)) == 1, "the page has exactly one <main> landmark")
+    check('<main id="story-main"' in markup, "the one <main> holds the whole story")
+    check(len(re.findall(r"<h1\b", markup)) == 1, "the page has exactly one <h1>")
+    positions = [markup.find(f'id="{name}"') for name in
+                 ("story-main", "hero", "current-access", "workspace", "metric-bridge",
+                  "district-analysis")]
+    main_end = markup.find("</main>")
+    check(all(p >= 0 for p in positions) and positions == sorted(positions)
+          and positions[-1] < main_end,
+          "hero, current access (holding the workspace), metric bridge and district "
+          "analysis appear in that order inside <main>")
+    check(markup.find('id="method-dialog"') > main_end,
+          "the native method dialog stays outside the story landmark")
+    for name in STORY_SECTION_IDS:
+        tag = opening_tag(markup, name)
+        check(tag.startswith("<section") and " hidden" in tag,
+              f"#{name} is a section that starts hidden until the data is accepted")
+    for heading in ("hero-h", "current-h", "bridge-h", "deck-h"):
+        check(opening_tag(markup, heading).startswith("<h2"),
+              f"#{heading} is a second-level heading under the page title")
+    for heading in ("map-h", "context-h", "ranking-h"):
+        check(opening_tag(markup, heading).startswith("<h3"),
+              f"#{heading} nests under the current-access heading")
+    check("'h4', { id: 'keyfind-h'" in ui, "the key finding nests under its panel heading")
+
+    # --- data loading ---------------------------------------------------
+    check("temporalCity: 'temporal_city.json'" in data_js,
+          "the application loads temporal_city.json")
+    eager = sorted({asset for asset in DEFERRED_ASSETS for text in sources.values()
+                    if asset in text})
+    check(not eager, f"no later-phase asset is fetched by the shell ({eager or 'none'})")
+    for key in ("selectedYear", "temporalMode", "historicalMode"):
+        found = [name for name, text in sources.items() if key in text]
+        check(not found, f"no {key} state exists yet ({found or 'none'})")
+
+    # --- hero -----------------------------------------------------------
+    check(re.search(r'<p id="hero-answer"[^>]*></p>', markup) is not None,
+          "the hero answer slot is empty in the HTML and filled at runtime")
+    check(re.search(r'<dl id="hero-method"[^>]*></dl>', markup) is not None,
+          "the hero method strip is empty in the HTML and filled at runtime")
+    hero = re.search(r"function renderHero\(city\)\s*\{(.+?)\n\}", story, re.S)
+    hero_body = hero.group(1) if hero else ""
+    check(bool(hero), "the hero is rendered in one place")
+    for field in ("metro_access_pct", "metro_access_population", "analysis_population",
+                  "reference_period", "walking_time_minutes", "walking_speed_kmh",
+                  "snapping_method"):
+        check(f"city.{field}" in hero_body, f"the hero reads {field} from the city summary")
+    check("fmt.pct(city.metro_access_pct)" in hero_body,
+          "the hero share uses the shared one-decimal formatter")
+    check("estimated" in hero_body and "modelled" in hero_body
+          and "analysed population" in hero_body,
+          "the hero frames its answer as a modelled estimate over the analysed population")
+    check("not observed travel behaviour" in markup,
+          "the hero says the estimate is not observed travel behaviour")
+    check('href="#current-access"' in opening_tag(markup, "hero-cta"),
+          "the hero call to action leads to the current-access section")
+
+    # --- reconciliation -------------------------------------------------
+    bridge = re.search(r"function renderBridge\(city, latest\)\s*\{(.+?)\n\}", story, re.S)
+    bridge_body = bridge.group(1) if bridge else ""
+    check(bool(bridge), "the metric bridge is rendered in one place")
+    check("fmt.pct2(city.metro_access_pct)" in bridge_body,
+          "the current snapshot value is read from city_summary.json")
+    check("fmt.pct2(latest.metro_access_pct_standardized)" in bridge_body,
+          "the standardized value is read from temporal_city.json")
+    check(bridge_body.count("metricCard({") == 2,
+          "both metrics are drawn by the same card builder, with identical treatment")
+    check("'Current snapshot'" in bridge_body and "'Standardized time series'" in bridge_body,
+          "each metric is named in words, not told apart by colour")
+
+    # Each card states its own denominator directly under its number. The two
+    # shares divide by different populations, so one shared phrase would imply
+    # a common base the data does not have.
+    cards = bridge_body.split("metricCard({")[1:]
+    measures = [re.search(r"measure:\s*`([^`]*)`", card) for card in cards]
+    measures = [m.group(1) if m else "" for m in measures]
+    check(len(measures) == 2 and all(measures) and measures[0] != measures[1],
+          "each metric card carries its own measure text, not one shared phrase")
+    check(re.search(r"^\s*measure,\s*$", bridge_body, re.M) is None
+          and "const measure" not in bridge_body,
+          "no single measure string is passed to both cards")
+    current_measure = measures[0] if measures else ""
+    standard_measure = measures[1] if len(measures) > 1 else ""
+    check("SIAT-calibrated" in current_measure and "current" in current_measure
+          and "WorldPop" not in current_measure,
+          f"the current card names the current SIAT-calibrated population "
+          f"({current_measure!r})")
+    check("WorldPop" in standard_measure and "modelled population" in standard_measure
+          and "SIAT" not in standard_measure,
+          f"the standardized card names the WorldPop modelled population "
+          f"({standard_measure!r})")
+    standard_card = cards[1] if len(cards) > 1 else ""
+    check("fmt.compact(latest.population_modelled_available)" in standard_card,
+          "the standardized card shows its own modelled population, read from the data")
+    check("fmt.compact(city.analysis_population)" in (cards[0] if cards else ""),
+          "the current card shows its own analysed population, read from the data")
+
+    latest = re.search(r"export function latestStandardized\(temporalCity\)\s*\{(.+?)\n\}",
+                       story, re.S)
+    latest_body = latest.group(1) if latest else ""
+    check("b.year > a.year" in latest_body and "records[" not in latest_body,
+          "the latest standardized year is chosen by year, not by array position")
+    # Fail closed: every record is validated before selection; nothing is
+    # filtered away, so a malformed newest row cannot hand over to an older year.
+    check(".filter(" not in latest_body,
+          "the temporal series is not filtered down to its usable rows")
+    check("records.forEach(" in latest_body and "temporalRecordProblem(record)" in latest_body
+          and latest_body.find("temporalRecordProblem(") < latest_body.find(".reduce("),
+          "every temporal record is validated before the latest one is chosen")
+    problem = re.search(r"function temporalRecordProblem\(record\)\s*\{(.+?)\n\}", story, re.S)
+    problem_body = problem.group(1) if problem else ""
+    for field in ("year", "metro_access_pct_standardized", "open_station_count",
+                  "temporal_reference", "population_modelled_available"):
+        check(f"record.{field}" in problem_body,
+              f"each temporal record's {field} is validated")
+    check("new Set()" in latest_body and "years.has(record.year)" in latest_body
+          and "more than one record" in latest_body,
+          "a repeated year anywhere in the series is refused")
+    check(re.search(r"const CITY_TEXT = \[[^\]]*'reference_period'[^\]]*'snapping_method'",
+                    story) is not None and "CITY_TEXT.filter" in story,
+          "the city reference period and snapping method are validated as text")
+    validate_latest_standardized_behaviour()
+    check("reveal(true)" in app and app.find("initStory(data)") < app.find("reveal(true)")
+          < app.find("mapModule.initMap("),
+          "the story is checked and rendered before any section is revealed")
+    check(re.search(r"const STORY_SECTIONS = \[[^\]]*'hero'[^\]]*'current-access'"
+                    r"[^\]]*'metric-bridge'[^\]]*'district-analysis'", app, re.S) is not None,
+          "a load failure hides every story section")
+
+    # Shipped copy only: comments explaining the rule may name what it forbids.
+    story_copy = re.sub(r"(?<![:\w])//[^\n]*", "",
+                        re.sub(r"/\*.*?\*/", "", story, flags=re.S))
+    bridge_copy = (markup[markup.find('id="metric-bridge"'):markup.find('id="district-analysis"')]
+                   + story_copy)
+    low = re.sub(r"\s+", " ", bridge_copy).lower()
+    for phrase, label in (
+        ("entrance-aware", "the entrance-aware current method"),
+        ("station-centre", "the station-centre standardized proxy"),
+        ("siat-calibrated", "the SIAT-calibrated current population"),
+        ("worldpop", "the WorldPop standardized population"),
+        ("not siat-calibrated", "that the standardized weights are not SIAT-calibrated"),
+        ("not supposed to match", "that the two numbers are not meant to agree"),
+        ("answer different questions", "that the two answer different questions"),
+        ("not interchangeable", "that the two are not interchangeable"),
+        ("not a reconstruction", "that the series does not reconstruct history"),
+    ):
+        check(phrase in low, f"the reconciliation names {label}")
+    ranked = [p for p in RANKING_PHRASES if p in low]
+    check(not ranked, f"neither metric is called the better one ({ranked or 'none'})")
+    arithmetic = re.search(
+        r"metro_access_pct(?:_standardized)?\s*[-+]|[-+]\s*\w+\.metro_access_pct", story)
+    check(arithmetic is None,
+          "the two metrics are never subtracted or combined in the story")
+    check("percentage point" not in story.lower(),
+          "the gap between the methods is not presented as a change in points")
+
+    # --- runtime inputs the story depends on ----------------------------
+    city = load_json(WEB_DATA_DIR / WEB_FILES["city_summary"])
+    records = load_json(WEB_DATA_DIR / WEB_FILES["temporal_city"])["records"]
+    latest_record = max(records, key=lambda r: r["year"])
+    check(sum(1 for r in records if r["year"] == latest_record["year"]) == 1,
+          f"temporal_city.json has one record for its latest year ({latest_record['year']})")
+    check(str(city["reference_period"]).startswith(str(latest_record["year"])),
+          "the current reference period and the latest standardized year are the same year, "
+          "so the bridge may name it")
+    check(latest_record["metro_access_pct_standardized"] != city["metro_access_pct"],
+          "the two same-year figures are distinct values, as the bridge explains")
+
+    # --- no literal of what the story shows -----------------------------
+    for name, text in {**sources, "index.html": html}.items():
+        found = sorted({lit for lit in STORY_LITERALS if lit in text})
+        check(not found, f"{name} types none of the story's values ({found or 'none'})")
+    for name in ("story.js", "index.html"):
+        text = story if name == "story.js" else markup
+        check("2026" not in text, f"{name} names no reference year in code or markup")
+
+    # --- navigation, motion and sticky header ---------------------------
+    views = re.findall(r'class="navbtn[^"]*" data-view="(\w+)"', markup)
+    check(views == ["overview", "districts", "method"],
+          f"the navigation has exactly Current, Districts and Method ({views})")
+    check("getElementById('current-access')" in ui,
+          "Current scrolls to the current-access section")
+    check("import { motion } from './ui.js'" in story and "behavior: motion()" in story,
+          "the story's scrolling honours prefers-reduced-motion")
+    check("target.focus({ preventScroll: true })" in story
+          and 'id="current-access" class="current" aria-labelledby="current-h" tabindex="-1"'
+          in markup,
+          "the call to action moves keyboard focus to the section it scrolls to")
+    check(re.search(r"^html\s*\{\s*height:\s*100%;\s*\}", css, re.M) is not None
+          and "html, body { height: 100%" not in css,
+          "only the root is pinned to the viewport, so the sticky header stays for the page")
+    check("min-height: var(--topbar-h)" in css
+          and "scroll-margin-top: var(--topbar-h)" in css,
+          "sections land below a header held to the height the layout assumes")
+    check(re.search(r"\.current\s*\{[^}]*height:\s*calc\(100vh - var\(--topbar-h\)\)", css)
+          is not None,
+          "the current-access heading and workspace share one screen below the header")
+
+    # --- the story module keeps the security boundary -------------------
+    check("from './dom.js'" in story and "el(" in story and "replace(" in story,
+          "the story builds its DOM through the safe helpers in dom.js")
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 def main() -> int:
@@ -1224,6 +1544,7 @@ def main() -> int:
     validate_manifest(counts, city)
     validate_no_hardcoded_metrics()
     validate_state_and_a11y()
+    validate_story_shell()
 
     section("Summary")
     print(f"  passed  : {len(PASSED)}")

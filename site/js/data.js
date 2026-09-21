@@ -20,6 +20,10 @@ export const FILES = {
   density: 'population_density.geojson',
   mask: 'analysis_mask.geojson',
   sensitivity: 'sensitivity.json',
+  // The standardized temporal series, read only for its latest year so the
+  // story can set it beside the current snapshot. The larger temporal and
+  // facility layers are left for the sections that will actually use them.
+  temporalCity: 'temporal_city.json',
   manifest: 'manifest.json',
 };
 
@@ -48,10 +52,18 @@ export async function loadAll() {
 /* ── formatting ──────────────────────────────────────────────────────── */
 const nf0 = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// en-US: millions read as 'M'; en-GB writes a lowercase 'm' that reads as metres.
+const nfCompact = new Intl.NumberFormat('en-US', {
+  notation: 'compact', maximumSignificantDigits: 3,
+});
 
 export const fmt = {
   people: (v) => nf0.format(v),
   pct: (v) => `${nf1.format(v)}%`,
+  // Two places where two methods sit side by side and one place would blur them.
+  pct2: (v) => `${nf2.format(v)}%`,
+  compact: (v) => nfCompact.format(v),
   density: (v) => `${nf0.format(v)} /km²`,
   km2: (v) => `${nf1.format(v)} km²`,
   metres: (v) => `${nf1.format(v)} m`,

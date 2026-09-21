@@ -155,7 +155,7 @@ function keyFinding() {
   const top = ranked[0].properties;
 
   return el('section', { class: 'keyfind', 'aria-labelledby': 'keyfind-h' }, [
-    el('h3', { id: 'keyfind-h', class: 'keyfind-h', text: 'Key finding' }),
+    el('h4', { id: 'keyfind-h', class: 'keyfind-h', text: 'Key finding' }),
     el('p', {
       class: 'keyfind-p',
       text: `An estimated ${fmt.pct(c.metro_access_pct)} of the analysed population is`
@@ -243,7 +243,7 @@ export function buildDensityLegend(stops) {
 
 /* Someone who asked their system for reduced motion gets the same destination
  * without being scrolled across the page. */
-function motion() {
+export function motion() {
   const reduced = window.matchMedia
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   return reduced ? 'auto' : 'smooth';
@@ -268,8 +268,11 @@ function wireNav() {
        * navigating, not something they asked for. Selection is released only
        * through Clear, Escape, or re-clicking the same district. */
       if (view === 'overview') {
-        document.getElementById('workspace')
-          .scrollIntoView({ block: 'start', behavior: motion() });
+        // "Current" lands on the current-access section: its heading, then the
+        // map workspace filling the rest of the screen.
+        const current = document.getElementById('current-access');
+        current.scrollIntoView({ block: 'start', behavior: motion() });
+        current.focus({ preventScroll: true });
       } else if (view === 'districts') {
         const deck = document.getElementById('district-analysis');
         deck.scrollIntoView({ block: 'start', behavior: motion() });
@@ -680,6 +683,12 @@ function buildMethodBody() {
   const param = (k, v) => el('div', {}, [el('dt', { text: k }), el('dd', { text: v })]);
 
   replace(body, [
+    el('p', {
+      text: 'Everything in this window describes the current snapshot. The page also shows'
+        + ' a standardized time-series value for the same year, built with a different,'
+        + ' year-comparable method; the section on why there are two metro-access numbers'
+        + ' explains how the two differ.',
+    }),
     el('h3', { text: 'Model parameters' }),
     el('dl', { class: 'params' }, [
       param('Walking speed', `${c.walking_speed_kmh} km/h`),

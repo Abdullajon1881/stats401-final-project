@@ -33,7 +33,9 @@
           "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
-  --topbar-h: 64px;
+  /* The sticky header's real height. The workspace below it and every section's
+     scroll offset are measured from this, so the bar is held to it. */
+  --topbar-h: 48px;
   /* Continuous rather than stepped, so every width between a phone and an
      ultrawide monitor gets a sensible sidebar and the map keeps the rest. */
   --side-w:   clamp(292px, 26vw, 460px);
@@ -46,7 +48,10 @@
    set one. Without this the method dialog renders on load despite being hidden. */
 [hidden] { display: none !important; }
 
-html, body { height: 100%; }
+/* Only the root is pinned to the viewport. A body held to 100% height is the
+   sticky header's containing block, so the header scrolled away one screen
+   down; left to grow with its content, the header stays for the whole page. */
+html { height: 100%; }
 
 body {
   margin: 0;
@@ -93,6 +98,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
   /* The page scrolls now, so the header has to stay put rather than scrolling
      away with the map. */
   position: sticky; top: 0; z-index: 40;
+  min-height: var(--topbar-h);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -811,6 +817,211 @@ code {
   .stat-n { font-size: 10px; }
   .dd-grid { grid-template-columns: 1fr; }
   .map-ui--tr { top: 46px; }
+}
+
+/* ── story shell ──────────────────────────────────────────────────────── */
+/* The page is read top to bottom now: the question and its answer, the map
+   workspace, the note on the two same-year numbers, then the district deck.
+   Emphasis comes from type size and spacing on the same dark ground, not from
+   new surfaces or effects. */
+
+.story:focus { outline: none; }
+
+/* Every section a link can land on clears the sticky header. */
+.hero, .current, .bridge, .deck { scroll-margin-top: var(--topbar-h); }
+.current:focus { outline: none; }
+.current:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+.eyebrow {
+  margin: 0 0 12px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-3);
+}
+
+.section-head { max-width: 780px; margin-bottom: 18px; }
+.section-title { font-size: 21px; letter-spacing: -0.015em; line-height: 1.25; }
+.section-lede { margin: 6px 0 0; color: var(--text-2); font-size: 13.5px; line-height: 1.55; }
+
+/* hero */
+.hero {
+  padding: clamp(40px, 9vh, 104px) 20px clamp(36px, 7vh, 80px);
+  border-bottom: 1px solid var(--line);
+}
+.hero > * { max-width: 1120px; }
+.hero-q {
+  font-size: clamp(26px, 3.2vw, 42px);
+  line-height: 1.12; letter-spacing: -0.025em;
+  max-width: 22ch;
+}
+.hero-answer { margin: clamp(22px, 4vh, 40px) 0 0; }
+.hero-pct {
+  display: block;
+  font-size: clamp(64px, 10vw, 136px);
+  font-weight: 600; line-height: 0.95; letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  color: var(--metro);
+}
+.hero-answer-text {
+  display: block; max-width: 46ch; margin-top: 12px;
+  font-size: clamp(15px, 1.3vw, 18.5px); line-height: 1.45; color: var(--text-2);
+}
+
+.hero-method {
+  display: flex; flex-wrap: wrap; gap: 12px 0;
+  margin: clamp(22px, 4vh, 36px) 0 0; padding: 0;
+}
+.hero-method-item {
+  padding: 0 20px 0 12px;
+  border-left: 1px solid var(--line-2);
+}
+.hero-method dt {
+  font-size: 9.5px; font-weight: 600; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--text-3);
+}
+.hero-method dd {
+  margin: 3px 0 0; font-size: 13px; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.hero-note { margin: 18px 0 0; font-size: 12px; color: var(--text-3); max-width: 60ch; }
+
+.hero-cta {
+  display: inline-flex; align-items: center; gap: 9px;
+  margin-top: 26px; padding: 9px 14px;
+  font-size: 13px; font-weight: 500; color: var(--text); text-decoration: none;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r);
+  transition: background 110ms ease, border-color 110ms ease;
+}
+.hero-cta:hover { background: var(--surface-2); border-color: var(--metro-2); }
+.hero-cta:active { background: var(--surface-3); }
+.hero-cta-arrow { color: var(--metro); }
+
+/* current access: the heading bar and the unchanged workspace share one
+   screen below the sticky header */
+.current {
+  display: flex; flex-direction: column;
+  height: calc(100vh - var(--topbar-h));
+}
+.current > .workspace { flex: 1 1 auto; height: auto; min-height: 0; }
+.section-head--bar {
+  flex: none; max-width: none; margin: 0;
+  display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  padding: 11px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.section-head--bar .section-title { font-size: 15px; }
+.section-head--bar .section-lede { margin: 0; font-size: 12px; }
+
+/* the two same-year numbers */
+.bridge {
+  padding: clamp(36px, 7vh, 72px) 20px clamp(32px, 6vh, 64px);
+  border-top: 1px solid var(--line-2);
+}
+.bridge > * { max-width: 1120px; }
+
+/* Two columns with identical treatment: a label in words, never a colour,
+   tells the two methods apart, and neither is styled as the winner. */
+.bridge-pair {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px; margin-bottom: 22px;
+}
+.metric {
+  display: flex; flex-direction: column;
+  padding: 18px 20px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r);
+  min-width: 0;
+}
+.metric-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-2);
+}
+.metric-value { margin: 10px 0 0; }
+.metric-num {
+  display: block;
+  font-size: clamp(36px, 4.2vw, 52px); font-weight: 600; line-height: 1;
+  letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--text);
+}
+.metric-measure { display: block; margin-top: 6px; font-size: 12px; color: var(--text-2); }
+.metric-context {
+  margin: 10px 0 0; font-size: 11.5px; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.metric-method {
+  margin: 12px 0 0; padding: 12px 0 0; list-style: none;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px; color: var(--text-2);
+}
+.metric-method li { position: relative; padding-left: 14px; margin-bottom: 5px; }
+.metric-method li::before {
+  content: ""; position: absolute; left: 0; top: 0.72em;
+  width: 7px; height: 1px; background: var(--text-3);
+}
+.metric-question {
+  margin: auto 0 0; padding-top: 12px;
+  font-size: 12.5px; color: var(--text);
+}
+
+.bridge-diff {
+  width: 100%; border-collapse: collapse; margin-bottom: 22px;
+  font-size: 12.5px; line-height: 1.5;
+}
+.bridge-diff caption {
+  text-align: left; padding-bottom: 8px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-3);
+}
+.bridge-diff th, .bridge-diff td {
+  text-align: left; vertical-align: top;
+  padding: 10px 14px 10px 0; border-bottom: 1px solid var(--line);
+}
+.bridge-diff thead th {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-2);
+  border-bottom-color: var(--line-2);
+}
+.bridge-diff tbody th { width: 18%; font-weight: 600; color: var(--text); }
+.bridge-diff td { width: 41%; color: var(--text-2); }
+
+.bridge-close { max-width: 780px; }
+.bridge-close p { margin: 0 0 8px; font-size: 14px; line-height: 1.6; color: var(--text); }
+.bridge-close p.muted { font-size: 12.5px; color: var(--text-2); }
+.bridge-close q { color: var(--text); font-style: italic; }
+
+/* the district deck now closes the story rather than opening straight
+   beneath the map */
+.story .deck { padding-top: clamp(28px, 5vh, 48px); }
+
+@media (max-width: 940px) {
+  /* The workspace already stacks and scrolls with the page here. */
+  .current { display: block; height: auto; }
+  .hero, .bridge { padding-left: 16px; padding-right: 16px; }
+}
+
+@media (max-width: 720px) {
+  .bridge-pair { grid-template-columns: minmax(0, 1fr); }
+  /* Still a real table - its row and column headers are what a screen reader
+     announces - just tighter, so three short columns of prose stay readable. */
+  .bridge-diff { font-size: 12px; }
+  .bridge-diff th, .bridge-diff td { padding: 9px 10px 9px 0; }
+  .bridge-diff thead th { font-size: 9.5px; letter-spacing: 0.04em; }
+  .bridge-diff tbody th { width: 24%; }
+  .bridge-diff td { width: 38%; }
+}
+
+@media (max-width: 620px) {
+  .hero { padding: 36px 12px 32px; }
+  .bridge { padding: 32px 12px 28px; }
+  .section-head--bar { padding: 10px 12px 9px; }
+  .section-title { font-size: 19px; }
+  .metric { padding: 16px 16px 14px; }
+  .hero-method-item { padding-right: 14px; }
+}
+
+/* Short landscape screens keep the workspace a full screen tall; its heading
+   bar scrolls away above it rather than taking map height. */
+@media (max-height: 620px) and (min-width: 620px) and (orientation: landscape) {
+  .current { display: block; height: auto; }
+  .current > .workspace { height: calc(100vh - var(--topbar-h)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

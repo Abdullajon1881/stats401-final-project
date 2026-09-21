@@ -1,5 +1,5 @@
-/* Bootstrap: load the audited web data, then wire the map, the ranking and the
- * sidebar to one shared selection state.
+/* Bootstrap: load the audited web data, render the story around it, then wire
+ * the map, the ranking and the sidebar to one shared selection state.
  */
 
 import { indexDistricts, loadAll } from './data.js';
@@ -7,6 +7,7 @@ import * as store from './state.js';
 import * as mapModule from './map.js';
 import { focusRanking, initRanking, syncRanking } from './ranking.js';
 import { buildDensityLegend, initUI, renderContext } from './ui.js';
+import { initStory } from './story.js';
 import { el, replace } from './dom.js';
 import { focusComposition, initComposition, updateCompositionState } from './composition.js';
 import { initScatter, updateScatterState } from './scatter.js';
@@ -36,10 +37,20 @@ if (QA) {
   };
 }
 
+/* Every section that carries a figure. They stay hidden until the data is in
+ * and the story has accepted it, so none of them can show a placeholder as a
+ * result, and all of them are hidden again if anything fails. */
+const STORY_SECTIONS = ['hero', 'current-access', 'workspace', 'metric-bridge',
+  'district-analysis'];
+
+function reveal(visible) {
+  for (const id of STORY_SECTIONS) document.getElementById(id).hidden = !visible;
+}
+
 function fail(message) {
   document.getElementById('load-error-detail').textContent = message;
   document.getElementById('load-error').hidden = false;
-  document.getElementById('workspace').hidden = true;
+  reveal(false);
 }
 
 /* ── tooltip, shared by the map and the ranking ───────────────────────── */
@@ -117,10 +128,15 @@ function announceComparison(state, index) {
     return;
   }
 
-  document.getElementById('workspace').hidden = false;
-  // The deck is hidden until the data is in, for the same reason the workspace
-  // is: an empty analytical deck beneath a load error helps nobody.
-  document.getElementById('district-analysis').hidden = false;
+  try {
+    initStory(data);
+  } catch (error) {
+    fail(error && error.message ? error.message : String(error));
+    return;
+  }
+
+  // Revealed before the map is created, which needs a sized container.
+  reveal(true);
   const index = indexDistricts(data.districts);
 
   initRanking(index.ranked, {
