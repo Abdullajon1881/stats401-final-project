@@ -1210,12 +1210,16 @@ STORY_SECTION_IDS = ("hero", "current-access", "metric-bridge", "district-analys
 # Web assets that belong to sections of the story not yet built. Nothing may
 # fetch them at start-up: they would add weight for views that do not exist yet.
 # The temporal chapter's own three files left this list when that chapter was
-# added; section 11 asserts that they are loaded.
+# added (section 11 asserts that they are loaded), and so did the destination
+# chapter's three (section 12). The district-level files remain deferred.
 DEFERRED_ASSETS = (
-    "temporal_district.json", "healthcare_points.geojson",
-    "education_points.geojson", "urban_dimensions_city.json",
-    "urban_dimensions_district.json",
+    "temporal_district.json", "urban_dimensions_district.json",
 )
+DESTINATION_ASSETS = {
+    "urbanCity": "urban_dimensions_city.json",
+    "healthcarePoints": "healthcare_points.geojson",
+    "educationPoints": "education_points.geojson",
+}
 TEMPORAL_ASSETS = {
     "temporalEvents": "temporal_events.json",
     "temporalCounterfactual": "temporal_counterfactual.json",
@@ -1883,6 +1887,330 @@ def validate_temporal_behaviour() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 12. the current destination chapter
+# ---------------------------------------------------------------------------
+# Inputs the destination chapter must never read: the district-level results
+# (a later chapter), the standardized temporal files, and the current transit
+# map's layers. Its geography is the district outlines and its own points.
+DESTINATION_FORBIDDEN_TOKENS = (
+    "isochrone", "metroLines", "data.access", "data.stations", "data.bus",
+    "data.density", "data.mask", "temporalCity", "temporalEvents",
+    "temporalCounterfactual", "stationHistory", "urbanDimensionsDistrict",
+    "urban_dimensions_district",
+)
+DESTINATION_RANKING_WORDS = (
+    "composite score", "walkability score", "overall score", "best district",
+    "worst district", "destination ranking", "highest performing", "lowest performing",
+    "winner", "best", "worst", "rank",
+)
+DIMENSION_PCT_FIELDS = ("healthcare_10min_pct", "education_10min_pct", "bazaar_10min_pct",
+                        "healthcare_and_education_10min_pct")
+
+
+def number_forms(value: float) -> set[str]:
+    """The ways a stored figure could have been typed into source."""
+    if float(value).is_integer():
+        v = int(value)
+        return {str(v), f"{v:,}"} if v >= 100 else set()
+    return {f"{value:.1f}", f"{value:.2f}", f"{value:.3f}", repr(value), f"{value:,.0f}",
+            f"{value:.0f}"} - {"0", "1"}
+
+
+def validate_destination_story() -> None:
+    section("12. Current destination chapter")
+    html = (SITE_DIR / "index.html").read_text(encoding="utf-8")
+    markup = re.sub(r"<!--.*?-->", "", html, flags=re.S)
+    sources = js_sources()
+    dest = sources.get("destinations.js", "")
+    code = strip_js_comments(dest)
+    app = sources.get("app.js", "")
+    data_js = sources.get("data.js", "")
+    css = (SITE_DIR / "styles.css").read_text(encoding="utf-8")
+    dest_css = css.split("current destination chapter")[-1].split("prefers-reduced-motion")[0]
+
+    # --- architecture ---------------------------------------------------
+    check(bool(dest), "site/js/destinations.js exists")
+    tag = opening_tag(markup, "destination-access")
+    check(tag.startswith("<section") and " hidden" in tag,
+          "#destination-access is a section that starts hidden")
+    order = [markup.find(f'id="{name}"') for name in
+             ("current-access", "destination-access", "metric-bridge")]
+    check(all(p >= 0 for p in order) and order == sorted(order)
+          and order[-1] < markup.find("</main>") and markup.find("<main") < order[0],
+          "the destination chapter sits after current access and before the metric bridge, "
+          "inside <main>")
+    check(opening_tag(markup, "dest-h").startswith("<h2"), "the chapter has an h2")
+    for heading in ("dest-overlap-h", "dest-map-h", "dest-context-h"):
+        check(opening_tag(markup, heading).startswith("<h3"),
+              f"#{heading} is an h3 under the chapter heading")
+    check(re.search(r"const STORY_SECTIONS = \[[^\]]*'workspace',\s*'destination-access',\s*"
+                    r"'metric-bridge'", app) is not None,
+          "a load failure hides the destination chapter with the other sections")
+    at = {k: app.find(k) for k in ("prepareTemporal(data)", "prepareDestinations(data)",
+                                   "initStory(data)", "reveal(true)",
+                                   "initDestinations(destinations)", "initTemporal(timeline)")}
+    check(all(v >= 0 for v in at.values()) and list(at.values()) == sorted(at.values()),
+          "every chapter's inputs are prepared before the story writes a figure, and the "
+          "destination chapter is drawn only after the reveal")
+    check("export function prepareDestinations(data)" in dest
+          and "export function initDestinations(model)" in dest,
+          "the chapter separates validation (prepare) from drawing (init)")
+
+    # --- loading and isolation -------------------------------------------
+    for key, name in DESTINATION_ASSETS.items():
+        check(f"{key}: '{name}'" in data_js, f"the application loads {name}")
+    check("bazaars: 'bazaars.geojson'" in data_js and "data.bazaars" in code,
+          "bazaar points come from the already-loaded bazaars layer")
+    imports = re.findall(r"from '(\./[\w.-]+)'", dest)
+    check(sorted(imports) == ["./data.js", "./dom.js"],
+          f"the destination module imports only dom.js and data.js ({imports})")
+    found = [t for t in DESTINATION_FORBIDDEN_TOKENS if t in dest]
+    check(not found, f"the destination module reads no district, temporal or transit-map "
+                     f"input ({found or 'none'})")
+    check("store." not in code and "let active = 'healthcare';" in code,
+          "the destination type is local to the chapter and starts at healthcare")
+
+    # --- the analytical contract, rechecked here -------------------------
+    city = load_json(WEB_DATA_DIR / WEB_FILES["city_summary"])
+    urban_payload = load_json(WEB_DATA_DIR / WEB_FILES["urban_dimensions_city"])
+    u = urban_payload["record"]
+    layers = load_json(WEB_DATA_DIR / WEB_FILES["manifest"])["layers"]
+    check(all(u[a] == city[b] for a, b in (
+        ("population_total", "analysis_population"), ("walking_speed_kmh", "walking_speed_kmh"),
+        ("walking_time_minutes", "walking_time_minutes"),
+        ("distance_budget_m", "distance_budget_m"))),
+          "the destination results use the current snapshot's population and walking "
+          "specification")
+    worst = max(abs(u[p] / u["population_total"] * 100 - u[s]) for p, s in (
+        ("healthcare_10min_population", "healthcare_10min_pct"),
+        ("education_10min_population", "education_10min_pct"),
+        ("bazaar_10min_population", "bazaar_10min_pct"),
+        ("healthcare_and_education_10min_population", "healthcare_and_education_10min_pct")))
+    check(worst < 1e-6, f"each stored share agrees with its population ({worst:.1e})")
+    check(u["healthcare_and_education_10min_population"]
+          <= min(u["healthcare_10min_population"], u["education_10min_population"])
+          and u["healthcare_and_education_10min_pct"]
+          <= min(u["healthcare_10min_pct"], u["education_10min_pct"]),
+          "the healthcare-and-education overlap never exceeds either result")
+    for key, field in (("healthcare", "facility_category"), ("education", "education_category")):
+        fc = load_json(WEB_DATA_DIR / WEB_FILES[f"{key}_points"])
+        props = [f["properties"] for f in fc["features"]]
+        layer = layers[f"{key}_points"]
+        inside = sum(1 for p in props if p["district_assignment"] == "within")
+        cats: dict[str, int] = {}
+        for p in props:
+            cats[p[field]] = cats.get(p[field], 0) + 1
+        check(len(props) == u[f"{key}_routing_sources"] == layer["features"]
+              and all(f["geometry"]["type"] == "Point" for f in fc["features"]),
+              f"{key}: {len(props)} points equal the analysis routing sources and the manifest")
+        check(inside == u[f"{key}_facilities_in_analysis_districts"]
+              and len(props) - inside == u[f"{key}_facilities_outside_analysis_districts"],
+              f"{key}: inside/outside counts reconcile ({inside} / {len(props) - inside})")
+        check(cats == layer["by_category"], f"{key}: category counts reconcile ({cats})")
+        check(layer["role"] == "display_only", f"{key}: the manifest records display_only")
+    bazaars = load_json(WEB_DATA_DIR / WEB_FILES["bazaars"])["features"]
+    check(len(bazaars) == u["bazaar_routing_sources"]
+          == u["bazaar_facilities_in_analysis_districts"] == layers["bazaars"]["features"],
+          f"bazaars: {len(bazaars)} points equal the analysis and the manifest")
+    check(urban_payload["role"] == "analytical" and layers["urban_dimensions_city"]["role"]
+          == "analytical" and layers["bazaars"]["role"] == "display_only",
+          "the city results are analytical and every point layer is display only")
+
+    # --- nothing analytical typed in -----------------------------------------
+    typed_targets = [u[k] for k in (
+        "population_total", "healthcare_10min_pct", "education_10min_pct", "bazaar_10min_pct",
+        "healthcare_and_education_10min_pct", "healthcare_10min_population",
+        "education_10min_population", "bazaar_10min_population",
+        "healthcare_and_education_10min_population", "healthcare_routing_sources",
+        "education_routing_sources", "education_facilities_in_analysis_districts",
+        "healthcare_facilities_in_analysis_districts", "walk_network_km")]
+    typed_targets += [v for layer in ("healthcare_points", "education_points")
+                      for v in layers[layer]["by_category"].values()]
+    forms = set().union(*(number_forms(v) for v in typed_targets))
+    chapter = markup[markup.find('id="destination-access"'):markup.find('id="metric-bridge"')]
+    scan = {"destinations.js": code, "index.html (chapter)": chapter}
+    for name, text in scan.items():
+        hits = sorted(f for f in forms if re.search(rf"(?<![\w.]){re.escape(f)}(?![\w])", text))
+        check(not hits, f"{name} types no destination figure ({hits or 'none'})")
+
+    # --- separate results, never combined ------------------------------------
+    copy = re.sub(r"\s+", " ", chapter + code).lower()
+    ranked = [w for w in DESTINATION_RANKING_WORDS if re.search(rf"\b{re.escape(w)}\b", copy)]
+    check(not ranked, f"the destination results are not ranked or scored ({ranked or 'none'})")
+    combining = re.search(
+        r"(?:" + "|".join(DIMENSION_PCT_FIELDS) + r")\]?\s*[-+*/](?!=)|[-+*/]\s*[\w.]*(?:"
+        + "|".join(DIMENSION_PCT_FIELDS) + r")|d\.pct\s*[-+*/](?!=)", code)
+    check(combining is None, "no arithmetic combines the destination shares")
+    check("fmt.pct(urban.healthcare_and_education_10min_pct)" in code
+          and "healthcare_and_education_10min_population" in code,
+          "the overlap is the committed intersection, read as stored")
+    check("not the sum of the two shares and not a score" in re.sub(r"\s+", " ", chapter),
+          "the overlap is declared an intersection, not a sum or a score")
+
+    # --- the map --------------------------------------------------------------
+    select_body = re.search(r"function select\(key\)\s*\{(.+?)\n  \}", code, re.S)
+    body = select_body.group(1) if select_body else ""
+    check("d3.geoMercator()" in code and code.count("fitExtent(") == 1
+          and "fitting" in code and "drawMap" not in body and "fitExtent" not in body,
+          "one D3 projection, fitted once to all districts and points, serves every type")
+    check("const everyPoint = ORDER.flatMap" in code,
+          "the fitted view covers every point of all three types")
+    check(".dm-district { fill: var(--surface-2)" in dest_css
+          and ".attr('fill'" not in code and ".style('fill'" not in code,
+          "district outlines are neutral, never shaded by a result")
+    check("dimensions[active]" in code and "selectAll('circle').data(ordered)" in code,
+          "only the selected destination type is drawn")
+    check(".dm-point.is-outside { fill: var(--surface)" in dest_css
+          and "pt.inside ? 2.4 : 3.8" in code,
+          "outside routing sources are hollow and larger, not told apart by colour alone")
+    check("tabindex" not in code, "no point is a tab stop")
+    check("map.svg.attr('aria-label', `Current ${d.noun} routing-source map. `" in code,
+          "the map's accessible name is built from the data for the selected type")
+    check("'aria-pressed'" in code and "setAttribute('aria-pressed'" in code
+          and "el('button', {\n      type: 'button'" in code,
+          "each destination card is a real button exposing its pressed state")
+    check(".focus(" not in code, "choosing a type never moves focus")
+    check("--healthcare: #f06b8a" in dest_css and "--education:  #9f8cff" in dest_css
+          and not any(t in dest_css for t in ("--metro", "--bus", "--under")),
+          "destination colours never borrow the metro, bus or underserved hues")
+
+    # --- wording ----------------------------------------------------------
+    flat = re.sub(r"\s+", " ", chapter)
+    for phrase, label in (
+        ("routing-source proxies", "points are routing-source proxies"),
+        ("committed representative coordinates", "points use committed representative coordinates"),
+        ("current analysis geography", "district outlines are the current geography"),
+        ("can still serve population cells inside the study area",
+         "outside sources can still serve cells inside the study area"),
+        ("not from point density or drawn buffers",
+         "the percentages do not come from point density or buffers"),
+        ("OpenStreetMap coverage may be incomplete", "OSM coverage may be incomplete"),
+        ("capacity or service quality", "a point is not capacity or service quality"),
+    ):
+        check(phrase in flat, f"the map note says {label}")
+    check("from './dom.js'" in dest and "innerHTML" not in code
+          and "insertAdjacentHTML" not in code,
+          "the chapter builds its text through the safe DOM helpers")
+
+    validate_destination_behaviour()
+
+
+# Runs the real destinations.js under Node against the committed files and
+# mutated copies of them.
+DESTINATION_HARNESS = r"""
+import fs from 'node:fs';
+const [moduleUrl, dataDir] = process.argv.slice(1);
+const { prepareDestinations } = await import(moduleUrl);
+const read = (f) => JSON.parse(fs.readFileSync(`${dataDir}/${f}`, 'utf8'));
+const fresh = () => ({
+  city: read('city_summary.json'),
+  urbanCity: read('urban_dimensions_city.json'),
+  healthcarePoints: read('healthcare_points.geojson'),
+  educationPoints: read('education_points.geojson'),
+  bazaars: read('bazaars.geojson'),
+  districts: read('districts.geojson'),
+  manifest: read('manifest.json'),
+});
+const out = {};
+const m = prepareDestinations(fresh());
+out.valid = Object.fromEntries(Object.entries(m.dimensions).map(([k, d]) => [k, {
+  points: d.points.length, inside: d.inside, outside: d.outside,
+  categories: Object.fromEntries(d.categories),
+}]));
+const mutations = {
+  population_mismatch: (d) => { d.urbanCity.record.population_total += 1; },
+  walking_time_mismatch: (d) => { d.urbanCity.record.walking_time_minutes += 1; },
+  healthcare_count_mismatch: (d) => { d.healthcarePoints.features.pop(); },
+  duplicate_healthcare_id: (d) => {
+    const f = d.healthcarePoints.features;
+    f[1] = { ...f[1], properties: { ...f[1].properties, facility_id: f[0].properties.facility_id } };
+  },
+  unsupported_healthcare_category: (d) => { d.healthcarePoints.features[0].properties.facility_category = 'pharmacy'; },
+  education_count_mismatch: (d) => { d.educationPoints.features.pop(); },
+  unsupported_education_category: (d) => { d.educationPoints.features[0].properties.education_category = 'academy'; },
+  education_assignment_mismatch: (d) => {
+    const p = d.educationPoints.features.find((f) => f.properties.district_assignment === 'within').properties;
+    p.district_assignment = 'outside_analysis_districts'; p.district_name = null;
+  },
+  bazaar_count_mismatch: (d) => { d.bazaars.features.pop(); },
+  invalid_point_coordinate: (d) => { d.healthcarePoints.features[3].geometry.coordinates[0] = 'x'; },
+  manifest_count_mismatch: (d) => { d.manifest.layers.healthcare_points.features += 1; },
+  overlap_exceeds_healthcare: (d) => {
+    const r = d.urbanCity.record;
+    r.healthcare_and_education_10min_population = r.healthcare_10min_population + 1000;
+    r.healthcare_and_education_10min_pct = r.healthcare_and_education_10min_population / r.population_total * 100;
+  },
+  share_population_disagree: (d) => { d.urbanCity.record.bazaar_10min_pct += 0.01; },
+  outside_point_names_district: (d) => {
+    const p = d.healthcarePoints.features.find((f) => f.properties.district_assignment !== 'within').properties;
+    p.district_name = 'Somewhere';
+  },
+};
+for (const [name, mutate] of Object.entries(mutations)) {
+  const d = fresh();
+  mutate(d);
+  try {
+    prepareDestinations(d);
+    out[name] = { threw: false };
+  } catch (error) {
+    out[name] = { threw: true, message: String(error.message) };
+  }
+}
+console.log(JSON.stringify(out));
+"""
+
+
+def validate_destination_behaviour() -> None:
+    node = shutil.which("node")
+    if node is None:
+        check(False, "Node.js is available to exercise prepareDestinations() "
+                     "(behavioural checks skipped)", critical=False)
+        return
+    module_url = (SITE_DIR / "js" / "destinations.js").resolve().as_uri()
+    result = subprocess.run(
+        [node, "--input-type=module", "-e", DESTINATION_HARNESS, module_url, str(WEB_DATA_DIR)],
+        capture_output=True, text=True, encoding="utf-8",
+    )
+    if not check(result.returncode == 0,
+                 f"prepareDestinations() runs under Node ({result.stderr.strip()[:160] or 'ok'})"):
+        return
+    out = json.loads(result.stdout.strip().splitlines()[-1])
+    u = load_json(WEB_DATA_DIR / WEB_FILES["urban_dimensions_city"])["record"]
+    layers = load_json(WEB_DATA_DIR / WEB_FILES["manifest"])["layers"]
+    valid = out["valid"]
+    for key in ("healthcare", "education"):
+        v = valid[key]
+        check(v["points"] == u[f"{key}_routing_sources"]
+              and v["inside"] == u[f"{key}_facilities_in_analysis_districts"]
+              and v["outside"] == u[f"{key}_facilities_outside_analysis_districts"]
+              and v["categories"] == layers[f"{key}_points"]["by_category"],
+              f"committed data prepares: {key} counts, inside/outside and categories reconcile "
+              f"({v})")
+    check(valid["bazaars"]["points"] == u["bazaar_routing_sources"]
+          and valid["bazaars"]["outside"] == 0,
+          f"committed data prepares: bazaar count reconciles ({valid['bazaars']})")
+    for name, label in (
+        ("population_mismatch", "a population total off the current snapshot"),
+        ("walking_time_mismatch", "a walking time off the current snapshot"),
+        ("healthcare_count_mismatch", "a healthcare point count off the analysis"),
+        ("duplicate_healthcare_id", "a repeated healthcare facility_id"),
+        ("unsupported_healthcare_category", "an unsupported healthcare category"),
+        ("education_count_mismatch", "an education point count off the analysis"),
+        ("unsupported_education_category", "an unsupported education category"),
+        ("education_assignment_mismatch", "education inside/outside counts off the analysis"),
+        ("bazaar_count_mismatch", "a bazaar count off the analysis"),
+        ("invalid_point_coordinate", "a non-numeric point coordinate"),
+        ("manifest_count_mismatch", "a point count the manifest does not record"),
+        ("overlap_exceeds_healthcare", "an overlap larger than the healthcare result"),
+        ("share_population_disagree", "a stored share that disagrees with its population"),
+        ("outside_point_names_district", "an outside routing source that names a district"),
+    ):
+        case = out[name]
+        check(case["threw"], f"prepareDestinations() throws on {label} "
+                             f"({case.get('message') or 'did not throw'})")
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 def main() -> int:
@@ -1907,6 +2235,7 @@ def main() -> int:
     validate_state_and_a11y()
     validate_story_shell()
     validate_temporal_story()
+    validate_destination_story()
 
     section("Summary")
     print(f"  passed  : {len(PASSED)}")
