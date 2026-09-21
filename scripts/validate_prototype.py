@@ -1202,6 +1202,203 @@ def validate_contract() -> dict[str, int]:
 
 
 # ---------------------------------------------------------------------------
+# 10. story shell and the two same-year metric reconciliation
+# ---------------------------------------------------------------------------
+STORY_SECTION_IDS = ("hero", "current-access", "metric-bridge", "district-analysis")
+# Web assets that belong to later sections of the story. The shell must not
+# fetch them at start-up: they would add weight for views that do not exist yet.
+DEFERRED_ASSETS = (
+    "temporal_district.json", "temporal_events.json", "temporal_counterfactual.json",
+    "metro_station_history.geojson", "healthcare_points.geojson",
+    "education_points.geojson", "urban_dimensions_city.json",
+    "urban_dimensions_district.json",
+)
+# Exact values the story shows. Each must reach the page from site/data; none
+# may be typed into the application source.
+STORY_LITERALS = (
+    "13.563595724255597", "13.5636", "435689.82", "435,689.8", "10.028085007",
+    "10.028", "10.03%", "10.03", "2026-Q2", "3.21M", "January 1", "50 stations",
+)
+# Wording that would rank one method above the other.
+RANKING_PHRASES = ("more accurate", "more correct", "the real number", "better estimate",
+                   "true value", "the correct number", "more reliable")
+
+
+def opening_tag(html: str, element_id: str) -> str:
+    match = re.search(rf'<[a-z0-9]+[^>]*\bid="{element_id}"[^>]*>', html)
+    return match.group(0) if match else ""
+
+
+def validate_story_shell() -> None:
+    section("10. Story shell: hero, current access, metric bridge")
+    html = (SITE_DIR / "index.html").read_text(encoding="utf-8")
+    sources = js_sources()
+    story = sources.get("story.js", "")
+    app = sources.get("app.js", "")
+    ui = sources.get("ui.js", "")
+    data_js = sources.get("data.js", "")
+    css = (SITE_DIR / "styles.css").read_text(encoding="utf-8")
+    markup = re.sub(r"<!--.*?-->", "", html, flags=re.S)
+
+    # --- architecture ---------------------------------------------------
+    check(len(re.findall(r"<main\b", markup)) == 1, "the page has exactly one <main> landmark")
+    check('<main id="story-main"' in markup, "the one <main> holds the whole story")
+    check(len(re.findall(r"<h1\b", markup)) == 1, "the page has exactly one <h1>")
+    positions = [markup.find(f'id="{name}"') for name in
+                 ("story-main", "hero", "current-access", "workspace", "metric-bridge",
+                  "district-analysis")]
+    main_end = markup.find("</main>")
+    check(all(p >= 0 for p in positions) and positions == sorted(positions)
+          and positions[-1] < main_end,
+          "hero, current access (holding the workspace), metric bridge and district "
+          "analysis appear in that order inside <main>")
+    check(markup.find('id="method-dialog"') > main_end,
+          "the native method dialog stays outside the story landmark")
+    for name in STORY_SECTION_IDS:
+        tag = opening_tag(markup, name)
+        check(tag.startswith("<section") and " hidden" in tag,
+              f"#{name} is a section that starts hidden until the data is accepted")
+    for heading in ("hero-h", "current-h", "bridge-h", "deck-h"):
+        check(opening_tag(markup, heading).startswith("<h2"),
+              f"#{heading} is a second-level heading under the page title")
+    for heading in ("map-h", "context-h", "ranking-h"):
+        check(opening_tag(markup, heading).startswith("<h3"),
+              f"#{heading} nests under the current-access heading")
+    check("'h4', { id: 'keyfind-h'" in ui, "the key finding nests under its panel heading")
+
+    # --- data loading ---------------------------------------------------
+    check("temporalCity: 'temporal_city.json'" in data_js,
+          "the application loads temporal_city.json")
+    eager = sorted({asset for asset in DEFERRED_ASSETS for text in sources.values()
+                    if asset in text})
+    check(not eager, f"no later-phase asset is fetched by the shell ({eager or 'none'})")
+    for key in ("selectedYear", "temporalMode", "historicalMode"):
+        found = [name for name, text in sources.items() if key in text]
+        check(not found, f"no {key} state exists yet ({found or 'none'})")
+
+    # --- hero -----------------------------------------------------------
+    check(re.search(r'<p id="hero-answer"[^>]*></p>', markup) is not None,
+          "the hero answer slot is empty in the HTML and filled at runtime")
+    check(re.search(r'<dl id="hero-method"[^>]*></dl>', markup) is not None,
+          "the hero method strip is empty in the HTML and filled at runtime")
+    hero = re.search(r"function renderHero\(city\)\s*\{(.+?)\n\}", story, re.S)
+    hero_body = hero.group(1) if hero else ""
+    check(bool(hero), "the hero is rendered in one place")
+    for field in ("metro_access_pct", "metro_access_population", "analysis_population",
+                  "reference_period", "walking_time_minutes", "walking_speed_kmh",
+                  "snapping_method"):
+        check(f"city.{field}" in hero_body, f"the hero reads {field} from the city summary")
+    check("fmt.pct(city.metro_access_pct)" in hero_body,
+          "the hero share uses the shared one-decimal formatter")
+    check("estimated" in hero_body and "modelled" in hero_body
+          and "analysed population" in hero_body,
+          "the hero frames its answer as a modelled estimate over the analysed population")
+    check("not observed travel behaviour" in markup,
+          "the hero says the estimate is not observed travel behaviour")
+    check('href="#current-access"' in opening_tag(markup, "hero-cta"),
+          "the hero call to action leads to the current-access section")
+
+    # --- reconciliation -------------------------------------------------
+    bridge = re.search(r"function renderBridge\(city, latest\)\s*\{(.+?)\n\}", story, re.S)
+    bridge_body = bridge.group(1) if bridge else ""
+    check(bool(bridge), "the metric bridge is rendered in one place")
+    check("fmt.pct2(city.metro_access_pct)" in bridge_body,
+          "the current snapshot value is read from city_summary.json")
+    check("fmt.pct2(latest.metro_access_pct_standardized)" in bridge_body,
+          "the standardized value is read from temporal_city.json")
+    check(bridge_body.count("metricCard({") == 2,
+          "both metrics are drawn by the same card builder, with identical treatment")
+    check("'Current snapshot'" in bridge_body and "'Standardized time series'" in bridge_body,
+          "each metric is named in words, not told apart by colour")
+    latest = re.search(r"export function latestStandardized\(temporalCity\)\s*\{(.+?)\n\}",
+                       story, re.S)
+    latest_body = latest.group(1) if latest else ""
+    check("b.year > a.year" in latest_body and "records[" not in latest_body,
+          "the latest standardized year is chosen by year, not by array position")
+    check("more than one record" in latest_body,
+          "a duplicated latest year is refused rather than silently picked")
+    check("reveal(true)" in app and app.find("initStory(data)") < app.find("reveal(true)")
+          < app.find("mapModule.initMap("),
+          "the story is checked and rendered before any section is revealed")
+    check(re.search(r"const STORY_SECTIONS = \[[^\]]*'hero'[^\]]*'current-access'"
+                    r"[^\]]*'metric-bridge'[^\]]*'district-analysis'", app, re.S) is not None,
+          "a load failure hides every story section")
+
+    # Shipped copy only: comments explaining the rule may name what it forbids.
+    story_copy = re.sub(r"(?<![:\w])//[^\n]*", "",
+                        re.sub(r"/\*.*?\*/", "", story, flags=re.S))
+    bridge_copy = (markup[markup.find('id="metric-bridge"'):markup.find('id="district-analysis"')]
+                   + story_copy)
+    low = re.sub(r"\s+", " ", bridge_copy).lower()
+    for phrase, label in (
+        ("entrance-aware", "the entrance-aware current method"),
+        ("station-centre", "the station-centre standardized proxy"),
+        ("siat-calibrated", "the SIAT-calibrated current population"),
+        ("worldpop", "the WorldPop standardized population"),
+        ("not siat-calibrated", "that the standardized weights are not SIAT-calibrated"),
+        ("not supposed to match", "that the two numbers are not meant to agree"),
+        ("answer different questions", "that the two answer different questions"),
+        ("not interchangeable", "that the two are not interchangeable"),
+        ("not a reconstruction", "that the series does not reconstruct history"),
+    ):
+        check(phrase in low, f"the reconciliation names {label}")
+    ranked = [p for p in RANKING_PHRASES if p in low]
+    check(not ranked, f"neither metric is called the better one ({ranked or 'none'})")
+    arithmetic = re.search(
+        r"metro_access_pct(?:_standardized)?\s*[-+]|[-+]\s*\w+\.metro_access_pct", story)
+    check(arithmetic is None,
+          "the two metrics are never subtracted or combined in the story")
+    check("percentage point" not in story.lower(),
+          "the gap between the methods is not presented as a change in points")
+
+    # --- runtime inputs the story depends on ----------------------------
+    city = load_json(WEB_DATA_DIR / WEB_FILES["city_summary"])
+    records = load_json(WEB_DATA_DIR / WEB_FILES["temporal_city"])["records"]
+    latest_record = max(records, key=lambda r: r["year"])
+    check(sum(1 for r in records if r["year"] == latest_record["year"]) == 1,
+          f"temporal_city.json has one record for its latest year ({latest_record['year']})")
+    check(str(city["reference_period"]).startswith(str(latest_record["year"])),
+          "the current reference period and the latest standardized year are the same year, "
+          "so the bridge may name it")
+    check(latest_record["metro_access_pct_standardized"] != city["metro_access_pct"],
+          "the two same-year figures are distinct values, as the bridge explains")
+
+    # --- no literal of what the story shows -----------------------------
+    for name, text in {**sources, "index.html": html}.items():
+        found = sorted({lit for lit in STORY_LITERALS if lit in text})
+        check(not found, f"{name} types none of the story's values ({found or 'none'})")
+    for name in ("story.js", "index.html"):
+        text = story if name == "story.js" else markup
+        check("2026" not in text, f"{name} names no reference year in code or markup")
+
+    # --- navigation, motion and sticky header ---------------------------
+    views = re.findall(r'class="navbtn[^"]*" data-view="(\w+)"', markup)
+    check(views == ["overview", "districts", "method"],
+          f"the navigation has exactly Current, Districts and Method ({views})")
+    check("getElementById('current-access')" in ui,
+          "Current scrolls to the current-access section")
+    check("import { motion } from './ui.js'" in story and "behavior: motion()" in story,
+          "the story's scrolling honours prefers-reduced-motion")
+    check("target.focus({ preventScroll: true })" in story
+          and 'id="current-access" class="current" aria-labelledby="current-h" tabindex="-1"'
+          in markup,
+          "the call to action moves keyboard focus to the section it scrolls to")
+    check(re.search(r"^html\s*\{\s*height:\s*100%;\s*\}", css, re.M) is not None
+          and "html, body { height: 100%" not in css,
+          "only the root is pinned to the viewport, so the sticky header stays for the page")
+    check("min-height: var(--topbar-h)" in css
+          and "scroll-margin-top: var(--topbar-h)" in css,
+          "sections land below a header held to the height the layout assumes")
+    check(re.search(r"\.current\s*\{[^}]*height:\s*calc\(100vh - var\(--topbar-h\)\)", css)
+          is not None,
+          "the current-access heading and workspace share one screen below the header")
+
+    # --- the story module keeps the security boundary -------------------
+    check("from './dom.js'" in story and "el(" in story and "replace(" in story,
+          "the story builds its DOM through the safe helpers in dom.js")
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 def main() -> int:
@@ -1224,6 +1421,7 @@ def main() -> int:
     validate_manifest(counts, city)
     validate_no_hardcoded_metrics()
     validate_state_and_a11y()
+    validate_story_shell()
 
     section("Summary")
     print(f"  passed  : {len(PASSED)}")
