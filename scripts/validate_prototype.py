@@ -830,6 +830,7 @@ ANALYTICAL_CONTRACT = {
     "urban_dimensions_city": (cfg.URBAN_DIMENSIONS_CITY_FILE, 1),
     "urban_dimensions_district": (cfg.URBAN_DIMENSIONS_DISTRICT_FILE, 12),
 }
+EXACT_COORDINATE_LAYERS = ("metro_station_history", "healthcare_points", "education_points")
 DISPLAY_CONTRACT = {
     "metro_station_history": (cfg.METRO_STATION_HISTORY_FILE, 50),
     "healthcare_points": (cfg.HEALTHCARE_FACILITIES_FILE, 436),
@@ -1098,6 +1099,44 @@ def validate_facility_points(key: str) -> int:
     return len(features)
 
 
+def max_coordinate_decimals(coords) -> int:
+    if coords and isinstance(coords[0], (int, float)):
+        return max(len(repr(float(v)).partition(".")[2]) for v in coords)
+    return max((max_coordinate_decimals(c) for c in coords), default=0)
+
+
+def validate_coordinate_precision_metadata(manifest: dict) -> None:
+    """The manifest's precision claims must describe the files as they are."""
+    layers = manifest.get("layers", {})
+    default = manifest.get("default_display_coordinate_precision_decimals")
+    check(default == 5 and "coordinate_precision_decimals" not in manifest,
+          f"manifest declares 5 decimals as the default display precision, not as a "
+          f"global one (found {default!r})")
+    note = manifest.get("coordinate_precision_note", "")
+    check(all(key in note for key in EXACT_COORDINATE_LAYERS),
+          "manifest precision note names every exact-coordinate layer")
+    for key in EXACT_COORDINATE_LAYERS:
+        check(layers.get(key, {}).get("coordinate_precision") == "source_exact",
+              f"manifest {key}: declares source_exact coordinates")
+
+    # Every other geometry layer must actually sit on the default grid, so the
+    # default the manifest declares is true of the files it describes.
+    off_grid = []
+    for key, entry in layers.items():
+        if key in EXACT_COORDINATE_LAYERS or not entry.get("file", "").endswith(".geojson"):
+            continue
+        if entry.get("coordinate_precision") == "source_exact":
+            off_grid.append(f"{key} claims source_exact")
+            continue
+        features = load_json(WEB_DATA_DIR / entry["file"])["features"]
+        worst = max(max_coordinate_decimals(f["geometry"]["coordinates"]) for f in features)
+        if worst > default:
+            off_grid.append(f"{key} has {worst} decimals")
+    check(not off_grid,
+          f"every other geometry layer is written at the default precision "
+          f"({off_grid or 'all within ' + str(default) + ' decimals'})")
+
+
 def validate_contract_manifest(counts: dict[str, int]) -> None:
     section("5f. Phase A manifest entries and source provenance")
     manifest = load_json(WEB_DATA_DIR / WEB_FILES["manifest"])
@@ -1135,6 +1174,8 @@ def validate_contract_manifest(counts: dict[str, int]) -> None:
         check(audited_hashes.get(src) == hashed,
               f"manifest {key}: source hash equals the Phase 2 audited manifest's "
               f"({(audited_hashes.get(src) or 'unrecorded')[:12]})")
+
+    validate_coordinate_precision_metadata(manifest)
 
     station = layers.get("metro_station_history", {})
     check({int(y): n for y, n in station.get("open_stations_by_year", {}).items()}

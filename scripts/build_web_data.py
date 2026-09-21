@@ -27,9 +27,10 @@ Analytical vs display, which the prototype must not blur:
     the healthcare and education points, placed at the audited routing-proxy
     coordinates each facility already carries (never a new centroid)
 
-The build is deterministic: no timestamps are written, ordering is stable, and
-coordinates are rounded to a fixed precision. Running it twice produces
-byte-identical output.
+The build is deterministic: no timestamps are written and ordering is stable.
+Derived display geometry is written at a fixed default precision; the layers
+pinned to audited source coordinates keep those coordinates exactly. Running it
+twice produces byte-identical output.
 """
 
 from __future__ import annotations
@@ -64,6 +65,10 @@ METRO_LINES_PROVENANCE = DISPLAY_DIR / "metro_lines_provenance.json"
 # ~1.1 m at this latitude: far finer than any mark the map draws, and it keeps
 # shared district borders identical on both sides because both round the same.
 COORD_PRECISION = 5
+
+# Layers pinned to audited source coordinates, written with precision=None.
+SOURCE_EXACT = "source_exact"
+EXACT_COORDINATE_LAYERS = ("metro_station_history", "healthcare_points", "education_points")
 
 # Display-only aggregation for the population layer. 500 m squares over a
 # 437.7 km2 study area give roughly two thousand cells: enough to read the
@@ -1004,7 +1009,7 @@ def main() -> int:
         counts[key], sizes[key], facility_counts[key] = \
             build_facility_points(key, paths[source])
 
-    step("STEP 8  Web data manifest")
+    step("STEP 13  Web data manifest")
     manifest = {
         "project_stage": "final integrated visualization",
         "generated_by": "scripts/build_web_data.py",
@@ -1037,7 +1042,12 @@ def main() -> int:
             "snapping_method": city["snapping_method"],
         },
         "coordinate_reference_system": cfg.GEOGRAPHIC_CRS,
-        "coordinate_precision_decimals": COORD_PRECISION,
+        "default_display_coordinate_precision_decimals": COORD_PRECISION,
+        "coordinate_precision_note": (
+            f"{COORD_PRECISION} decimal places is the default for derived display "
+            f"geometry. {', '.join(EXACT_COORDINATE_LAYERS)} preserve their committed "
+            f"audited coordinates without rounding."
+        ),
         "layers": {
             "city_summary": {
                 "file": WEB_FILES["city_summary"], "role": "analytical",
@@ -1128,6 +1138,8 @@ def main() -> int:
                 "bytes": sizes["metro_station_history"],
                 "source": rel(paths["metro_station_history"]),
                 "open_stations_by_year": open_by_year,
+                "coordinate_precision": SOURCE_EXACT,
+                "coordinate_source": "committed longitude/latitude CSV text, parsed as doubles",
                 "note": ("station points at their committed coordinates, filtered by "
                          "opening_year <= year; no historical line geometry or "
                          "historical service area exists or is implied"),
@@ -1139,6 +1151,8 @@ def main() -> int:
                     "source": rel(paths[source]),
                     "source_bytes": paths[source].stat().st_size,
                     **facility_counts[key],
+                    "coordinate_precision": SOURCE_EXACT,
+                    "coordinate_source": "audited properties.longitude / properties.latitude",
                     "note": ("points at the audited routing-proxy longitude/latitude "
                              "each facility carries, written exactly; facility "
                              "polygons are not shipped and no centroid is computed"),
