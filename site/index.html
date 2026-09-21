@@ -4,22 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tashkent Transit &amp; Walkability</title>
-<meta name="description" content="Interactive spatial analysis of 10-minute walking access to the Tashkent metro, by district.">
+<meta name="description" content="A data story on modelled 10-minute walking access to the Tashkent metro: who can reach it, where, and how the answer is measured.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230b0f14'/%3E%3Ccircle cx='8' cy='8' r='3.2' fill='none' stroke='%2335c2d6' stroke-width='1.8'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
+<a class="skip-link" href="#story-main">Skip to the story</a>
 <a class="skip-link" href="#ranking-panel">Skip to the district ranking</a>
 
 <header class="topbar">
   <div class="brand">
     <h1>Tashkent Transit &amp; Walkability</h1>
-    <p class="brand-q">What share of the city lives within a 10-minute walk of the metro?</p>
   </div>
-  <nav class="topnav" aria-label="Views">
-    <button type="button" class="navbtn is-current" data-view="overview" aria-current="page">Overview</button>
+  <nav class="topnav" aria-label="Sections">
+    <button type="button" class="navbtn is-current" data-view="overview" aria-current="page">Current</button>
     <button type="button" class="navbtn" data-view="districts">Districts</button>
     <button type="button" class="navbtn" data-view="method" aria-haspopup="dialog">Method</button>
   </nav>
@@ -34,7 +34,33 @@
   </p>
 </div>
 
-<main id="workspace" class="workspace" hidden>
+<!-- One page landmark for the whole story. Every section starts hidden and is
+     revealed only once the data has loaded and been checked, so no analytical
+     slot ever shows a placeholder as though it were a result. -->
+<main id="story-main" class="story" tabindex="-1">
+
+<!-- ── hero: the question and the current answer ──────────────────────── -->
+<section id="hero" class="hero" aria-labelledby="hero-h" hidden>
+  <p class="eyebrow">Tashkent · pedestrian-network accessibility</p>
+  <h2 id="hero-h" class="hero-q">Who can reach the metro in ten minutes?</h2>
+  <!-- Filled from site/data/city_summary.json by js/story.js. -->
+  <p id="hero-answer" class="hero-answer"></p>
+  <dl id="hero-method" class="hero-method" aria-label="How the current estimate is measured"></dl>
+  <p class="hero-note">A modelled estimate of physical walking access along the mapped
+    pedestrian network &mdash; not observed travel behaviour.</p>
+  <a id="hero-cta" class="hero-cta" href="#current-access">Explore current access<span
+     class="hero-cta-arrow" aria-hidden="true">&darr;</span></a>
+</section>
+
+<!-- ── current access: the map workspace, unchanged inside ─────────────── -->
+<section id="current-access" class="current" aria-labelledby="current-h" tabindex="-1" hidden>
+  <div class="section-head section-head--bar">
+    <h2 id="current-h" class="section-title">Current access</h2>
+    <p class="section-lede">Where the modelled 10-minute walk reaches metro access today.
+      Select a district on the map or in the ranking; every view below follows.</p>
+  </div>
+
+<div id="workspace" class="workspace" hidden>
 
   <!-- ── map ─────────────────────────────────────────────────────────── -->
   <section class="mapwrap" aria-labelledby="map-h">
@@ -46,7 +72,7 @@
          rather than implying the whole page is broken. -->
     <p id="basemap-error" class="basemap-error" role="status" hidden></p>
 
-    <h2 id="map-h" class="visually-hidden">Map of modelled metro walking access in Tashkent</h2>
+    <h3 id="map-h" class="visually-hidden">Map of modelled metro walking access in Tashkent</h3>
     <div id="map" class="map"></div>
 
     <div class="map-ui map-ui--tl">
@@ -121,7 +147,7 @@
 
     <section class="panel" id="context-panel" aria-labelledby="context-h" aria-live="polite">
       <div class="panel-head">
-        <h2 id="context-h" class="panel-title">Tashkent at a glance</h2>
+        <h3 id="context-h" class="panel-title">Tashkent at a glance</h3>
         <button type="button" id="clear-selection" class="linkbtn" hidden>Clear</button>
       </div>
       <div id="context-body"></div>
@@ -129,14 +155,72 @@
 
     <section class="panel panel--grow" id="ranking-panel" aria-labelledby="ranking-h" tabindex="-1">
       <div class="panel-head">
-        <h2 id="ranking-h" class="panel-title">Metro access by district</h2>
+        <h3 id="ranking-h" class="panel-title">Metro access by district</h3>
         <span class="panel-note">share within a 10-min walk</span>
       </div>
       <div id="ranking" class="ranking"></div>
     </section>
 
   </aside>
-</main>
+</div>
+</section>
+
+<!-- ── two same-year metro numbers, reconciled ─────────────────────────── -->
+<!-- Both figures are read from site/data at runtime by js/story.js: the
+     current snapshot from city_summary.json, the standardized point from
+     temporal_city.json. They are set side by side with identical treatment
+     because they are two methods, not a better and a worse estimate. -->
+<section id="metric-bridge" class="bridge" aria-labelledby="bridge-h" hidden>
+  <div class="section-head">
+    <p class="eyebrow">Reading the numbers</p>
+    <h2 id="bridge-h" class="section-title"></h2>
+    <p class="section-lede">These numbers are not supposed to match. Both describe a
+      modelled ten-minute walk along the same pedestrian network, but they are built to
+      answer different questions.</p>
+  </div>
+
+  <div id="bridge-pair" class="bridge-pair"></div>
+
+  <table class="bridge-diff">
+    <caption>Three differences between the two methods</caption>
+    <thead>
+      <tr>
+        <th scope="col"><span class="visually-hidden">Difference</span></th>
+        <th scope="col">Current snapshot</th>
+        <th scope="col">Standardized time series</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th scope="row">Metro source</th>
+        <td>Entrance-aware: mapped metro entrances, with the station point used only
+          where no entrance is mapped</td>
+        <td>Station-centre proxy: today&rsquo;s station-centre coordinates, fixed for
+          every year, with no entrances</td>
+      </tr>
+      <tr>
+        <th scope="row">Population</th>
+        <td>Current population surface, SIAT-calibrated to official district totals</td>
+        <td>Annual WorldPop model weights, not SIAT-calibrated</td>
+      </tr>
+      <tr>
+        <th scope="row">Analytical objective</th>
+        <td>A current-period accessibility estimate</td>
+        <td>A controlled year-to-year comparison, with the pedestrian network and district
+          geography held fixed</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="bridge-close">
+    <p>The current number answers <q>what does access look like now?</q> The standardized
+      number answers <q>how did access change under one comparable analytical frame?</q></p>
+    <p class="muted">They are not interchangeable, and the gap between them is a difference
+      of method, not a change in access or an error in either. The standardized series
+      holds today&rsquo;s streets and station positions fixed; it is not a reconstruction
+      of historical streets or entrances.</p>
+  </div>
+</section>
 
 <!-- ── coordinated district analysis deck ──────────────────────────────── -->
 <!-- Three more views over the same twelve districts and the same selection
@@ -147,7 +231,8 @@
   <div class="deck-head">
     <h2 id="deck-h" class="deck-title">District analysis</h2>
     <p class="deck-lede">Compare how metro access, bus reliance and mapped service
-      distribution vary across the twelve analysed districts.</p>
+      distribution vary across the twelve analysed districts. These charts share the
+      map&rsquo;s district selection and comparison set.</p>
   </div>
 
   <div class="deck-grid">
@@ -201,6 +286,8 @@
 
   </div>
 </section>
+
+</main>
 
 <!-- ── method dialog ─────────────────────────────────────────────────── -->
 <!-- A native <dialog> opened with showModal(): the browser puts it in the top
