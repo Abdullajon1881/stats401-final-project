@@ -21,6 +21,10 @@ import config as cfg  # noqa: E402
 import urban_dimensions as ud  # noqa: E402
 
 STARTING_MAIN = "c92388adc8205546c152932d6ab70409882fa755"
+# STARTING_MAIN -> working tree was the site/ guard while Phase 2C was developed.
+# Later frontend phases change site/ on purpose, so that form no longer states the
+# Phase 2C claim; the canonical Phase 2C merge is the fixed upper bound instead.
+PHASE2C_MERGED_MAIN = "e9ff982c190a39f73c12e88a58bf6bc59595e126"
 BUDGET_M = cfg.PHASE2C_ACCESS_DISTANCE_BUDGET_M
 DESTINATION_CLASSES = ("healthcare", "education", "bazaar")
 ACCESS_LABELS = ("healthcare", "education", "bazaar", "healthcare_and_education")
@@ -74,6 +78,19 @@ def git_paths_unchanged(paths: tuple[str, ...]) -> tuple[bool, list[str]]:
     """Return whether every path is content-identical to the starting main."""
     result = subprocess.run(
         ["git", "diff", "--name-only", STARTING_MAIN, "--", *paths],
+        capture_output=True, text=True, cwd=cfg.REPO_ROOT,
+    )
+    if result.returncode != 0:
+        return False, ["git diff failed"]
+    changed = [line for line in result.stdout.splitlines() if line.strip()]
+    return not changed, changed
+
+
+def git_range_paths_unchanged(base: str, head: str,
+                              paths: tuple[str, ...]) -> tuple[bool, list[str]]:
+    """Return whether paths are content-identical across a fixed Git range."""
+    result = subprocess.run(
+        ["git", "diff", "--name-only", base, head, "--", *paths],
         capture_output=True, text=True, cwd=cfg.REPO_ROOT,
     )
     if result.returncode != 0:
@@ -507,11 +524,15 @@ def main() -> int:  # noqa: PLR0915 - validator intentionally enumerates gates
 
     section("Freeze")
     for label, paths in (("current headline outputs", FROZEN_CURRENT),
-                         ("Phase 2A and Phase 2B artifacts", FROZEN_PHASE2),
-                         ("site/", ("site",))):
+                         ("Phase 2A and Phase 2B artifacts", FROZEN_PHASE2)):
         unchanged, changed = git_paths_unchanged(paths)
         check(unchanged, f"{label} are unchanged against the starting main",
               ", ".join(changed) if changed else None)
+    unchanged, changed = git_range_paths_unchanged(
+        STARTING_MAIN, PHASE2C_MERGED_MAIN, ("site",))
+    check(unchanged, "Phase 2C introduced no site/ changes between its starting main "
+                     "and its canonical merged commit",
+          ", ".join(changed) if changed else None)
     summary = json.loads(
         ud.canonical_utf8_lf_bytes(cfg.CITY_ACCESS_SUMMARY_FILE).decode("utf-8")
     )
