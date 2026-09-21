@@ -165,6 +165,57 @@
 </div>
 </section>
 
+<!-- ── current everyday destinations ─────────────────────────────────── -->
+<!-- Drawn by js/destinations.js only after this section is visible. Every
+     share, population and count comes from site/data. The destination type
+     chosen here is local to this chapter: it never changes the current map,
+     the district selection or the temporal year. -->
+<section id="destination-access" class="destinations" aria-labelledby="dest-h" hidden>
+  <div class="section-head">
+    <p class="eyebrow">Current everyday destinations</p>
+    <h2 id="dest-h" class="section-title">What else is within a ten-minute walk?</h2>
+    <p class="section-lede">Current modelled pedestrian-network accessibility estimates, over the
+      same analysed population and the same walking speed and ten-minute budget as the metro
+      snapshot above. Each destination type is its own result; none is combined into a score.</p>
+  </div>
+
+  <div id="dest-cards" class="dest-cards" role="group"
+       aria-label="Destination type shown on the map"></div>
+
+  <section class="dest-overlap" aria-labelledby="dest-overlap-h">
+    <h3 id="dest-overlap-h" class="tpanel-title">Within ten minutes of both healthcare and
+      education</h3>
+    <p id="dest-overlap-value" class="dest-overlap-value"></p>
+    <p class="panel-sub">The intersection of the healthcare and education results, read as
+      committed by the analysis: residents whose population cell reaches both. It is not the sum
+      of the two shares and not a score.</p>
+  </section>
+
+  <dl id="dest-method" class="dest-method" aria-label="Current method"></dl>
+
+  <div class="dest-grid">
+    <section class="tpanel dest-map-panel" aria-labelledby="dest-map-h">
+      <h3 id="dest-map-h" class="tpanel-title">Where the routing sources are</h3>
+      <p id="dest-map-sub" class="panel-sub"></p>
+      <div id="dest-legend" class="dest-legend"></div>
+      <div id="destination-map" class="dmap"></div>
+      <p class="panel-foot">Points are routing-source proxies: the destinations the network
+        routing starts from. Healthcare and education points sit at the committed representative
+        coordinates of each mapped facility, and district outlines are the current analysis
+        geography. Hollow points lie outside the analysis districts but were kept as routing
+        sources, because they can still serve population cells inside the study area. The
+        percentages come from pedestrian-network routing over population cells, not from point
+        density or drawn buffers. OpenStreetMap coverage may be incomplete, and a point is not a
+        measure of a facility&rsquo;s capacity or service quality.</p>
+    </section>
+
+    <section class="tpanel dest-context-panel" aria-labelledby="dest-context-h">
+      <h3 id="dest-context-h" class="tpanel-title"></h3>
+      <div id="dest-context"></div>
+    </section>
+  </div>
+</section>
+
 <!-- ── two same-year metro numbers, reconciled ─────────────────────────── -->
 <!-- Both figures are read from site/data at runtime by js/story.js: the
      current snapshot from city_summary.json, the standardized point from

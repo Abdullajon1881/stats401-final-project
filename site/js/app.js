@@ -9,6 +9,7 @@ import { focusRanking, initRanking, syncRanking } from './ranking.js';
 import { buildDensityLegend, initUI, renderContext } from './ui.js';
 import { initStory } from './story.js';
 import { initTemporal, prepareTemporal } from './temporal.js';
+import { initDestinations, prepareDestinations } from './destinations.js';
 import { el, replace } from './dom.js';
 import { focusComposition, initComposition, updateCompositionState } from './composition.js';
 import { initScatter, updateScatterState } from './scatter.js';
@@ -41,8 +42,8 @@ if (QA) {
 /* Every section that carries a figure. They stay hidden until the data is in
  * and the story has accepted it, so none of them can show a placeholder as a
  * result, and all of them are hidden again if anything fails. */
-const STORY_SECTIONS = ['hero', 'current-access', 'workspace', 'metric-bridge',
-  'temporal-story', 'district-analysis'];
+const STORY_SECTIONS = ['hero', 'current-access', 'workspace', 'destination-access',
+  'metric-bridge', 'temporal-story', 'district-analysis'];
 
 function reveal(visible) {
   for (const id of STORY_SECTIONS) document.getElementById(id).hidden = !visible;
@@ -129,13 +130,16 @@ function announceComparison(state, index) {
     return;
   }
 
-  // Both chapters check their inputs before anything is shown, the temporal
-  // one first so a failure there leaves nothing rendered at all. The temporal
-  // model is only prepared here; it is drawn after the reveal, because its
-  // charts measure their containers and a hidden container has no size.
+  // Every chapter's inputs are checked before anything is shown, and before the
+  // story writes a single figure, so a failure in any of them leaves nothing
+  // rendered at all. The temporal and destination models are only prepared
+  // here; they are drawn after the reveal, because their charts and maps
+  // measure their containers and a hidden container has no size.
   let timeline;
+  let destinations;
   try {
     timeline = prepareTemporal(data);
+    destinations = prepareDestinations(data);
     initStory(data);
   } catch (error) {
     fail(error && error.message ? error.message : String(error));
@@ -144,6 +148,7 @@ function announceComparison(state, index) {
 
   // Revealed before the map is created, which needs a sized container.
   reveal(true);
+  initDestinations(destinations);
   initTemporal(timeline);
   const index = indexDistricts(data.districts);
 

@@ -29,6 +29,12 @@ export const FILES = {
   temporalEvents: 'temporal_events.json',
   temporalCounterfactual: 'temporal_counterfactual.json',
   stationHistory: 'metro_station_history.geojson',
+  // The current destination chapter: the city healthcare, education and bazaar
+  // results, and the healthcare and education routing-source points. Bazaar
+  // points are the `bazaars` layer above.
+  urbanCity: 'urban_dimensions_city.json',
+  healthcarePoints: 'healthcare_points.geojson',
+  educationPoints: 'education_points.geojson',
   manifest: 'manifest.json',
 };
 
@@ -80,6 +86,7 @@ export const fmt = {
   km2: (v) => `${nf1.format(v)} km²`,
   metres: (v) => `${nf1.format(v)} m`,
   int: (v) => nf0.format(v),
+  dec1: (v) => nf1.format(v),
 };
 
 /** Index districts by name and produce the ranking order, from the data. */
