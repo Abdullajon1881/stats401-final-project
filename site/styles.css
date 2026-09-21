@@ -1193,6 +1193,146 @@ code {
   .yc-output { font-size: 18px; }
 }
 
+/* ── current destination chapter ─────────────────────────────────────── */
+/* Three separate results, drawn identically: a card is a control for the map,
+   not a place in a ranking. Healthcare and education take their own hues so
+   they never borrow metro cyan, bus amber or underserved slate; bazaars stay a
+   quiet neutral. The selected card is marked in words as well as by a rule. */
+:root {
+  --healthcare: #f06b8a;
+  --education:  #9f8cff;
+  --bazaar:     #b9c6d4;
+}
+
+.destinations {
+  padding: clamp(36px, 7vh, 72px) 20px clamp(32px, 6vh, 64px);
+  border-top: 1px solid var(--line-2);
+  scroll-margin-top: var(--topbar-h);
+}
+.destinations > * { max-width: 1240px; }
+
+.dest-cards {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px; margin-bottom: 14px;
+}
+.dest-card {
+  --dim: var(--text-3);
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 16px 14px; min-width: 0;
+  font: inherit; text-align: left; color: var(--text); cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--line); border-top: 3px solid var(--line-2);
+  border-radius: var(--r);
+  transition: background 110ms ease, border-color 110ms ease;
+}
+.dest-card--healthcare { --dim: var(--healthcare); }
+.dest-card--education  { --dim: var(--education); }
+.dest-card--bazaars    { --dim: var(--bazaar); }
+.dest-card:hover { background: var(--surface-2); }
+.dest-card[aria-pressed="true"] { border-top-color: var(--dim); background: var(--surface-2); }
+.dest-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.dest-card-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-2);
+}
+.dest-card-state {
+  visibility: hidden;
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim);
+}
+.dest-card[aria-pressed="true"] .dest-card-state { visibility: visible; }
+.dest-card-share { display: flex; flex-direction: column; gap: 4px; }
+.dest-card-pct {
+  font-size: clamp(30px, 3.4vw, 40px); font-weight: 600; line-height: 1;
+  letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+}
+.dest-card-measure { font-size: 12px; line-height: 1.45; color: var(--text-2); }
+.dest-card-detail {
+  display: flex; flex-direction: column; gap: 2px;
+  padding-top: 9px; border-top: 1px solid var(--line);
+  font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums;
+}
+
+.dest-overlap {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 4px 18px; align-items: baseline;
+  margin-bottom: 14px; padding: 12px 16px;
+  border: 1px solid var(--line); border-radius: var(--r);
+}
+.dest-overlap .tpanel-title { grid-column: 1 / -1; margin: 0; }
+.dest-overlap-value { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.dest-overlap-pct {
+  font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+}
+.dest-overlap-text { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.dest-overlap .panel-sub { margin: 0; }
+
+.dest-method {
+  display: flex; flex-wrap: wrap; gap: 10px 0; margin: 0 0 16px; padding: 0;
+}
+.dest-method-item { padding: 0 18px 0 11px; border-left: 1px solid var(--line-2); }
+.dest-method dt {
+  font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-3);
+}
+.dest-method dd {
+  margin: 2px 0 0; font-size: 12.5px; color: var(--text-2); font-variant-numeric: tabular-nums;
+}
+
+.dest-grid {
+  display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 14px; align-items: start;
+}
+.dest-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 6px; }
+.dest-legend--healthcare { --dim: var(--healthcare); }
+.dest-legend--education  { --dim: var(--education); }
+.dest-legend--bazaars    { --dim: var(--bazaar); }
+.dm-key {
+  display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--dim);
+}
+.dm-key.is-outside {
+  width: 10px; height: 10px; background: transparent;
+  border: 1.6px solid var(--dim); box-sizing: border-box;
+}
+.dmap { min-width: 0; }
+.dmap svg { display: block; width: 100%; height: auto; }
+.dm-district { fill: var(--surface-2); stroke: var(--line-2); stroke-width: 0.8; }
+.dm-points--healthcare { --dim: var(--healthcare); }
+.dm-points--education  { --dim: var(--education); }
+.dm-points--bazaars    { --dim: var(--bazaar); }
+.dm-point { fill: var(--dim); fill-opacity: 0.85; stroke: none; }
+/* Outside the districts: hollow, larger and fully opaque, so the difference
+   reads without colour. */
+.dm-point.is-outside { fill: var(--surface); fill-opacity: 1; stroke: var(--dim); stroke-width: 1.6; }
+
+.dest-counts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px;
+  margin: 6px 0 0; background: var(--line); border: 1px solid var(--line);
+  border-radius: 4px; overflow: hidden;
+}
+.dest-count { background: var(--surface-2); padding: 7px 9px; min-width: 0; }
+.dest-count dt {
+  font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3);
+}
+.dest-count dd {
+  margin: 2px 0 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.dest-context-note { margin: 10px 0 0; font-size: 12px; line-height: 1.55; color: var(--text-2); }
+
+@media (max-width: 1060px) {
+  .dest-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 940px) {
+  .destinations { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 720px) {
+  .dest-cards { grid-template-columns: minmax(0, 1fr); }
+  .dest-overlap { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 620px) {
+  .destinations { padding: 32px 12px 28px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
 }
