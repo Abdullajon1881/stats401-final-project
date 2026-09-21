@@ -13,10 +13,19 @@ Analytical vs display, which the prototype must not blur:
     data/processed/city_access_summary.json
     data/processed/district_access_metrics.csv
 
+  ANALYTICAL, Phase 2B temporal and Phase 2C urban-dimension tables
+    data/processed/metro_access_temporal_{city,district,events,counterfactual}.csv
+    data/processed/urban_dimensions_{city,district}.csv
+    each serialised to JSON record by record, every value typed exactly as the
+    committed CSV text reads, nothing rounded and nothing derived
+
   DISPLAY ONLY (derived here, drives no percentage)
     the metro service-area polygon, copied and rounded
     the population-density bins, aggregated from the audited per-cell table
     every point layer
+    the historical station points, placed at their committed coordinates
+    the healthcare and education points, placed at the audited routing-proxy
+    coordinates each facility already carries (never a new centroid)
 
 The build is deterministic: no timestamps are written, ordering is stable, and
 coordinates are rounded to a fixed precision. Running it twice produces
@@ -25,8 +34,10 @@ byte-identical output.
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -34,7 +45,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
-from shapely.geometry import box, mapping
+from shapely.geometry import Point, box, mapping
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -71,6 +82,15 @@ WEB_FILES = {
     "metro_lines": "metro_lines.geojson",
     "analysis_mask": "analysis_mask.geojson",
     "sensitivity": "sensitivity.json",
+    "temporal_city": "temporal_city.json",
+    "temporal_district": "temporal_district.json",
+    "temporal_events": "temporal_events.json",
+    "temporal_counterfactual": "temporal_counterfactual.json",
+    "metro_station_history": "metro_station_history.geojson",
+    "urban_dimensions_city": "urban_dimensions_city.json",
+    "urban_dimensions_district": "urban_dimensions_district.json",
+    "healthcare_points": "healthcare_points.geojson",
+    "education_points": "education_points.geojson",
     "manifest": "manifest.json",
 }
 
@@ -78,9 +98,12 @@ WEB_FILES = {
 # ---------------------------------------------------------------------------
 # deterministic GeoJSON writing
 # ---------------------------------------------------------------------------
-def _round_coords(value, precision: int):
+def _round_coords(value, precision: int | None):
+    """Snap coordinates to `precision` decimals; None keeps them exactly."""
     if isinstance(value, (list, tuple)):
         if value and isinstance(value[0], (int, float)):
+            if precision is None:
+                return [float(v) for v in value]
             return [round(float(v), precision) for v in value]
         return [_round_coords(v, precision) for v in value]
     return value
@@ -113,7 +136,7 @@ def _clean(value):
     return None if text in ("nan", "None", "<NA>", "") else text
 
 
-def reduce_precision(geometry, precision: int = COORD_PRECISION):
+def reduce_precision(geometry, precision: int | None = COORD_PRECISION):
     """Snap a geometry to the output coordinate grid, keeping it valid.
 
     Rounding coordinates naively can collapse a tiny ring below three distinct
@@ -123,7 +146,7 @@ def reduce_precision(geometry, precision: int = COORD_PRECISION):
     identical input coordinates still snap identically, so shared district
     borders stay shared.
     """
-    if geometry.geom_type not in ("Polygon", "MultiPolygon"):
+    if precision is None or geometry.geom_type not in ("Polygon", "MultiPolygon"):
         return geometry
     reduced = shapely.set_precision(geometry, 10.0 ** -precision)
     if reduced.is_empty:
@@ -133,7 +156,8 @@ def reduce_precision(geometry, precision: int = COORD_PRECISION):
     return reduced
 
 
-def feature(geometry, properties: dict, precision: int = COORD_PRECISION) -> dict:
+def feature(geometry, properties: dict,
+            precision: int | None = COORD_PRECISION) -> dict:
     geom = mapping(reduce_precision(geometry, precision))
     return {
         "type": "Feature",
@@ -149,7 +173,7 @@ DISPLAY_ROLE = "display_only"
 
 
 def display_feature(geometry, properties: dict,
-                    precision: int = COORD_PRECISION) -> dict:
+                    precision: int | None = COORD_PRECISION) -> dict:
     """Build a feature belonging to a display-only layer, labelled as such.
 
     The manifest already records which files are display-only, but a GeoJSON
@@ -158,6 +182,10 @@ def display_feature(geometry, properties: dict,
     themselves. Every display layer is built through here, which is why a new
     display layer cannot quietly ship without the label: there is no other
     constructor for one.
+
+    `precision=None` writes the coordinates exactly as given. The point layers
+    placed at audited coordinates use it, so the browser point is the audited
+    point and not a rounded neighbour of it.
 
     Analytical layers (city_summary, districts) deliberately do NOT come
     through here, and must never carry this role.
@@ -234,6 +262,15 @@ def load_inputs() -> dict:
         "metro_lines_provenance": require(METRO_LINES_PROVENANCE),
         "walk_speed_sensitivity": require(cfg.WALK_SPEED_SENSITIVITY_FILE),
         "population_surface_sensitivity": require(cfg.POPULATION_SURFACE_SENSITIVITY_FILE),
+        "temporal_city": require(cfg.PHASE2_ACCESS_CITY_FILE),
+        "temporal_district": require(cfg.PHASE2_ACCESS_DISTRICT_FILE),
+        "temporal_events": require(cfg.PHASE2_ACCESS_EVENTS_FILE),
+        "temporal_counterfactual": require(cfg.PHASE2_ACCESS_COUNTERFACTUAL_FILE),
+        "metro_station_history": require(cfg.METRO_STATION_HISTORY_FILE),
+        "urban_dimensions_city": require(cfg.URBAN_DIMENSIONS_CITY_FILE),
+        "urban_dimensions_district": require(cfg.URBAN_DIMENSIONS_DISTRICT_FILE),
+        "healthcare_facilities": require(cfg.HEALTHCARE_FACILITIES_FILE),
+        "education_facilities": require(cfg.EDUCATION_FACILITIES_FILE),
     }
     if not paths["population_cells"].exists():
         raise FileNotFoundError(
@@ -686,6 +723,236 @@ def build_population_density(paths: dict, districts: gpd.GeoDataFrame) -> tuple[
 
 
 # ---------------------------------------------------------------------------
+# Phase A data contract: committed CSV tables as typed JSON records
+# ---------------------------------------------------------------------------
+ANALYTICAL_ROLE = "analytical"
+
+_INT_TEXT = re.compile(r"-?\d+")
+_FLOAT_TEXT = re.compile(r"-?(\d+\.\d*|\.\d+|\d+)([eE][-+]?\d+)?")
+_BOOL_TEXT = {"True": True, "False": False}
+
+
+def _column_parser(column: str, values: list[str]):
+    """One scalar type per column, decided from the committed text alone.
+
+    Python's own int() and float() read each cell, so a value reaches the
+    browser as the exact double its CSV text denotes: nothing is rounded, and
+    pandas' fast float reader - which is not guaranteed to round correctly - is
+    kept out of the path. A column that mixes numeric and non-numeric text is
+    refused rather than quietly turned into strings.
+    """
+    present = [v for v in values if v != ""]
+    if not present:
+        return str
+    if all(_INT_TEXT.fullmatch(v) for v in present):
+        return int
+    if all(_FLOAT_TEXT.fullmatch(v) for v in present):
+        return float
+    if all(v in _BOOL_TEXT for v in present):
+        return _BOOL_TEXT.__getitem__
+    if any(_FLOAT_TEXT.fullmatch(v) for v in present):
+        raise ValueError(f"column {column!r} mixes numeric and non-numeric values")
+    return str
+
+
+def read_csv_records(path: Path) -> tuple[list[str], list[dict]]:
+    """Read a committed CSV into typed records, in file order. Empty -> None."""
+    with path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        columns = list(reader.fieldnames or [])
+        rows = list(reader)
+    parsers = {c: _column_parser(c, [row[c] for row in rows]) for c in columns}
+    records = [
+        {c: None if row[c] == "" else parsers[c](row[c]) for c in columns}
+        for row in rows
+    ]
+    return columns, records
+
+
+def rel(path: Path) -> str:
+    return str(path.relative_to(cfg.REPO_ROOT)).replace("\\", "/")
+
+
+def write_records(key: str, path: Path, records: list[dict], note: str) -> int:
+    return write_json(WEB_DATA_DIR / WEB_FILES[key], {
+        "role": ANALYTICAL_ROLE,
+        "source": rel(path),
+        "note": note,
+        "records": records,
+    })
+
+
+def require_unique(records: list[dict], keys: tuple[str, ...], label: str) -> None:
+    seen = [tuple(r[k] for k in keys) for r in records]
+    if len(set(seen)) != len(seen):
+        raise ValueError(f"{label}: duplicate {keys} keys")
+
+
+def require_years(years: list[int], label: str) -> None:
+    if sorted(set(years)) != list(cfg.TEMPORAL_YEARS):
+        raise ValueError(f"{label}: years are not exactly {cfg.TEMPORAL_YEARS}")
+
+
+TEMPORAL_NOTE = (
+    "Standardized historical metro-access series, copied from the committed "
+    "Phase 2B output. It uses a year-comparable method and is a different metric "
+    "from the current entrance-aware headline; the two are not interchangeable."
+)
+COUNTERFACTUAL_NOTE = (
+    "Descriptive decomposition copied from the committed Phase 2B output. It is "
+    "not causal inference."
+)
+
+
+def build_temporal(paths: dict) -> dict:
+    """Phase 2B standardized temporal tables, copied record by record."""
+    step("STEP 9  Temporal metro-access tables (ANALYTICAL, copied from Phase 2B)")
+    out: dict[str, tuple[int, int]] = {}
+
+    _, city = read_csv_records(paths["temporal_city"])
+    if len(city) != len(cfg.TEMPORAL_YEARS):
+        raise ValueError(f"temporal city: expected {len(cfg.TEMPORAL_YEARS)} rows, "
+                         f"got {len(city)}")
+    require_unique(city, ("year",), "temporal city")
+    require_years([r["year"] for r in city], "temporal city")
+    out["temporal_city"] = (len(city), write_records(
+        "temporal_city", paths["temporal_city"], city, TEMPORAL_NOTE))
+
+    _, district = read_csv_records(paths["temporal_district"])
+    require_unique(district, ("year", "district_name"), "temporal district")
+    require_years([r["year"] for r in district], "temporal district")
+    names = {r["district_name"] for r in district}
+    if len(names) != cfg.EXPECTED_ANALYSIS_DISTRICTS or \
+            len(district) != len(names) * len(cfg.TEMPORAL_YEARS):
+        raise ValueError(f"temporal district: {len(district)} rows over {len(names)} "
+                         f"districts is not a complete year x district grid")
+    out["temporal_district"] = (len(district), write_records(
+        "temporal_district", paths["temporal_district"], district, TEMPORAL_NOTE))
+
+    _, events = read_csv_records(paths["temporal_events"])
+    require_unique(events, ("year",), "temporal events")
+    out["temporal_events"] = (len(events), write_records(
+        "temporal_events", paths["temporal_events"], events, TEMPORAL_NOTE))
+
+    _, counterfactual = read_csv_records(paths["temporal_counterfactual"])
+    require_unique(counterfactual, ("year",), "temporal counterfactual")
+    require_years([r["year"] for r in counterfactual], "temporal counterfactual")
+    out["temporal_counterfactual"] = (len(counterfactual), write_records(
+        "temporal_counterfactual", paths["temporal_counterfactual"], counterfactual,
+        COUNTERFACTUAL_NOTE))
+
+    for key, (rows, _) in out.items():
+        log(f"    {key:26s} {rows:4d} records")
+    return out
+
+
+STATION_HISTORY_FIELDS = (
+    "station_id", "station_name_current", "station_name_historical", "line",
+    "opening_date", "opening_year", "date_precision", "opening_batch_id",
+    "district_name", "source_provider", "source_quality",
+)
+
+
+def build_station_history(paths: dict) -> tuple[int, int, dict]:
+    """The 50 current stations with their opening dates (DISPLAY ONLY).
+
+    Each point sits at the longitude/latitude committed in the Phase 2A history,
+    written exactly. This layer lets a map show which stations were open in a
+    year; it carries no historical line geometry and no historical service area,
+    because none has been audited.
+    """
+    step("STEP 10  Metro station opening history (DISPLAY ONLY)")
+    _, records = read_csv_records(paths["metro_station_history"])
+    require_unique(records, ("station_id",), "station history")
+    features = [
+        display_feature(Point(r["longitude"], r["latitude"]),
+                        {k: r[k] for k in STATION_HISTORY_FIELDS}, precision=None)
+        for r in records
+    ]
+    open_by_year = {
+        str(year): sum(1 for r in records if r["opening_year"] <= year)
+        for year in cfg.TEMPORAL_YEARS
+    }
+    size = write_geojson(WEB_DATA_DIR / WEB_FILES["metro_station_history"], features)
+    log(f"    {len(features)} stations; open by year: {open_by_year}")
+    return len(features), size, open_by_year
+
+
+def build_urban_dimensions(paths: dict) -> dict:
+    """Phase 2C current urban-dimension tables, copied record by record."""
+    step("STEP 11  Current urban-dimension tables (ANALYTICAL, copied from Phase 2C)")
+    note = ("Copied from the committed Phase 2C output. No composite score, "
+            "ranking or walkability index is derived.")
+
+    _, city = read_csv_records(paths["urban_dimensions_city"])
+    if len(city) != 1:
+        raise ValueError(f"urban_dimensions_city.csv should hold one row, found {len(city)}")
+    city_size = write_json(WEB_DATA_DIR / WEB_FILES["urban_dimensions_city"], {
+        "role": ANALYTICAL_ROLE,
+        "source": rel(paths["urban_dimensions_city"]),
+        "note": note,
+        "record": city[0],
+    })
+
+    _, district = read_csv_records(paths["urban_dimensions_district"])
+    require_unique(district, ("district_name",), "urban dimensions district")
+    if len(district) != cfg.EXPECTED_ANALYSIS_DISTRICTS:
+        raise ValueError(f"urban dimensions district: expected "
+                         f"{cfg.EXPECTED_ANALYSIS_DISTRICTS} rows, got {len(district)}")
+    district_size = write_records("urban_dimensions_district",
+                                  paths["urban_dimensions_district"], district, note)
+    log(f"    city 1 record, districts {len(district)} records")
+    return {"urban_dimensions_city": (1, city_size),
+            "urban_dimensions_district": (len(district), district_size)}
+
+
+FACILITY_POINT_FIELDS = {
+    "healthcare_points": (
+        "facility_id", "name", "facility_category", "district_name",
+        "district_assignment", "osm_type", "osm_id", "representative_point_method",
+    ),
+    "education_points": (
+        "facility_id", "name", "education_category", "district_name",
+        "district_assignment", "osm_type", "osm_id", "representative_point_method",
+    ),
+}
+
+
+def _tally(features: list[dict], field: str) -> dict[str, int]:
+    values = pd.Series([f["properties"][field] for f in features])
+    return {str(k): int(v) for k, v in sorted(values.value_counts().items())}
+
+
+def build_facility_points(key: str, path: Path) -> tuple[int, int, dict]:
+    """Audited facilities as browser points (DISPLAY ONLY).
+
+    Every facility is placed at the `longitude`/`latitude` its Phase 2C record
+    already carries - the routing proxy the accessibility result was computed
+    from - written exactly. The source polygons are not shipped and no centroid
+    is computed here, so a browser point cannot drift from the audited one.
+    """
+    source = json.loads(path.read_text(encoding="utf-8"))
+    fields = FACILITY_POINT_FIELDS[key]
+    features = []
+    for item in source["features"]:
+        p = item["properties"]
+        features.append(display_feature(Point(p["longitude"], p["latitude"]),
+                                        {k: p.get(k) for k in fields}, precision=None))
+    ids = [f["properties"]["facility_id"] for f in features]
+    if len(set(ids)) != len(ids):
+        raise ValueError(f"{key}: duplicate facility_id values")
+    counts = {
+        "by_category": _tally(features, fields[2]),
+        "by_district_assignment": _tally(features, "district_assignment"),
+    }
+    size = write_geojson(WEB_DATA_DIR / WEB_FILES[key], features)
+    log(f"    {key}: {len(features)} points  {counts}")
+    log(f"    {cfg.human_size(path.stat().st_size)} source -> "
+        f"{cfg.human_size(size)} browser layer")
+    return len(features), size, counts
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 def main() -> int:
@@ -725,6 +992,17 @@ def main() -> int:
     counts["population_density"], sizes["population_density"], density_stats = \
         build_population_density(paths, districts)
     sizes["sensitivity"], sensitivity = build_sensitivity(paths)
+
+    contract = build_temporal(paths)
+    counts["metro_station_history"], sizes["metro_station_history"], open_by_year = \
+        build_station_history(paths)
+    contract.update(build_urban_dimensions(paths))
+    step("STEP 12  Healthcare and education points (DISPLAY ONLY)")
+    facility_counts = {}
+    for key, source in (("healthcare_points", "healthcare_facilities"),
+                        ("education_points", "education_facilities")):
+        counts[key], sizes[key], facility_counts[key] = \
+            build_facility_points(key, paths[source])
 
     step("STEP 8  Web data manifest")
     manifest = {
@@ -834,10 +1112,47 @@ def main() -> int:
                           "data/processed/population_surface_sensitivity.csv",
                 "note": "audited sensitivity results copied through; not recomputed",
             },
+            **{
+                key: {
+                    "file": WEB_FILES[key], "role": ANALYTICAL_ROLE,
+                    "features": rows, "bytes": size,
+                    "source": rel(paths[key]),
+                    "note": ("committed CSV rows serialised as typed JSON records at "
+                             "full precision; not recomputed"),
+                }
+                for key, (rows, size) in contract.items()
+            },
+            "metro_station_history": {
+                "file": WEB_FILES["metro_station_history"], "role": DISPLAY_ROLE,
+                "features": counts["metro_station_history"],
+                "bytes": sizes["metro_station_history"],
+                "source": rel(paths["metro_station_history"]),
+                "open_stations_by_year": open_by_year,
+                "note": ("station points at their committed coordinates, filtered by "
+                         "opening_year <= year; no historical line geometry or "
+                         "historical service area exists or is implied"),
+            },
+            **{
+                key: {
+                    "file": WEB_FILES[key], "role": DISPLAY_ROLE,
+                    "features": counts[key], "bytes": sizes[key],
+                    "source": rel(paths[source]),
+                    "source_bytes": paths[source].stat().st_size,
+                    **facility_counts[key],
+                    "note": ("points at the audited routing-proxy longitude/latitude "
+                             "each facility carries, written exactly; facility "
+                             "polygons are not shipped and no centroid is computed"),
+                }
+                for key, source in (("healthcare_points", "healthcare_facilities"),
+                                    ("education_points", "education_facilities"))
+            },
         },
         "not_recomputed": [
             "network accessibility", "population calibration",
             "district access metrics", "city access summary",
+            "standardized temporal metro access", "urban-dimension accessibility",
+            "facility deduplication", "facility district assignment",
+            "facility representative points",
         ],
     }
     write_json(WEB_DATA_DIR / WEB_FILES["manifest"], manifest)
