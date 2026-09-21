@@ -1024,6 +1024,175 @@ code {
   .current > .workspace { height: calc(100vh - var(--topbar-h)); }
 }
 
+/* ── standardized temporal chapter ────────────────────────────────────── */
+/* The same surfaces, rules and type as the bridge above it. The actual series
+   and open stations are metro cyan; the two diagnostic series are neutral
+   greys told apart by dash pattern and marker shape, never by hue alone. */
+:root {
+  --cmp-a: #d6dee8;
+  --cmp-b: #8597ac;
+}
+
+.temporal {
+  padding: clamp(36px, 7vh, 72px) 20px clamp(32px, 6vh, 64px);
+  border-top: 1px solid var(--line-2);
+  scroll-margin-top: var(--topbar-h);
+}
+.temporal > * { max-width: 1240px; }
+
+/* year control */
+.year-control {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px;
+  margin-bottom: 16px; padding: 10px 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+}
+.yc-label {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-3);
+}
+.yc-range { flex: 1 1 180px; min-width: 120px; accent-color: var(--metro); margin: 0; }
+.yc-output {
+  min-width: 3.2em; font-size: 20px; font-weight: 600; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; color: var(--text);
+}
+.yc-step:disabled { opacity: 0.45; }
+
+.temporal-grid {
+  display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 14px; margin-bottom: 14px; align-items: start;
+}
+.tpanel {
+  padding: 14px 16px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r);
+  min-width: 0;
+}
+.tpanel--wide { margin-top: 14px; }
+.tpanel-title { font-size: 13px; letter-spacing: 0.005em; margin-bottom: 3px; }
+
+.tchart { min-width: 0; }
+.tchart svg, .tmap svg { display: block; width: 100%; height: auto; }
+
+/* axes and marks */
+.tc-grid line { stroke: var(--line); }
+.tc-grid text, .tc-axis text {
+  font-size: 10px; fill: var(--text-3); font-variant-numeric: tabular-nums;
+}
+.tc-axis .domain, .tc-axis line { stroke: var(--line-2); }
+.tc-axis-title { font-size: 10px; fill: var(--text-3); }
+.tc-event-guide { stroke: var(--line-2); stroke-dasharray: 3 3; }
+.tc-event-label { font-size: 9.5px; fill: var(--text-2); font-variant-numeric: tabular-nums; }
+.tc-line { fill: none; stroke: var(--metro); stroke-width: 2.2; }
+.tc-marker { stroke: rgba(228, 234, 241, 0.32); stroke-width: 1; }
+.tc-point { fill: var(--metro); stroke: var(--surface); stroke-width: 1.2; }
+/* A projection-flagged year is hollow: its shape, not only its colour, says so. */
+.tc-point.is-projection { fill: var(--surface); stroke: var(--metro); stroke-width: 1.8; }
+.tc-point.is-active { stroke: var(--sel); stroke-width: 2; }
+.tc-point.is-projection.is-active { fill: var(--surface); stroke: var(--sel); }
+
+/* selected-year summary */
+.tsum { margin-top: 12px; }
+.tsum-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 1px;
+  margin: 0; background: var(--line); border: 1px solid var(--line);
+  border-radius: 4px; overflow: hidden;
+}
+.tsum-item { background: var(--surface-2); padding: 7px 9px; min-width: 0; }
+.tsum-item dt {
+  font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3);
+}
+.tsum-item dd {
+  margin: 2px 0 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.tsum-meta { margin: 8px 0 0; font-size: 11px; color: var(--text-3); }
+.tsum-flag {
+  display: flex; align-items: center; gap: 7px;
+  margin: 8px 0 0; padding: 6px 9px; font-size: 11.5px; color: var(--text);
+  border-left: 2px solid var(--text-2); background: var(--surface-2); border-radius: 0 4px 4px 0;
+}
+.tsum-flag::before {
+  content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%;
+  border: 1.8px solid var(--metro); box-sizing: border-box;
+}
+.tcontext { margin: 10px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--text-2); }
+
+/* station source-state map */
+.tm-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 6px; }
+.tm-key {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--metro); flex: none;
+}
+.tm-key--new { width: 12px; height: 12px; border: 2px solid var(--sel); box-sizing: border-box; }
+.tmap { min-width: 0; }
+.tm-district { fill: var(--surface-2); stroke: var(--line-2); stroke-width: 0.8; }
+.tm-station { fill: var(--metro); stroke: var(--surface); stroke-width: 0.9; }
+.tm-station.is-new { stroke: var(--sel); stroke-width: 2; }
+
+/* station-set changes */
+.tevents { margin-top: 4px; }
+.tev-list {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px; margin-top: 10px;
+}
+.tev {
+  padding: 12px 14px; min-width: 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+}
+.tev-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tev-year {
+  margin: 0;
+  font-size: 20px; font-weight: 600; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.tev-show[aria-pressed="true"] { border-color: var(--metro-2); background: var(--surface-3); }
+.tev-count { margin: 6px 0 0; font-size: 12.5px; color: var(--text); font-variant-numeric: tabular-nums; }
+.tev-change { margin: 3px 0 0; font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.tev-names { margin-top: 8px; font-size: 11.5px; color: var(--text-2); }
+.tev-names summary { cursor: pointer; color: var(--text-2); }
+.tev-names summary:hover { color: var(--text); }
+.tev-names ul {
+  margin: 6px 0 0; padding-left: 16px; columns: 2 120px; column-gap: 16px;
+}
+.tev-names li { break-inside: avoid; overflow-wrap: anywhere; }
+
+/* descriptive diagnostics */
+.cf-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 6px; }
+.cf-key { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-2); }
+.cf-sample { flex: none; overflow: visible; }
+.cf-line { fill: none; stroke-width: 2; }
+.cf-line.cf-actual { stroke: var(--metro); stroke-width: 2.2; }
+.cf-line.cf-network { stroke: var(--cmp-a); stroke-dasharray: 7 4; }
+.cf-line.cf-population { stroke: var(--cmp-b); stroke-dasharray: 2 3; stroke-width: 2.2; }
+.cf-symbol { stroke: var(--surface); stroke-width: 1; }
+.cf-symbol.cf-actual { fill: var(--metro); }
+.cf-symbol.cf-network { fill: var(--cmp-a); }
+.cf-symbol.cf-population { fill: var(--cmp-b); }
+.cf-values {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1px;
+  margin: 10px 0 0; background: var(--line); border: 1px solid var(--line);
+  border-radius: 4px; overflow: hidden;
+}
+.cf-value { background: var(--surface-2); padding: 7px 9px; min-width: 0; }
+.cf-value dt { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); }
+.cf-value dd {
+  margin: 3px 0 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.cf-explain p { margin: 10px 0 0; font-size: 12px; line-height: 1.55; color: var(--text-2); }
+.cf-explain .cf-caution { color: var(--text); }
+
+@media (max-width: 1060px) {
+  .temporal-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 940px) {
+  .temporal { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 620px) {
+  .temporal { padding: 32px 12px 28px; }
+  .tpanel { padding: 12px 12px; }
+  .yc-output { font-size: 18px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
 }

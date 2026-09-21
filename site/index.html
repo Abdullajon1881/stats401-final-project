@@ -222,6 +222,75 @@
   </div>
 </section>
 
+<!-- ── the standardized temporal story ────────────────────────────────── -->
+<!-- Drawn by js/temporal.js only after this section is visible. Every year,
+     share and count comes from the temporal files in site/data. The year
+     control here is local to this chapter: it never changes the current map
+     or the district selection above and below. -->
+<section id="temporal-story" class="temporal" aria-labelledby="temporal-h" hidden>
+  <div class="section-head">
+    <p class="eyebrow">Standardized comparison</p>
+    <h2 id="temporal-h" class="section-title"></h2>
+    <p class="section-lede">The time series holds today&rsquo;s pedestrian network, station-centre
+      coordinates and district geography fixed, then changes only the station opening state and
+      the annual WorldPop model weights. Its values are comparable with one another, not with the
+      current snapshot above.</p>
+  </div>
+
+  <div class="year-control" role="group" aria-labelledby="year-range-label">
+    <label id="year-range-label" for="year-range" class="yc-label">Year</label>
+    <button type="button" id="year-prev" class="btn btn--sm yc-step"
+            aria-label="Previous year"><span aria-hidden="true">&lsaquo;</span> Prev</button>
+    <input type="range" id="year-range" class="yc-range">
+    <button type="button" id="year-next" class="btn btn--sm yc-step"
+            aria-label="Next year">Next <span aria-hidden="true">&rsaquo;</span></button>
+    <output id="year-output" class="yc-output" for="year-range"></output>
+  </div>
+  <p id="year-live" class="visually-hidden" aria-live="polite"></p>
+
+  <div class="temporal-grid">
+    <section class="tpanel tpanel--series" aria-labelledby="tline-h">
+      <h3 id="tline-h" class="tpanel-title">Standardized metro access by year</h3>
+      <p class="panel-sub">Share of each year&rsquo;s WorldPop modelled population within a
+        modelled ten-minute walk of a station-centre proxy.</p>
+      <div id="temporal-line" class="tchart"></div>
+      <p id="temporal-line-note" class="panel-foot"></p>
+      <div id="temporal-summary" class="tsum"></div>
+      <p id="temporal-context" class="tcontext"></p>
+    </section>
+
+    <section class="tpanel tpanel--map" aria-labelledby="tmap-h">
+      <h3 id="tmap-h" class="tpanel-title">Station source state</h3>
+      <p class="panel-sub">Stations in the standardized source set by the selected year.</p>
+      <div class="tm-legend" aria-hidden="true">
+        <span class="lg"><i class="tm-key"></i>Open</span>
+        <span class="lg"><i class="tm-key tm-key--new"></i>Opened in the selected year</span>
+      </div>
+      <div id="temporal-map" class="tmap"></div>
+      <p class="panel-foot">Station points use current coordinates as fixed proxies. District
+        outlines are current geography. No historical metro lines, street network or
+        service-area geometry is reconstructed here.</p>
+    </section>
+  </div>
+
+  <section class="tevents" aria-labelledby="tevents-h">
+    <h3 id="tevents-h" class="tpanel-title">When the station source set changed</h3>
+    <p class="panel-sub">Each change below is a combined annual standardized change between
+      consecutive years: the station set and the annual population weights both change, so it
+      cannot be attributed to the new stations alone.</p>
+    <div id="temporal-events" class="tev-list"></div>
+  </section>
+
+  <section class="tpanel tpanel--wide" aria-labelledby="cf-h">
+    <h3 id="cf-h" class="tpanel-title">What changes when one side is held fixed?</h3>
+    <p class="panel-sub">Descriptive diagnostics &mdash; not an additive causal decomposition.</p>
+    <div id="cf-legend" class="cf-legend" aria-hidden="true"></div>
+    <div id="temporal-cf" class="tchart"></div>
+    <div id="cf-summary" class="cf-summary"></div>
+    <div id="cf-explain" class="cf-explain"></div>
+  </section>
+</section>
+
 <!-- ── coordinated district analysis deck ──────────────────────────────── -->
 <!-- Three more views over the same twelve districts and the same selection
      state as the map and the ranking above. Not three separate charts: hover

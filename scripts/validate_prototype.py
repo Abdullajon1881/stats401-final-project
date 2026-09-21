@@ -1207,14 +1207,20 @@ def validate_contract() -> dict[str, int]:
 # 10. story shell and the two same-year metric reconciliation
 # ---------------------------------------------------------------------------
 STORY_SECTION_IDS = ("hero", "current-access", "metric-bridge", "district-analysis")
-# Web assets that belong to later sections of the story. The shell must not
+# Web assets that belong to sections of the story not yet built. Nothing may
 # fetch them at start-up: they would add weight for views that do not exist yet.
+# The temporal chapter's own three files left this list when that chapter was
+# added; section 11 asserts that they are loaded.
 DEFERRED_ASSETS = (
-    "temporal_district.json", "temporal_events.json", "temporal_counterfactual.json",
-    "metro_station_history.geojson", "healthcare_points.geojson",
+    "temporal_district.json", "healthcare_points.geojson",
     "education_points.geojson", "urban_dimensions_city.json",
     "urban_dimensions_district.json",
 )
+TEMPORAL_ASSETS = {
+    "temporalEvents": "temporal_events.json",
+    "temporalCounterfactual": "temporal_counterfactual.json",
+    "stationHistory": "metro_station_history.geojson",
+}
 # Exact values the story shows. Each must reach the page from site/data; none
 # may be typed into the application source.
 STORY_LITERALS = (
@@ -1522,6 +1528,361 @@ def validate_story_shell() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 11. the standardized temporal story
+# ---------------------------------------------------------------------------
+# The chapter changed neither the current map nor the shared store: moving
+# through the years is a local view, never a change to "what does access look
+# like now?". That is a fact about the chapter itself, so it is checked over the
+# fixed range from its base to its approved implementation head. Both ends are
+# commits, not the working tree, so later work on these files cannot
+# retroactively invalidate it.
+PHASE_C_BASE = "643bd39cc2c8d6ec345d9758357d82eb45dfdcee"
+PHASE_C_IMPLEMENTATION_HEAD = "8a2fcd53b4a7f64b7c27a3a04c3b89e72f690c5a"
+PHASE_C_FROZEN = ("site/js/state.js", "site/js/map.js")
+# Field names that carry the baseline year in their name. They are read, not
+# typed values, so the literal-year scan ignores them.
+YEAR_FIELD_NAMES = (
+    "metro_access_pct_change_from_2015_pp",
+    "network_change_on_2015_population_pct",
+    "population_change_under_2015_network_pct",
+)
+# Layers of the CURRENT map. None may be read by the temporal chapter, whose
+# only spatial claim is which station points were in the source set by a year.
+CURRENT_ONLY_TOKENS = ("isochrone", "metroLines", "data.access", "metro_access_points",
+                       "density", "data.bus", "bazaars", "data.mask")
+CAUSAL_PHRASES = ("caused by", "causal impact", "effect of the", "effect of population",
+                  "effect of metro", "explained by", "because of construction",
+                  "access gained", "impact of", "due to the new")
+DIAGNOSTIC_FIELDS = ("actual_standardized_pct", "network_change_on_2015_population_pct",
+                     "population_change_under_2015_network_pct")
+
+
+def strip_js_comments(text: str) -> str:
+    return re.sub(r"(?<![:\w])//[^\n]*", "", re.sub(r"/\*.*?\*/", "", text, flags=re.S))
+
+
+def git_unchanged_between(base: str, head: str, path: str) -> bool | None:
+    """Whether `path` is identical at two fixed commits; None if git cannot tell."""
+    result = subprocess.run(["git", "diff", "--quiet", base, head, "--", path],
+                            cwd=cfg.REPO_ROOT, capture_output=True)
+    return {0: True, 1: False}.get(result.returncode)
+
+
+def validate_temporal_story() -> None:
+    section("11. Standardized temporal story")
+    html = (SITE_DIR / "index.html").read_text(encoding="utf-8")
+    markup = re.sub(r"<!--.*?-->", "", html, flags=re.S)
+    sources = js_sources()
+    temporal = sources.get("temporal.js", "")
+    temporal_code = strip_js_comments(temporal)
+    app = sources.get("app.js", "")
+    data_js = sources.get("data.js", "")
+
+    # --- architecture ---------------------------------------------------
+    check(bool(temporal), "site/js/temporal.js exists")
+    tag = opening_tag(markup, "temporal-story")
+    check(tag.startswith("<section") and " hidden" in tag,
+          "#temporal-story is a section that starts hidden")
+    order = [markup.find(f'id="{name}"') for name in
+             ("metric-bridge", "temporal-story", "district-analysis")]
+    check(all(p >= 0 for p in order) and order == sorted(order)
+          and order[-1] < markup.find("</main>"),
+          "the temporal chapter sits between the metric bridge and district analysis, "
+          "inside <main>")
+    check(opening_tag(markup, "temporal-h").startswith("<h2"), "the chapter has an h2")
+    for heading in ("tline-h", "tmap-h", "tevents-h", "cf-h"):
+        check(opening_tag(markup, heading).startswith("<h3"),
+              f"#{heading} is an h3 under the chapter heading")
+    check("el('h4', { id: `tev-" in temporal, "each station-set change is an h4 under its h3")
+    check("'temporal-story'" in app and re.search(
+        r"const STORY_SECTIONS = \[[^\]]*'metric-bridge',\s*'temporal-story',\s*"
+        r"'district-analysis'", app) is not None,
+          "a load failure hides the temporal chapter with the other sections")
+    prepare_at = app.find("prepareTemporal(data)")
+    story_at = app.find("initStory(data)")
+    reveal_at = app.find("reveal(true)")
+    init_at = app.find("initTemporal(timeline)")
+    check(0 <= prepare_at < story_at < reveal_at < init_at,
+          "the temporal inputs are prepared first, before any section is rendered or "
+          "revealed, and the chapter is drawn only after the reveal")
+    check("export function prepareTemporal(data)" in temporal
+          and "export function initTemporal(model)" in temporal,
+          "the chapter separates validation (prepare) from drawing (init)")
+
+    # --- data loading ---------------------------------------------------
+    for key, name in TEMPORAL_ASSETS.items():
+        check(f"{key}: '{name}'" in data_js, f"the application loads {name}")
+
+    # --- isolation ------------------------------------------------------
+    for path in PHASE_C_FROZEN:
+        unchanged = git_unchanged_between(PHASE_C_BASE, PHASE_C_IMPLEMENTATION_HEAD, path)
+        state = {True: "no change", False: "changed", None: "git could not compare"}[unchanged]
+        check(unchanged is True,
+              f"Phase C introduced no change to {path} "
+              f"({PHASE_C_BASE[:7]} -> {PHASE_C_IMPLEMENTATION_HEAD[:7]}: {state})")
+    check("./state.js" not in temporal and "./map.js" not in temporal
+          and "./ui.js" not in temporal and "store." not in temporal_code,
+          "the temporal module does not touch the shared store, the map or the UI module")
+    found = [token for token in CURRENT_ONLY_TOKENS if token in temporal]
+    check(not found, f"the temporal module reads no current-map layer ({found or 'none'})")
+    check("let activeYear = minYear;" in temporal_code
+          and "select(minYear, { announce: false })" in temporal_code,
+          "the active year is local to the chapter and starts at the first data year")
+
+    # --- no typed years, shares or counts -------------------------------
+    year_pattern = re.compile(r"\b20(?:0\d|1\d|2\d|3\d)\b")
+    scanned = {"index.html": markup, **{n: strip_js_comments(sources.get(n, ""))
+                                         for n in ("app.js", "data.js", "story.js", "temporal.js")}}
+    for name, text in scanned.items():
+        # The SVG namespace URL carries a year that is not data.
+        text = text.replace("http://www.w3.org/2000/svg", "")
+        for field in YEAR_FIELD_NAMES:
+            text = text.replace(field, "")
+        years = sorted(set(year_pattern.findall(text)))
+        check(not years, f"{name} types no year ({years or 'none'})")
+    city = load_json(WEB_DATA_DIR / WEB_FILES["temporal_city"])["records"]
+    typed = sorted({f"{r['metro_access_pct_standardized']:.2f}" for r in city
+                    if f"{r['metro_access_pct_standardized']:.2f}" in temporal_code + markup})
+    check(not typed, f"no standardized share is typed into the chapter ({typed or 'none'})")
+    range_tag = opening_tag(markup, "year-range")
+    check(range_tag.startswith("<input") and 'type="range"' in range_tag
+          and not re.search(r"\b(min|max|value)=", range_tag),
+          "the year range takes its min, max and value from the data at runtime")
+    check("min: String(minYear), max: String(maxYear)" in temporal_code
+          and "value: String(minYear)" in temporal_code,
+          "the range is set from the first and last data years")
+    check('for="year-range"' in opening_tag(markup, "year-range-label"),
+          "the year range has a real label")
+    check('aria-live="polite"' in opening_tag(markup, "year-live"),
+          "year changes are announced politely")
+    for control in ("year-prev", "year-next"):
+        tag = opening_tag(markup, control)
+        check(tag.startswith('<button type="button"') and "aria-label=" in tag,
+              f"#{control} is a labelled button")
+    check("hosts.prev.disabled = activeYear === minYear" in temporal_code
+          and "hosts.next.disabled = activeYear === maxYear" in temporal_code,
+          "previous and next are disabled at the ends of the series")
+    check("setInterval" not in temporal_code and "requestAnimationFrame" not in temporal_code
+          and ".transition(" not in temporal_code,
+          "the chapter never animates or plays on its own")
+
+    # --- data contracts, checked here in Python as well ------------------
+    years = sorted(r["year"] for r in city)
+    check(len(set(years)) == len(years) and years == list(range(years[0], years[-1] + 1)),
+          f"annual years are unique and contiguous ({years[0]}-{years[-1]})")
+    stations = load_json(WEB_DATA_DIR / WEB_FILES["metro_station_history"])["features"]
+    check(all(f["geometry"]["type"] == "Point" for f in stations),
+          "the station history is points only")
+    by_year = {r["year"]: r for r in city}
+    open_counts = {y: sum(1 for f in stations if f["properties"]["opening_year"] <= y)
+                   for y in years}
+    check(all(open_counts[y] == by_year[y]["open_station_count"] for y in years),
+          f"stations open by each year equal the annual open_station_count ({open_counts})")
+    events = load_json(WEB_DATA_DIR / WEB_FILES["temporal_events"])["records"]
+    event_ok = []
+    for ev in events:
+        y = ev["year"]
+        names = sorted(n.strip() for n in ev["station_names_added"].split("|"))
+        opened = sorted(f["properties"]["station_name_current"] for f in stations
+                        if f["properties"]["opening_year"] == y)
+        event_ok.append(
+            y in by_year and y - 1 in by_year
+            and ev["stations_after"] == by_year[y]["open_station_count"]
+            and ev["stations_before"] == by_year[y - 1]["open_station_count"]
+            and ev["city_access_pct_event_year"] == by_year[y]["metro_access_pct_standardized"]
+            and ev["city_access_pct_previous_year"]
+            == by_year[y - 1]["metro_access_pct_standardized"]
+            and names == opened)
+    check(bool(events) and all(event_ok),
+          f"every station-set change reconciles with the annual series and the station "
+          f"history ({[e['year'] for e in events]})")
+    diagnostics = load_json(WEB_DATA_DIR / WEB_FILES["temporal_counterfactual"])["records"]
+    check(sorted(r["year"] for r in diagnostics) == years
+          and all(r["actual_standardized_pct"] == by_year[r["year"]]["metro_access_pct_standardized"]
+                  for r in diagnostics),
+          "the diagnostic years equal the annual years and the actual series is exact")
+
+    # --- the spatial claim ------------------------------------------------
+    check("No historical metro lines, street network or" in markup
+          and "service-area geometry is reconstructed here" in markup,
+          "the station map states that no historical line, street or service-area "
+          "geometry is drawn")
+    check("Station points use current coordinates as fixed proxies" in markup,
+          "the station map says the points are fixed current-coordinate proxies")
+    check("d3.geoMercator()" in temporal_code and "s.openingYear <= year" in temporal_code,
+          "the station map is a D3 projection filtered by opening_year <= year")
+    check("s.openingYear === activeYear ? 5.5" in temporal_code
+          and "is-new" in temporal_code,
+          "stations opened in the active year are marked by size and ring, not colour alone")
+    check("map.svg.attr('aria-label', `Selected year ${activeYear}" in temporal_code
+          and "tabindex" not in temporal_code,
+          "the station map has a year-specific label and no per-station tab stops")
+
+    # --- wording ----------------------------------------------------------
+    chapter = markup[markup.find('id="temporal-story"'):markup.find('id="district-analysis"')]
+    copy = re.sub(r"\s+", " ", chapter + temporal_code).lower()
+    check("combined annual standardized change" in copy,
+          "event changes are named combined annual standardized changes")
+    check("cannot be attributed to the new stations alone" in copy,
+          "event changes are not credited to the new stations")
+    check("not an additive causal decomposition" in copy,
+          "the diagnostics are declared not an additive causal decomposition")
+    check("not components that add up to the actual" in copy,
+          "the diagnostics are declared not to add up to the actual series")
+    causal = [p for p in CAUSAL_PHRASES if p in copy]
+    check(not causal, f"no causal attribution in the chapter ({causal or 'none'})")
+    arithmetic = re.search(
+        r"(?:" + "|".join(DIAGNOSTIC_FIELDS) + r")\]?\s*[-+*/](?!=)", temporal_code)
+    check(arithmetic is None, "the diagnostic series are never combined arithmetically")
+    check("--bus" not in (SITE_DIR / "styles.css").read_text(encoding="utf-8")
+          .split("standardized temporal chapter")[-1],
+          "the diagnostic series do not borrow the bus colour")
+    check("stroke-dasharray: 7 4" in (SITE_DIR / "styles.css").read_text(encoding="utf-8")
+          and "stroke-dasharray: 2 3" in (SITE_DIR / "styles.css").read_text(encoding="utf-8"),
+          "the two diagnostic series differ by dash pattern, not colour alone")
+
+    # --- projection flag ----------------------------------------------------
+    check("population_projection_flag" in temporal_code
+          and "flagged as projection" in temporal_code and "is-projection" in temporal_code,
+          "a projection-flagged year is read from the data and shown in words and shape")
+
+    # --- formatter ----------------------------------------------------------
+    check("pp: (v) =>" in data_js and "−" in data_js,
+          "signed percentage points come from one shared formatter with a true minus")
+    check("toFixed(" not in temporal_code, "the chapter formats through fmt, not toFixed")
+    check("from './dom.js'" in temporal and "innerHTML" not in temporal_code,
+          "the chapter builds its text through the safe DOM helpers")
+
+    validate_temporal_behaviour()
+
+
+# Runs the real temporal.js under Node against the committed files and mutated
+# copies. The source checks above prove its shape; this proves it fails closed.
+TEMPORAL_HARNESS = r"""
+import fs from 'node:fs';
+const [moduleUrl, dataDir] = process.argv.slice(1);
+const { prepareTemporal } = await import(moduleUrl);
+const read = (f) => JSON.parse(fs.readFileSync(`${dataDir}/${f}`, 'utf8'));
+const fresh = () => ({
+  temporalCity: read('temporal_city.json'),
+  temporalEvents: read('temporal_events.json'),
+  temporalCounterfactual: read('temporal_counterfactual.json'),
+  stationHistory: read('metro_station_history.geojson'),
+  districts: read('districts.geojson'),
+  manifest: read('manifest.json'),
+});
+const shuffle = (rows) => rows.slice().reverse().concat().sort((a, b) => (a.year % 3) - (b.year % 3));
+const out = {};
+const valid = fresh();
+const shuffled = fresh();
+shuffled.temporalCity.records = shuffle(shuffled.temporalCity.records);
+shuffled.temporalEvents.records = shuffled.temporalEvents.records.slice().reverse();
+shuffled.temporalCounterfactual.records = shuffle(shuffled.temporalCounterfactual.records);
+shuffled.stationHistory.features = shuffled.stationHistory.features.slice().reverse();
+for (const [name, data] of [['valid', valid], ['shuffled', shuffled]]) {
+  const m = prepareTemporal(data);
+  const years = [...m.city.years];
+  const cf = m.diagnostics.get(years[1]);
+  out[name] = {
+    minYear: m.minYear, maxYear: m.maxYear, years,
+    events: [...m.events.keys()].sort(),
+    counts: years.map((y) => m.stations.filter((s) => s.openingYear <= y).length),
+    expected: years.map((y) => m.city.byYear.get(y).open_station_count),
+    cfYear: cf.year,
+    cfMatches: cf.actual_standardized_pct === m.city.byYear.get(years[1]).metro_access_pct_standardized,
+  };
+}
+const top = Math.max(...valid.temporalCity.records.map((r) => r.year));
+const first = Math.min(...valid.temporalCity.records.map((r) => r.year));
+const eventYear = valid.temporalEvents.records[0].year;
+const mutations = {
+  duplicate_city_year: (d) => { d.temporalCity.records.push({ ...d.temporalCity.records[0] }); },
+  missing_city_year: (d) => { d.temporalCity.records = d.temporalCity.records.filter((r) => r.year !== first + 3); },
+  malformed_city_record: (d) => { d.temporalCity.records[2].metro_access_pct_standardized = 'x'; },
+  non_boolean_projection_flag: (d) => { d.temporalCity.records[0].population_projection_flag = 'no'; },
+  event_year_absent: (d) => { d.temporalEvents.records[0].year = top + 5; },
+  event_count_mismatch: (d) => { d.temporalEvents.records[0].stations_after += 1; },
+  event_name_mismatch: (d) => {
+    const ev = d.temporalEvents.records[0];
+    ev.station_names_added = ev.station_names_added.replace(/^[^|]+/, 'Not A Station ');
+  },
+  counterfactual_missing_year: (d) => { d.temporalCounterfactual.records.pop(); },
+  counterfactual_actual_mismatch: (d) => { d.temporalCounterfactual.records[3].actual_standardized_pct += 0.001; },
+  duplicate_station_id: (d) => {
+    const f = d.stationHistory.features;
+    f[1] = { ...f[1], properties: { ...f[1].properties, station_id: f[0].properties.station_id } };
+  },
+  station_count_mismatch: (d) => {
+    const f = d.stationHistory.features.find((s) => s.properties.opening_year === eventYear);
+    f.properties.opening_year = eventYear - 1;
+  },
+  manifest_count_mismatch: (d) => { d.manifest.layers.metro_station_history.features += 1; },
+};
+for (const [name, mutate] of Object.entries(mutations)) {
+  const d = fresh();
+  mutate(d);
+  try {
+    prepareTemporal(d);
+    out[name] = { threw: false };
+  } catch (error) {
+    out[name] = { threw: true, message: String(error.message) };
+  }
+}
+console.log(JSON.stringify(out));
+"""
+
+
+def validate_temporal_behaviour() -> None:
+    node = shutil.which("node")
+    if node is None:
+        check(False, "Node.js is available to exercise prepareTemporal() "
+                     "(behavioural checks skipped)", critical=False)
+        return
+    module_url = (SITE_DIR / "js" / "temporal.js").resolve().as_uri()
+    result = subprocess.run(
+        [node, "--input-type=module", "-e", TEMPORAL_HARNESS, module_url,
+         str(WEB_DATA_DIR)],
+        capture_output=True, text=True, encoding="utf-8",
+    )
+    if not check(result.returncode == 0,
+                 f"prepareTemporal() runs under Node ({result.stderr.strip()[:160] or 'ok'})"):
+        return
+    out = json.loads(result.stdout.strip().splitlines()[-1])
+    city = load_json(WEB_DATA_DIR / WEB_FILES["temporal_city"])["records"]
+    years = sorted(r["year"] for r in city)
+    for name in ("valid", "shuffled"):
+        run = out[name]
+        check(run["minYear"] == years[0] and run["maxYear"] == years[-1]
+              and run["years"] == years,
+              f"{name} input: first and last year come from the data "
+              f"({run['minYear']}-{run['maxYear']})")
+        check(run["counts"] == run["expected"],
+              f"{name} input: station counts reconcile for every year")
+        check(run["events"] == sorted(r["year"] for r in load_json(
+            WEB_DATA_DIR / WEB_FILES["temporal_events"])["records"]),
+              f"{name} input: events are found by year ({run['events']})")
+        check(run["cfYear"] == years[1] and run["cfMatches"],
+              f"{name} input: a diagnostic row is found by year and matches the series")
+    for name, label in (
+        ("duplicate_city_year", "a repeated annual year"),
+        ("missing_city_year", "a gap in the annual years"),
+        ("malformed_city_record", "a malformed annual record"),
+        ("non_boolean_projection_flag", "a non-boolean projection flag"),
+        ("event_year_absent", "an event year outside the series"),
+        ("event_count_mismatch", "an event count that disagrees with the series"),
+        ("event_name_mismatch", "an event station name absent from the history"),
+        ("counterfactual_missing_year", "a missing diagnostic year"),
+        ("counterfactual_actual_mismatch", "a diagnostic actual value off the series"),
+        ("duplicate_station_id", "a repeated station_id"),
+        ("station_count_mismatch", "a station history that no longer reconciles"),
+        ("manifest_count_mismatch", "a station count the manifest does not record"),
+    ):
+        case = out[name]
+        check(case["threw"], f"prepareTemporal() throws on {label} "
+                             f"({case.get('message') or 'did not throw'})")
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 def main() -> int:
@@ -1545,6 +1906,7 @@ def main() -> int:
     validate_no_hardcoded_metrics()
     validate_state_and_a11y()
     validate_story_shell()
+    validate_temporal_story()
 
     section("Summary")
     print(f"  passed  : {len(PASSED)}")
