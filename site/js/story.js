@@ -20,37 +20,70 @@ const CITY_NUMBERS = [
   'metro_access_pct', 'metro_access_population', 'analysis_population',
   'walking_time_minutes', 'walking_speed_kmh',
 ];
+const CITY_TEXT = ['reference_period', 'snapping_method'];
 
 function isFiniteNumber(value) {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function isText(value) {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
 function checkCity(city) {
   if (!city) throw new Error('city_summary.json is missing');
-  const bad = CITY_NUMBERS.filter((key) => !isFiniteNumber(city[key]));
+  const bad = [
+    ...CITY_NUMBERS.filter((key) => !isFiniteNumber(city[key])),
+    ...CITY_TEXT.filter((key) => !isText(city[key])),
+  ];
   if (bad.length > 0) {
     throw new Error(`city_summary.json has no usable value for ${bad.join(', ')}`);
   }
-  if (typeof city.reference_period !== 'string' || city.reference_period === '') {
-    throw new Error('city_summary.json has no reference period');
-  }
 }
 
-/** The latest standardized record, chosen by year rather than by array order. */
+/* Every field the story reads from a temporal record. A record missing any of
+ * them makes the whole file invalid: it is never skipped. */
+function temporalRecordProblem(record) {
+  if (!record || typeof record !== 'object') return 'is not a record';
+  if (!Number.isInteger(record.year)) return 'has no integer year';
+  if (!isFiniteNumber(record.metro_access_pct_standardized)) {
+    return 'has no finite metro_access_pct_standardized';
+  }
+  if (!Number.isInteger(record.open_station_count)) return 'has no integer open_station_count';
+  if (!isText(record.temporal_reference)) return 'has no temporal_reference';
+  if (!isFiniteNumber(record.population_modelled_available)
+      || record.population_modelled_available < 0) {
+    return 'has no usable population_modelled_available';
+  }
+  return null;
+}
+
+/**
+ * The latest standardized record, chosen by year rather than by array order.
+ *
+ * Fails closed: the whole series is validated before anything is selected, so
+ * a malformed newest row stops the page instead of letting an older year stand
+ * in for it, and a repeated year anywhere means the file is not a series keyed
+ * by year at all.
+ */
 export function latestStandardized(temporalCity) {
   const records = temporalCity && Array.isArray(temporalCity.records)
-    ? temporalCity.records : [];
-  const usable = records.filter((r) => r && Number.isInteger(r.year)
-    && isFiniteNumber(r.metro_access_pct_standardized)
-    && Number.isInteger(r.open_station_count));
-  if (usable.length === 0) {
-    throw new Error('temporal_city.json carries no usable standardized record');
+    ? temporalCity.records : null;
+  if (!records || records.length === 0) {
+    throw new Error('temporal_city.json carries no standardized records');
   }
-  const latest = usable.reduce((a, b) => (b.year > a.year ? b : a));
-  if (usable.filter((r) => r.year === latest.year).length !== 1) {
-    throw new Error(`temporal_city.json carries more than one record for ${latest.year}`);
+  records.forEach((record, i) => {
+    const problem = temporalRecordProblem(record);
+    if (problem) throw new Error(`temporal_city.json record ${i} ${problem}`);
+  });
+  const years = new Set();
+  for (const record of records) {
+    if (years.has(record.year)) {
+      throw new Error(`temporal_city.json carries more than one record for ${record.year}`);
+    }
+    years.add(record.year);
   }
-  return latest;
+  return records.reduce((a, b) => (b.year > a.year ? b : a));
 }
 
 /* ── hero ─────────────────────────────────────────────────────────────── */
@@ -101,16 +134,18 @@ function renderBridge(city, latest) {
     ? `Why are there two ${latest.year} metro-access numbers?`
     : 'Why are there two metro-access numbers?';
 
-  const measure = `of the analysed population within a modelled`
-    + ` ${city.walking_time_minutes}-minute walk`;
+  // Each share is stated against its own population, directly under the
+  // number: the two cards do not divide by the same people.
+  const walk = `within a modelled ${city.walking_time_minutes}-minute walk`;
 
   replace(document.getElementById('bridge-pair'), [
     metricCard({
       id: 'metric-current',
       label: 'Current snapshot',
       value: fmt.pct2(city.metro_access_pct),
-      measure,
-      context: `${city.reference_period} · current entrance-aware method`,
+      measure: `of the current SIAT-calibrated analysed population ${walk}`,
+      context: `${city.reference_period} · ${fmt.compact(city.analysis_population)}`
+        + ' analysed residents · entrance-aware method',
       method: [
         'Entrance-aware metro access: mapped entrances, station point only where none is mapped',
         'SIAT-calibrated current population',
@@ -122,8 +157,9 @@ function renderBridge(city, latest) {
       id: 'metric-standardized',
       label: 'Standardized time series',
       value: fmt.pct2(latest.metro_access_pct_standardized),
-      measure,
-      context: `${latest.year} point · ${latest.temporal_reference} reference`
+      measure: `of the ${latest.year} WorldPop modelled population ${walk}`,
+      context: `${latest.year} · ${fmt.compact(latest.population_modelled_available)}`
+        + ` modelled residents · ${latest.temporal_reference} reference`
         + ` · ${fmt.int(latest.open_station_count)} stations open`,
       method: [
         'Station-centre proxy: fixed station coordinates, no entrances',

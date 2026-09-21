@@ -18,6 +18,8 @@ import csv
 import json
 import math
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -1229,6 +1231,81 @@ def opening_tag(html: str, element_id: str) -> str:
     return match.group(0) if match else ""
 
 
+# Runs the real story.js under Node against the real temporal_city.json and
+# mutated copies of it. Reading the source proves the shape of the code; this
+# proves what it does with a malformed series.
+LATEST_HARNESS = r"""
+import fs from 'node:fs';
+const [storyUrl, dataPath] = process.argv.slice(1);
+const { latestStandardized } = await import(storyUrl);
+const real = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+const rows = () => real.records.map((r) => ({ ...r }));
+const top = Math.max(...real.records.map((r) => r.year));
+const early = Math.min(...real.records.map((r) => r.year));
+const patch = (year, change) => rows().map((r) => (r.year === year ? { ...r, ...change } : r));
+const shuffled = rows().reverse();
+shuffled.push(shuffled.shift());
+const cases = {
+  shuffled_valid: shuffled,
+  empty: [],
+  invalid_latest_row: patch(top, { metro_access_pct_standardized: NaN }),
+  invalid_earlier_row: patch(early, { metro_access_pct_standardized: 'x' }),
+  duplicate_latest_year: [...rows(), { ...real.records.find((r) => r.year === top) }],
+  duplicate_earlier_year: [...rows(), { ...real.records.find((r) => r.year === early) }],
+  missing_temporal_reference: patch(early + 1, { temporal_reference: undefined }),
+  empty_temporal_reference: patch(top, { temporal_reference: '' }),
+  invalid_population: patch(early, { population_modelled_available: -1 }),
+};
+const out = {};
+for (const [name, records] of Object.entries(cases)) {
+  try {
+    const got = latestStandardized({ ...real, records });
+    out[name] = { threw: false, year: got.year };
+  } catch (error) {
+    out[name] = { threw: true, message: String(error.message) };
+  }
+}
+out.expected_year = top;
+console.log(JSON.stringify(out));
+"""
+
+
+def validate_latest_standardized_behaviour() -> None:
+    node = shutil.which("node")
+    if node is None:
+        check(False, "Node.js is available to exercise latestStandardized() "
+                     "(behavioural checks skipped)", critical=False)
+        return
+    story_url = (SITE_DIR / "js" / "story.js").resolve().as_uri()
+    data_path = str(WEB_DATA_DIR / WEB_FILES["temporal_city"])
+    result = subprocess.run(
+        [node, "--input-type=module", "-e", LATEST_HARNESS, story_url, data_path],
+        capture_output=True, text=True, encoding="utf-8",
+    )
+    if not check(result.returncode == 0,
+                 f"latestStandardized() runs under Node "
+                 f"({result.stderr.strip()[:160] or 'ok'})"):
+        return
+    out = json.loads(result.stdout.strip().splitlines()[-1])
+    shuffled = out["shuffled_valid"]
+    check(not shuffled["threw"] and shuffled["year"] == out["expected_year"],
+          f"shuffled valid records return the highest year ({shuffled})")
+    for name, label in (
+        ("empty", "an empty series"),
+        ("invalid_latest_row", "a non-finite value in the latest row, instead of an older year"),
+        ("invalid_earlier_row", "a malformed earlier row"),
+        ("duplicate_latest_year", "a repeated latest year"),
+        ("duplicate_earlier_year", "a repeated earlier year"),
+        ("missing_temporal_reference", "a record with no temporal reference"),
+        ("empty_temporal_reference", "a blank temporal reference"),
+        ("invalid_population", "a negative modelled population"),
+    ):
+        case = out[name]
+        check(case["threw"],
+              f"latestStandardized() throws on {label} "
+              f"({case.get('message') or 'returned ' + str(case.get('year'))})")
+
+
 def validate_story_shell() -> None:
     section("10. Story shell: hero, current access, metric bridge")
     html = (SITE_DIR / "index.html").read_text(encoding="utf-8")
@@ -1310,13 +1387,59 @@ def validate_story_shell() -> None:
           "both metrics are drawn by the same card builder, with identical treatment")
     check("'Current snapshot'" in bridge_body and "'Standardized time series'" in bridge_body,
           "each metric is named in words, not told apart by colour")
+
+    # Each card states its own denominator directly under its number. The two
+    # shares divide by different populations, so one shared phrase would imply
+    # a common base the data does not have.
+    cards = bridge_body.split("metricCard({")[1:]
+    measures = [re.search(r"measure:\s*`([^`]*)`", card) for card in cards]
+    measures = [m.group(1) if m else "" for m in measures]
+    check(len(measures) == 2 and all(measures) and measures[0] != measures[1],
+          "each metric card carries its own measure text, not one shared phrase")
+    check(re.search(r"^\s*measure,\s*$", bridge_body, re.M) is None
+          and "const measure" not in bridge_body,
+          "no single measure string is passed to both cards")
+    current_measure = measures[0] if measures else ""
+    standard_measure = measures[1] if len(measures) > 1 else ""
+    check("SIAT-calibrated" in current_measure and "current" in current_measure
+          and "WorldPop" not in current_measure,
+          f"the current card names the current SIAT-calibrated population "
+          f"({current_measure!r})")
+    check("WorldPop" in standard_measure and "modelled population" in standard_measure
+          and "SIAT" not in standard_measure,
+          f"the standardized card names the WorldPop modelled population "
+          f"({standard_measure!r})")
+    standard_card = cards[1] if len(cards) > 1 else ""
+    check("fmt.compact(latest.population_modelled_available)" in standard_card,
+          "the standardized card shows its own modelled population, read from the data")
+    check("fmt.compact(city.analysis_population)" in (cards[0] if cards else ""),
+          "the current card shows its own analysed population, read from the data")
+
     latest = re.search(r"export function latestStandardized\(temporalCity\)\s*\{(.+?)\n\}",
                        story, re.S)
     latest_body = latest.group(1) if latest else ""
     check("b.year > a.year" in latest_body and "records[" not in latest_body,
           "the latest standardized year is chosen by year, not by array position")
-    check("more than one record" in latest_body,
-          "a duplicated latest year is refused rather than silently picked")
+    # Fail closed: every record is validated before selection; nothing is
+    # filtered away, so a malformed newest row cannot hand over to an older year.
+    check(".filter(" not in latest_body,
+          "the temporal series is not filtered down to its usable rows")
+    check("records.forEach(" in latest_body and "temporalRecordProblem(record)" in latest_body
+          and latest_body.find("temporalRecordProblem(") < latest_body.find(".reduce("),
+          "every temporal record is validated before the latest one is chosen")
+    problem = re.search(r"function temporalRecordProblem\(record\)\s*\{(.+?)\n\}", story, re.S)
+    problem_body = problem.group(1) if problem else ""
+    for field in ("year", "metro_access_pct_standardized", "open_station_count",
+                  "temporal_reference", "population_modelled_available"):
+        check(f"record.{field}" in problem_body,
+              f"each temporal record's {field} is validated")
+    check("new Set()" in latest_body and "years.has(record.year)" in latest_body
+          and "more than one record" in latest_body,
+          "a repeated year anywhere in the series is refused")
+    check(re.search(r"const CITY_TEXT = \[[^\]]*'reference_period'[^\]]*'snapping_method'",
+                    story) is not None and "CITY_TEXT.filter" in story,
+          "the city reference period and snapping method are validated as text")
+    validate_latest_standardized_behaviour()
     check("reveal(true)" in app and app.find("initStory(data)") < app.find("reveal(true)")
           < app.find("mapModule.initMap("),
           "the story is checked and rendered before any section is revealed")
