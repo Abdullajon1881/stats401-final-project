@@ -14,6 +14,7 @@ or the HTML instead of being read from JSON at runtime.
 
 from __future__ import annotations
 
+import csv
 import json
 import math
 import re
@@ -393,6 +394,9 @@ DISPLAY_ONLY_LAYERS = (
     "population_density",
     "metro_lines",
     "analysis_mask",
+    "metro_station_history",
+    "healthcare_points",
+    "education_points",
 )
 ANALYTICAL_LAYERS = ("districts",)
 
@@ -764,6 +768,440 @@ def validate_state_and_a11y() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 5c-5f. Phase A frontend data contract
+# ---------------------------------------------------------------------------
+# These checks do not reuse the build's CSV reader. Each committed cell is read
+# back as text with the csv module and compared against the web value on the
+# value's own terms, so a parsing or typing mistake in the build cannot certify
+# itself.
+TEMPORAL_YEARS = list(range(2015, 2027))
+STANDARDIZED_2026_METRO_PCT = 10.028085007
+EXPECTED_OPEN_STATIONS = {
+    2015: 29, 2016: 29, 2017: 29, 2018: 29, 2019: 29,
+    2020: 43, 2021: 43, 2022: 43,
+    2023: 48,
+    2024: 50, 2025: 50, 2026: 50,
+}
+EXPECTED_URBAN_CITY = {
+    "population_total": 3212200.0,
+    "population_cells": 65169,
+    "healthcare_10min_pct": 46.891988202,
+    "education_10min_pct": 72.482732459,
+    "bazaar_10min_pct": 14.435025214,
+    "healthcare_and_education_10min_pct": 43.653596349,
+    "walk_network_km": 8946.844384,
+    "healthcare_routing_sources": 436,
+    "healthcare_facilities_in_analysis_districts": 432,
+    "healthcare_facilities_outside_analysis_districts": 4,
+    "education_routing_sources": 1215,
+    "education_facilities_in_analysis_districts": 1190,
+    "education_facilities_outside_analysis_districts": 25,
+    "bazaar_routing_sources": 83,
+    "bazaar_facilities_in_analysis_districts": 83,
+}
+FACILITY_CONTRACT = {
+    "healthcare_points": {
+        "source": cfg.HEALTHCARE_FACILITIES_FILE,
+        "features": 436,
+        "category_field": "facility_category",
+        "categories": {"clinic": 230, "hospital": 206},
+        "assignments": {"within": 432, "outside_analysis_districts": 4, "boundary_tie": 0},
+    },
+    "education_points": {
+        "source": cfg.EDUCATION_FACILITIES_FILE,
+        "features": 1215,
+        "category_field": "education_category",
+        "categories": {"school": 532, "college": 104, "university": 98, "kindergarten": 481},
+        "assignments": {"within": 1190, "outside_analysis_districts": 25, "boundary_tie": 0},
+    },
+}
+FACILITY_SHARED_FIELDS = ("facility_id", "name", "district_name", "district_assignment",
+                          "osm_type", "osm_id", "representative_point_method")
+STATION_HISTORY_FIELDS = (
+    "station_id", "station_name_current", "station_name_historical", "line",
+    "opening_date", "opening_year", "date_precision", "opening_batch_id",
+    "district_name", "source_provider", "source_quality",
+)
+ANALYTICAL_CONTRACT = {
+    "temporal_city": (cfg.PHASE2_ACCESS_CITY_FILE, 12),
+    "temporal_district": (cfg.PHASE2_ACCESS_DISTRICT_FILE, 144),
+    "temporal_events": (cfg.PHASE2_ACCESS_EVENTS_FILE, 3),
+    "temporal_counterfactual": (cfg.PHASE2_ACCESS_COUNTERFACTUAL_FILE, 12),
+    "urban_dimensions_city": (cfg.URBAN_DIMENSIONS_CITY_FILE, 1),
+    "urban_dimensions_district": (cfg.URBAN_DIMENSIONS_DISTRICT_FILE, 12),
+}
+EXACT_COORDINATE_LAYERS = ("metro_station_history", "healthcare_points", "education_points")
+DISPLAY_CONTRACT = {
+    "metro_station_history": (cfg.METRO_STATION_HISTORY_FILE, 50),
+    "healthcare_points": (cfg.HEALTHCARE_FACILITIES_FILE, 436),
+    "education_points": (cfg.EDUCATION_FACILITIES_FILE, 1215),
+}
+# Words that would mean the build invented a score or an ordering the audited
+# analysis never produced.
+FORBIDDEN_DERIVED_KEYS = ("composite", "rank", "score", "best_district", "walkability")
+
+
+def read_source_csv(path: Path) -> tuple[list[str], list[dict]]:
+    with path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        return list(reader.fieldnames or []), list(reader)
+
+
+def cell_matches(web, text: str) -> bool:
+    """True when a web value is exactly what the committed CSV text denotes."""
+    if text == "":
+        return web is None
+    if isinstance(web, bool):
+        return text == str(web)
+    if isinstance(web, int):
+        return re.fullmatch(r"-?\d+", text) is not None and int(text) == web
+    if isinstance(web, float):
+        try:
+            return float(text) == web and math.isfinite(web)
+        except ValueError:
+            return False
+    if isinstance(web, str):
+        # A numeric cell must never reach the browser quoted.
+        try:
+            float(text)
+            return False
+        except ValueError:
+            return web == text
+    return False
+
+
+def compare_records(label: str, web: list[dict], path: Path) -> None:
+    columns, rows = read_source_csv(path)
+    check(len(web) == len(rows), f"{label}: {len(web)} records for {len(rows)} source rows")
+    check(all(list(r.keys()) == columns for r in web),
+          f"{label}: every record carries exactly the {len(columns)} source columns, in order")
+    bad = [
+        f"row {i} {c}={r.get(c)!r} vs {row[c]!r}"
+        for i, (r, row) in enumerate(zip(web, rows)) for c in columns
+        if not cell_matches(r.get(c), row[c])
+    ]
+    check(not bad,
+          f"{label}: every one of {len(rows) * len(columns):,} values equals the committed "
+          f"CSV exactly, with its proper scalar type ({len(bad)} differ"
+          f"{': ' + '; '.join(bad[:3]) if bad else ''})")
+
+
+def load_contract(key: str) -> dict:
+    return load_json(WEB_DATA_DIR / WEB_FILES[key])
+
+
+def validate_contract_tables() -> dict:
+    section("5c. Analytical tables: committed CSV -> typed JSON, value for value")
+    counts: dict[str, int] = {}
+    for key, (source, expected_rows) in ANALYTICAL_CONTRACT.items():
+        payload = load_contract(key)
+        check(payload.get("role") == "analytical", f"{key}: labelled analytical")
+        check(payload.get("source") == str(source.relative_to(cfg.REPO_ROOT)).replace("\\", "/"),
+              f"{key}: names its committed source ({payload.get('source')})")
+        records = payload.get("records") if "records" in payload else [payload.get("record")]
+        counts[key] = len(records)
+        check(len(records) == expected_rows,
+              f"{key}: {expected_rows} records (got {len(records)})")
+        compare_records(key, records, source)
+        keys = {k.lower() for r in records for k in r}
+        invented = sorted(k for k in keys if any(w in k for w in FORBIDDEN_DERIVED_KEYS))
+        check(not invented, f"{key}: no composite, rank or score field ({invented or 'none'})")
+
+    city = load_contract("temporal_city")["records"]
+    years = [r["year"] for r in city]
+    check(years == TEMPORAL_YEARS and len(set(years)) == 12,
+          "temporal city: one record per year, 2015 through 2026 in order")
+    by_year = {r["year"]: r for r in city}
+    got_2026 = by_year.get(2026, {}).get("metro_access_pct_standardized")
+    check(got_2026 == STANDARDIZED_2026_METRO_PCT,
+          f"temporal city: standardized 2026 metro access is exactly "
+          f"{STANDARDIZED_2026_METRO_PCT} (got {got_2026!r})")
+    headline = load_json(cfg.CITY_ACCESS_SUMMARY_FILE)["metro_access_pct"]
+    check(got_2026 != headline,
+          "temporal city: the standardized series is not the current headline metric")
+    state_ok = [
+        r["year"] for r in city
+        if r["metro_state_id"] == f"metro_state_{r['open_station_count']}"
+        and r["open_station_count"] == EXPECTED_OPEN_STATIONS[r["year"]]
+    ]
+    check(len(state_ok) == 12,
+          f"temporal city: every year's metro_state_id and open_station_count agree with "
+          f"the expected network state ({12 - len(state_ok)} disagree)")
+
+    district = load_contract("temporal_district")["records"]
+    grid = [(r["year"], r["district_name"]) for r in district]
+    names = {n for _, n in grid}
+    analysis_districts = set(pd.read_csv(cfg.DISTRICT_ACCESS_METRICS_FILE).district_name)
+    check(len(set(grid)) == len(grid) == 144, "temporal district: 144 unique (year, district) keys")
+    check(set(grid) == {(y, n) for y in TEMPORAL_YEARS for n in names},
+          "temporal district: complete year x district grid")
+    check(names == analysis_districts,
+          f"temporal district: district universe is exactly the "
+          f"{len(analysis_districts)} analysis districts")
+    check(EXCLUDED_DISTRICT not in names, f"temporal district: '{EXCLUDED_DISTRICT}' absent")
+    drift = [
+        r["year"] for r in district
+        if r["open_station_count"] != by_year[r["year"]]["open_station_count"]
+        or r["metro_state_id"] != by_year[r["year"]]["metro_state_id"]
+    ]
+    check(not drift, f"temporal district: network state agrees with the city table "
+                     f"every year ({len(drift)} disagree)")
+
+    counter = load_contract("temporal_counterfactual")["records"]
+    cyears = [r["year"] for r in counter]
+    check(sorted(cyears) == TEMPORAL_YEARS and len(set(cyears)) == 12,
+          "temporal counterfactual: 12 unique years, 2015-2026")
+    events = load_contract("temporal_events")["records"]
+    check(len(events) == 3 and all(r["year"] in TEMPORAL_YEARS for r in events),
+          f"temporal events: 3 network-change events inside 2015-2026 "
+          f"({[r['year'] for r in events]})")
+    check("not causal inference" in load_contract("temporal_counterfactual").get("note", ""),
+          "temporal counterfactual: described as descriptive decomposition, not causal")
+
+    urban = load_contract("urban_dimensions_city")["record"]
+    wrong = {k: urban.get(k) for k, v in EXPECTED_URBAN_CITY.items()
+             if not (urban.get(k) == v and type(urban.get(k)) is type(v))}
+    check(not wrong, f"urban city: every audited invariant holds exactly "
+                     f"({wrong or 'all ' + str(len(EXPECTED_URBAN_CITY))})")
+    udistrict = load_contract("urban_dimensions_district")["records"]
+    unames = [r["district_name"] for r in udistrict]
+    check(len(set(unames)) == 12 and set(unames) == analysis_districts,
+          "urban district: 12 unique districts, exactly the analysis districts")
+    check(len(udistrict[0]) == 34, f"urban district: full {len(udistrict[0])}-column record")
+    return counts
+
+
+def validate_station_history() -> int:
+    section("5d. Historical station points (display only)")
+    fc = load_contract("metro_station_history")
+    features = fc["features"]
+    columns, rows = read_source_csv(cfg.METRO_STATION_HISTORY_FILE)
+    source = {r["station_id"]: r for r in rows}
+
+    check(fc.get("type") == "FeatureCollection" and len(features) == 50,
+          f"station history: 50 features (got {len(features)})")
+    check(all(f["geometry"]["type"] == "Point" for f in features),
+          "station history: Point geometry only - no line geometry, no service area")
+    ids = [f["properties"]["station_id"] for f in features]
+    check(len(set(ids)) == len(ids) and set(ids) == set(source),
+          "station history: unique station IDs, exactly the committed set")
+    coords = [f["geometry"]["coordinates"] for f in features]
+    check(all(len(c) == 2 and all(isinstance(v, float) and math.isfinite(v) for v in c)
+              and 68 < c[0] < 71 and 40 < c[1] < 42 for c in coords),
+          "station history: every coordinate is a finite lon/lat pair over Tashkent")
+    moved = [f["properties"]["station_id"] for f in features
+             if f["geometry"]["coordinates"] != [
+                 float(source[f["properties"]["station_id"]]["longitude"]),
+                 float(source[f["properties"]["station_id"]]["latitude"])]]
+    check(not moved, f"station history: every point is exactly the committed "
+                     f"longitude/latitude ({len(moved)} moved)")
+    bad = [
+        f"{f['properties']['station_id']}.{k}"
+        for f in features for k in STATION_HISTORY_FIELDS
+        if not cell_matches(f["properties"].get(k), source[f["properties"]["station_id"]][k])
+    ]
+    check(not bad, f"station history: every carried property equals the committed CSV "
+                   f"({bad[:3] or 'none differ'})")
+    check(not any(k in f["properties"] for f in features
+                  for k in ("source_url", "notes", "current_osm_id")),
+          "station history: long notes, URLs and OSM ids are not shipped")
+
+    open_by_year = {y: sum(1 for f in features if f["properties"]["opening_year"] <= y)
+                    for y in TEMPORAL_YEARS}
+    check(open_by_year == EXPECTED_OPEN_STATIONS,
+          f"station history: open stations by year (opening_year <= year) "
+          f"are {open_by_year}")
+    temporal = {r["year"]: r["open_station_count"]
+                for r in load_contract("temporal_city")["records"]}
+    check(open_by_year == temporal,
+          "station history: open-station counts agree with the temporal city table")
+    states = load_json(cfg.PHASE2_ROUTING_STATES_FILE)["states"]
+    mismatched = [
+        y for state in states for y in state["years"]
+        if sorted(f["properties"]["station_id"] for f in features
+                  if f["properties"]["opening_year"] <= y)
+        != sorted(state["active_station_ids"])
+    ]
+    check(not mismatched,
+          f"station history: the stations open each year are exactly the audited routing "
+          f"state's active station IDs ({mismatched or 'all 12 years agree'})")
+    return len(features)
+
+
+def validate_facility_points(key: str) -> int:
+    spec = FACILITY_CONTRACT[key]
+    section(f"5e. {key}: audited routing-proxy points (display only)")
+    fc = load_contract(key)
+    features = fc["features"]
+    source = load_json(spec["source"])["features"]
+    by_id = {s["properties"]["facility_id"]: s["properties"] for s in source}
+
+    check(fc.get("type") == "FeatureCollection" and len(features) == spec["features"],
+          f"{key}: {spec['features']} features (got {len(features)})")
+    types = sorted({f["geometry"]["type"] for f in features})
+    check(types == ["Point"], f"{key}: Point geometry only ({types})")
+    ids = [f["properties"]["facility_id"] for f in features]
+    check(len(set(ids)) == len(ids) and set(ids) == set(by_id),
+          f"{key}: exactly the committed facility_id set, each once")
+
+    # The point the browser draws must be the point accessibility was routed
+    # from: equal as doubles, not merely close.
+    drift = [
+        i for i, f in enumerate(features)
+        if f["geometry"]["coordinates"] != [by_id[ids[i]]["longitude"], by_id[ids[i]]["latitude"]]
+    ]
+    check(not drift,
+          f"{key}: every coordinate equals the audited representative longitude/latitude "
+          f"exactly ({len(drift)} drifted)")
+    check(all(isinstance(v, float) and math.isfinite(v)
+              for f in features for v in f["geometry"]["coordinates"]),
+          f"{key}: every coordinate is a finite number")
+
+    fields = FACILITY_SHARED_FIELDS + (spec["category_field"],)
+    differs = [
+        f"{f['properties']['facility_id']}.{k}"
+        for f in features for k in fields
+        if f["properties"].get(k) != by_id[f["properties"]["facility_id"]].get(k)
+    ]
+    check(not differs, f"{key}: every carried property equals the audited record "
+                       f"({differs[:3] or 'none differ'})")
+
+    props = [f["properties"] for f in features]
+    categories = {c: sum(1 for p in props if p[spec["category_field"]] == c)
+                  for c in spec["categories"]}
+    check(categories == spec["categories"] and
+          sum(categories.values()) == len(props),
+          f"{key}: category counts {categories}")
+    assignments = {a: sum(1 for p in props if p["district_assignment"] == a)
+                   for a in spec["assignments"]}
+    check(assignments == spec["assignments"] and
+          sum(assignments.values()) == len(props),
+          f"{key}: district-assignment counts {assignments}")
+    outside = [p for p in props if p["district_assignment"] == "outside_analysis_districts"]
+    check(all(p["district_name"] is None for p in outside),
+          f"{key}: all {len(outside)} outside-analysis facilities carry district_name = null")
+    inside_names = {p["district_name"] for p in props if p["district_assignment"] == "within"}
+    analysis_districts = set(pd.read_csv(cfg.DISTRICT_ACCESS_METRICS_FILE).district_name)
+    check(inside_names <= analysis_districts,
+          f"{key}: facilities within the study area name only analysis districts")
+
+    shipped = {k for p in props for k in p}
+    internals = sorted(shipped & {"normalized_name", "geometry_assembly", "osm_relation_type",
+                                  "amenity", "healthcare", "operator", "longitude", "latitude"})
+    check(not internals, f"{key}: no dedupe or assembly internals shipped ({internals or 'none'})")
+
+    source_bytes = spec["source"].stat().st_size
+    web_bytes = (WEB_DATA_DIR / WEB_FILES[key]).stat().st_size
+    reduction = (1 - web_bytes / source_bytes) * 100
+    check(web_bytes < source_bytes * 0.5,
+          f"{key}: browser layer is materially smaller than the source "
+          f"({source_bytes:,} -> {web_bytes:,} bytes, {reduction:.2f}% smaller)")
+    return len(features)
+
+
+def max_coordinate_decimals(coords) -> int:
+    if coords and isinstance(coords[0], (int, float)):
+        return max(len(repr(float(v)).partition(".")[2]) for v in coords)
+    return max((max_coordinate_decimals(c) for c in coords), default=0)
+
+
+def validate_coordinate_precision_metadata(manifest: dict) -> None:
+    """The manifest's precision claims must describe the files as they are."""
+    layers = manifest.get("layers", {})
+    default = manifest.get("default_display_coordinate_precision_decimals")
+    check(default == 5 and "coordinate_precision_decimals" not in manifest,
+          f"manifest declares 5 decimals as the default display precision, not as a "
+          f"global one (found {default!r})")
+    note = manifest.get("coordinate_precision_note", "")
+    check(all(key in note for key in EXACT_COORDINATE_LAYERS),
+          "manifest precision note names every exact-coordinate layer")
+    for key in EXACT_COORDINATE_LAYERS:
+        check(layers.get(key, {}).get("coordinate_precision") == "source_exact",
+              f"manifest {key}: declares source_exact coordinates")
+
+    # Every other geometry layer must actually sit on the default grid, so the
+    # default the manifest declares is true of the files it describes.
+    off_grid = []
+    for key, entry in layers.items():
+        if key in EXACT_COORDINATE_LAYERS or not entry.get("file", "").endswith(".geojson"):
+            continue
+        if entry.get("coordinate_precision") == "source_exact":
+            off_grid.append(f"{key} claims source_exact")
+            continue
+        features = load_json(WEB_DATA_DIR / entry["file"])["features"]
+        worst = max(max_coordinate_decimals(f["geometry"]["coordinates"]) for f in features)
+        if worst > default:
+            off_grid.append(f"{key} has {worst} decimals")
+    check(not off_grid,
+          f"every other geometry layer is written at the default precision "
+          f"({off_grid or 'all within ' + str(default) + ' decimals'})")
+
+
+def validate_contract_manifest(counts: dict[str, int]) -> None:
+    section("5f. Phase A manifest entries and source provenance")
+    manifest = load_json(WEB_DATA_DIR / WEB_FILES["manifest"])
+    layers = manifest.get("layers", {})
+    recorded = manifest.get("analysis_source", {}).get("files", {})
+    by_path = {entry["path"]: entry for entry in recorded.values()}
+    phase2 = load_json(cfg.PHASE2_ANALYSIS_MANIFEST_PATH)
+    phase2c = load_json(cfg.PHASE2C_MANIFEST_PATH)
+    audited_hashes = {
+        **{p: e["sha256"] for p, e in phase2.get("input_files", {}).items()},
+        **{p: e["sha256"] for p, e in phase2.get("output_files", {}).items()},
+        **{p: e["sha256"] for p, e in phase2c.get("output_files", {}).items()},
+    }
+
+    contract = {
+        **{k: ("analytical", src) for k, (src, _) in ANALYTICAL_CONTRACT.items()},
+        **{k: ("display_only", src) for k, (src, _) in DISPLAY_CONTRACT.items()},
+    }
+    for key, (role, source) in contract.items():
+        entry = layers.get(key, {})
+        src = str(source.relative_to(cfg.REPO_ROOT)).replace("\\", "/")
+        path = WEB_DATA_DIR / WEB_FILES[key]
+        check(entry.get("file") == WEB_FILES[key] and path.exists(),
+              f"manifest {key}: records {WEB_FILES[key]}, which exists")
+        check(entry.get("role") == role, f"manifest {key}: role {role}")
+        check(entry.get("features") == counts[key],
+              f"manifest {key}: {counts[key]} features/records")
+        check(entry.get("bytes") == path.stat().st_size,
+              f"manifest {key}: bytes exact ({entry.get('bytes')} vs {path.stat().st_size})")
+        check(entry.get("source") == src, f"manifest {key}: source {src}")
+        hashed = by_path.get(src, {}).get("sha256_lf_normalised")
+        check(hashed is not None and hashed == content_hash(source),
+              f"manifest {key}: source content hash recorded and current "
+              f"({(hashed or 'missing')[:12]})")
+        check(audited_hashes.get(src) == hashed,
+              f"manifest {key}: source hash equals the Phase 2 audited manifest's "
+              f"({(audited_hashes.get(src) or 'unrecorded')[:12]})")
+
+    validate_coordinate_precision_metadata(manifest)
+
+    station = layers.get("metro_station_history", {})
+    check({int(y): n for y, n in station.get("open_stations_by_year", {}).items()}
+          == EXPECTED_OPEN_STATIONS,
+          "manifest metro_station_history: open-station counts by year recorded correctly")
+    for key, spec in FACILITY_CONTRACT.items():
+        entry = layers.get(key, {})
+        check(entry.get("source_bytes") == spec["source"].stat().st_size,
+              f"manifest {key}: source byte count exact")
+        check(entry.get("by_category") == spec["categories"],
+              f"manifest {key}: category counts recorded")
+        assigned = {k: v for k, v in spec["assignments"].items() if v}
+        check(entry.get("by_district_assignment") == assigned,
+              f"manifest {key}: district-assignment counts recorded")
+
+
+def validate_contract() -> dict[str, int]:
+    counts = validate_contract_tables()
+    counts["metro_station_history"] = validate_station_history()
+    for key in FACILITY_CONTRACT:
+        counts[key] = validate_facility_points(key)
+    validate_contract_manifest(counts)
+    return counts
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 def main() -> int:
@@ -782,6 +1220,7 @@ def main() -> int:
     validate_districts(city)
     counts = validate_display_layers()
     validate_feature_provenance()
+    counts.update(validate_contract())
     validate_manifest(counts, city)
     validate_no_hardcoded_metrics()
     validate_state_and_a11y()
