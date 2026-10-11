@@ -131,6 +131,19 @@ export function prepareDistrictExplorer(data) {
     'bazaar_10min_population', 'healthcare_and_education_10min_population', 'walk_network_km',
     'healthcare_facilities_in_analysis_districts', 'education_facilities_in_analysis_districts',
     'bazaar_facilities_in_analysis_districts']) number(city, field, 'urban city');
+  for (const field of ['healthcare_10min_pct', 'education_10min_pct', 'bazaar_10min_pct',
+    'healthcare_and_education_10min_pct']) pct(city, field, 'urban city');
+  for (const [population, percentage] of [
+    ['healthcare_10min_population', 'healthcare_10min_pct'],
+    ['education_10min_population', 'education_10min_pct'], ['bazaar_10min_population', 'bazaar_10min_pct'],
+    ['healthcare_and_education_10min_population', 'healthcare_and_education_10min_pct'],
+  ]) if (!near(city[population] / city.population_total * 100, city[percentage], PCT_TOL)) {
+    fail(`urban city ${percentage} disagrees with its stored population`);
+  }
+  if (city.healthcare_and_education_10min_population > city.healthcare_10min_population
+      || city.healthcare_and_education_10min_population > city.education_10min_population
+      || city.healthcare_and_education_10min_pct > city.healthcare_10min_pct
+      || city.healthcare_and_education_10min_pct > city.education_10min_pct) fail('urban city overlap exceeds a component');
   for (const [districtField, cityField] of [
     ['population', 'population_total'], ['healthcare_10min_population', 'healthcare_10min_population'],
     ['education_10min_population', 'education_10min_population'], ['bazaar_10min_population', 'bazaar_10min_population'],
@@ -200,7 +213,8 @@ export function prepareDistrictExplorer(data) {
   }
   const globalHistoryTop = Math.max(...temporalRows.map((r) => r.metro_access_pct_standardized),
     ...cityRows.map((r) => r.metro_access_pct_standardized));
-  if (!isNum(data.city && data.city.metro_access_pct)) fail('current city metro reference is unavailable');
+  if (!data.city) fail('current city metro reference is unavailable');
+  pct(data.city, 'metro_access_pct', 'current city');
   return { urbanByName, temporalByName, labels, years, cityHistory: years.map((year) => cityByYear.get(year)),
     city, currentCity: data.city, globalHistoryTop, districts: [...labels.keys()] };
 }
@@ -296,4 +310,10 @@ export function initDistrictExplorer(nextModel) {
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(redraw).observe(hosts.profile);
 }
 /** State-in only: this function deliberately never writes to the shared store. */
-export function updateDistrictExplorerState(state) { if (hosts) render(state.selectedDistrict); }
+export function updateDistrictExplorerState(state) {
+  if (!hosts) return;
+  const next = state.selectedDistrict;
+  if (next === selected) return;
+  if (next === null) { clear(); return; }
+  render(next);
+}

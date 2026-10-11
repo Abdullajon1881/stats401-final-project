@@ -2241,9 +2241,14 @@ const cases = {
   education_arithmetic: attempt((d) => { first(d).education_total += 1; }),
   per_10k: attempt((d) => { first(d).bus_stops_per_10k += 1; }),
   network_density: attempt((d) => { first(d).walk_network_density_km_per_km2 += 1; }),
-  city_population: attempt((d) => { d.urbanCity.record.population_total += 1; }),
-  city_destination: attempt((d) => { d.urbanCity.record.healthcare_10min_population += 1; }),
+  city_population: attempt((d) => { const c = d.urbanCity.record; c.population_total += 1; for (const [population, percentage] of [['healthcare_10min_population', 'healthcare_10min_pct'], ['education_10min_population', 'education_10min_pct'], ['bazaar_10min_population', 'bazaar_10min_pct'], ['healthcare_and_education_10min_population', 'healthcare_and_education_10min_pct']]) c[percentage] = c[population] / c.population_total * 100; }),
+  city_destination: attempt((d) => { const c = d.urbanCity.record; c.healthcare_10min_population += 1; c.healthcare_10min_pct = c.healthcare_10min_population / c.population_total * 100; }),
   city_facility: attempt((d) => { d.urbanCity.record.healthcare_facilities_in_analysis_districts += 1; }),
+  current_city_metro_pct_out_of_range: attempt((d) => { d.city.metro_access_pct = 101; }),
+  urban_city_profile_pct_malformed: attempt((d) => { d.urbanCity.record.healthcare_10min_pct = 'bad'; }),
+  urban_city_profile_pct_out_of_range: attempt((d) => { d.urbanCity.record.education_10min_pct = 101; }),
+  urban_city_profile_share_population_mismatch: attempt((d) => { d.urbanCity.record.bazaar_10min_pct += 1; }),
+  urban_city_overlap_bound: attempt((d) => { const c = d.urbanCity.record; c.healthcare_and_education_10min_pct = c.healthcare_10min_pct + 1; c.healthcare_and_education_10min_population = c.population_total * c.healthcare_and_education_10min_pct / 100; }),
   duplicate_temporal: attempt((d) => temporal(d).push({ ...temporal(d)[0] })),
   missing_temporal: attempt((d) => d.temporalDistrict.records.pop()),
   unknown_temporal: attempt((d) => { temporal(d)[0].district_name = 'Unknown district'; }),
@@ -2299,8 +2304,13 @@ def validate_district_explorer() -> None:
     check("updateDistrictExplorerState(state)" in app, "explorer updates in the central shared-store subscription")
     check("store.selectDistrict(hosts.select.value)" in explorer and "store.clearSelection()" in explorer,
           "selector writes through the existing shared district store")
-    check("updateDistrictExplorerState(state) { if (hosts) render(state.selectedDistrict); }" in explorer,
-          "explorer state update reads state without writing it")
+    update = re.search(r"export function updateDistrictExplorerState\(state\)\s*\{(.+?)\n\}", explorer, re.S)
+    update_body = update.group(1) if update else ""
+    guard_at = update_body.find("next === selected")
+    render_at = update_body.find("render(next)")
+    check("const next = state.selectedDistrict" in update_body and guard_at >= 0
+          and "if (next === selected) return" in update_body and render_at > guard_at,
+          "explorer state update no-ops before render when the selected district is unchanged")
     forbidden_state = ("selectedExplorerDistrict", "explorerDistrict", "activeDistrict", "currentExplorerDistrict", "districtExplorerSelection")
     check(not any(term in explorer or term in state for term in forbidden_state),
           "no second district-selection state exists")
@@ -2309,6 +2319,15 @@ def validate_district_explorer() -> None:
           "five current-profile rows share a 0–100 scale with a shape city reference")
     check("model.currentCity.metro_access_pct" in explorer and "model.city[d[2]]" in explorer,
           "current profile reads the correct current city references")
+    check("pct(data.city, 'metro_access_pct', 'current city')" in explorer,
+          "current city metro reference is independently constrained to 0–100")
+    for field in ("healthcare_10min_pct", "education_10min_pct", "bazaar_10min_pct",
+                  "healthcare_and_education_10min_pct"):
+        check(f"pct(city, field, 'urban city')" in explorer and field in explorer,
+              f"urban city {field} is independently validated")
+    check("urban city ${percentage} disagrees with its stored population" in explorer
+          and "urban city overlap exceeds a component" in explorer,
+          "urban city profile percentages reconcile to population and respect overlap bounds")
     check("metro_access_pct_standardized" in explorer and "model.cityHistory" in explorer
           and ".domain([0, model.globalHistoryTop" in explorer,
           "history uses standardized district and city series on a zero-based global scale")
