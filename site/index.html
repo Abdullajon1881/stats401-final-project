@@ -342,6 +342,44 @@
   </section>
 </section>
 
+<!-- ── linked current and standardized district narrative ─────────────── -->
+<section id="district-explorer" class="district-explorer" aria-labelledby="district-explorer-h" tabindex="-1" hidden>
+  <div class="section-head">
+    <p class="eyebrow">District explorer</p>
+    <h2 id="district-explorer-h" class="section-title">How does one district look across the whole analysis?</h2>
+    <p class="section-lede">Select an analytical district to connect its current accessibility and mapped-service profile with its standardized metro-access history.</p>
+  </div>
+  <div class="de-control">
+    <label for="district-explorer-select">District</label>
+    <select id="district-explorer-select" aria-describedby="district-explorer-method"></select>
+  </div>
+  <p id="district-explorer-method" class="de-method">The current metro percentage and standardized historical series use different analytical frames. The current snapshot is entrance-aware and SIAT-calibrated; the history uses station-centre proxies and annual WorldPop model weights.</p>
+  <p id="district-explorer-empty" class="de-empty" aria-live="polite">Select a district to explore its current profile and standardized history.</p>
+  <div id="district-explorer-content" hidden>
+    <div id="district-explorer-summary"></div>
+    <div class="de-grid-layout">
+      <section class="tpanel" aria-labelledby="district-profile-h">
+        <h3 id="district-profile-h" class="tpanel-title">Current accessibility profile</h3>
+        <p class="panel-sub">Five separate current measures on one shared 0–100% scale. The outlined diamond is the current city reference.</p>
+        <div id="district-profile-legend" class="de-legend" aria-hidden="true"></div>
+        <div id="district-current-profile" class="de-chart"></div>
+      </section>
+      <section class="tpanel" aria-labelledby="district-history-h">
+        <h3 id="district-history-h" class="tpanel-title">Standardized metro-access history</h3>
+        <p class="panel-sub">The solid line is this district; the dashed line is the standardized city reference. Hollow points mark population weights flagged as projections.</p>
+        <div class="de-legend" aria-hidden="true"><span class="de-key de-key--history"><i></i>Selected district</span><span class="de-key de-key--history-city"><i></i>Standardized city reference</span><span class="de-key de-key--projection"><i></i>Projection flag</span></div>
+        <div id="district-history" class="de-chart"></div>
+      </section>
+    </div>
+    <section class="tpanel de-supply-panel" aria-labelledby="district-supply-h">
+      <h3 id="district-supply-h" class="tpanel-title">Mapped supply and walk-network context</h3>
+      <div class="de-table-wrap" id="district-supply"></div>
+      <div id="district-network"></div>
+      <p class="panel-foot">Mapped facility and stop counts reflect OpenStreetMap coverage and the analytical source set. They are not official measures of service capacity, quality, frequency, or provision.</p>
+    </section>
+  </div>
+</section>
+
 <!-- ── coordinated district analysis deck ──────────────────────────────── -->
 <!-- Three more views over the same twelve districts and the same selection
      state as the map and the ranking above. Not three separate charts: hover

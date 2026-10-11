@@ -33,6 +33,8 @@ export const FILES = {
   // results, and the healthcare and education routing-source points. Bazaar
   // points are the `bazaars` layer above.
   urbanCity: 'urban_dimensions_city.json',
+  urbanDistrict: 'urban_dimensions_district.json',
+  temporalDistrict: 'temporal_district.json',
   healthcarePoints: 'healthcare_points.geojson',
   educationPoints: 'education_points.geojson',
   manifest: 'manifest.json',
