@@ -1336,3 +1336,48 @@ code {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
 }
+
+/* ── linked district explorer ─────────────────────────────────────────── */
+.district-explorer { padding: clamp(36px, 7vh, 72px) 20px; border-top: 1px solid var(--line-2); scroll-margin-top: var(--topbar-h); }
+.district-explorer > * { max-width: 1240px; }
+.de-control { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0 10px; }
+.de-control label { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.de-control select { min-width: min(100%, 290px); padding: 8px 10px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 4px; font: inherit; }
+.de-method, .de-empty { max-width: 830px; margin: 0 0 16px; color: var(--text-2); font-size: 12.5px; line-height: 1.55; }
+.de-empty { padding: 16px; border: 1px dashed var(--line-2); border-radius: var(--r); background: var(--surface-2); color: var(--text); }
+.de-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 8px 0 16px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.de-summary-grid--three { margin-bottom: 16px; }
+.de-stat { min-width: 0; padding: 8px 10px; background: var(--surface-2); }
+.de-stat dt { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+.de-stat dd { margin: 3px 0 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.de-selected-title { margin: 2px 0 0; font-size: 24px; letter-spacing: -.02em; }
+.de-subhead { margin: 16px 0 0; font-size: 13px; color: var(--text-2); }
+.de-history-summary { margin: -6px 0 16px; font-size: 12px; line-height: 1.5; color: var(--text-2); }
+.de-grid-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.de-chart { min-width: 0; }
+.de-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.de-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 5px 0 6px; }
+.de-key { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); }
+.de-key i { display: inline-block; flex: none; width: 16px; height: 8px; }
+.de-key--district i { background: var(--metro); border-radius: 2px; }
+.de-key--city i { width: 9px; height: 9px; transform: rotate(45deg); border: 2px solid var(--text); box-sizing: border-box; }
+.de-key--history i { height: 0; border-top: 2px solid var(--metro); }
+.de-key--history-city i { height: 0; border-top: 2px dashed var(--text-2); }
+.de-key--projection i { width: 9px; height: 9px; border: 2px solid var(--metro); border-radius: 50%; box-sizing: border-box; }
+.de-grid text, .de-axis text { font-size: 10px; fill: var(--text-3); font-variant-numeric: tabular-nums; }
+.de-grid line { stroke: var(--line); } .de-axis .domain, .de-axis line { stroke: var(--line-2); }
+.de-axis-title { font-size: 10px; fill: var(--text-3); }
+.de-profile-label { font-size: 10px; fill: var(--text-2); }
+.de-profile-row rect { fill: var(--metro); } .de-healthcare rect { fill: var(--healthcare); } .de-education rect { fill: var(--education); } .de-bazaars rect { fill: var(--bazaar); } .de-overlap rect { fill: var(--text-2); }
+.de-city-ref { fill: var(--surface); stroke: var(--text); stroke-width: 1.5; }
+.de-value { font-size: 10px; fill: var(--text); font-variant-numeric: tabular-nums; }
+.de-history-district { fill: none; stroke: var(--metro); stroke-width: 2.3; }
+.de-history-city { fill: none; stroke: var(--text-2); stroke-width: 1.8; stroke-dasharray: 6 4; }
+.de-history-point { fill: var(--metro); stroke: var(--surface); stroke-width: 1.1; }
+.de-history-point.is-projection { fill: var(--surface); stroke: var(--metro); stroke-width: 2; }
+.de-supply-panel { margin-top: 14px; } .de-table-wrap { overflow-x: auto; }
+.de-table { width: 100%; min-width: 450px; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.de-table th, .de-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+.de-table th { color: var(--text-2); font-weight: 600; } .de-table td { color: var(--text); }
+@media (max-width: 900px) { .de-grid-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 620px) { .district-explorer { padding: 32px 12px; } .de-summary-grid { grid-template-columns: minmax(0, 1fr); } .de-control select { width: 100%; } }

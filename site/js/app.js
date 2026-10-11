@@ -10,6 +10,7 @@ import { buildDensityLegend, initUI, renderContext } from './ui.js';
 import { initStory } from './story.js';
 import { initTemporal, prepareTemporal } from './temporal.js';
 import { initDestinations, prepareDestinations } from './destinations.js';
+import { initDistrictExplorer, prepareDistrictExplorer, updateDistrictExplorerState } from './district-explorer.js';
 import { el, replace } from './dom.js';
 import { focusComposition, initComposition, updateCompositionState } from './composition.js';
 import { initScatter, updateScatterState } from './scatter.js';
@@ -43,7 +44,7 @@ if (QA) {
  * and the story has accepted it, so none of them can show a placeholder as a
  * result, and all of them are hidden again if anything fails. */
 const STORY_SECTIONS = ['hero', 'current-access', 'workspace', 'destination-access',
-  'metric-bridge', 'temporal-story', 'district-analysis'];
+  'metric-bridge', 'temporal-story', 'district-explorer', 'district-analysis'];
 
 function reveal(visible) {
   for (const id of STORY_SECTIONS) document.getElementById(id).hidden = !visible;
@@ -137,9 +138,11 @@ function announceComparison(state, index) {
   // measure their containers and a hidden container has no size.
   let timeline;
   let destinations;
+  let districtExplorer;
   try {
     timeline = prepareTemporal(data);
     destinations = prepareDestinations(data);
+    districtExplorer = prepareDistrictExplorer(data);
     initStory(data);
   } catch (error) {
     fail(error && error.message ? error.message : String(error));
@@ -150,6 +153,7 @@ function announceComparison(state, index) {
   reveal(true);
   initDestinations(destinations);
   initTemporal(timeline);
+  initDistrictExplorer(districtExplorer);
   const index = indexDistricts(data.districts);
 
   initRanking(index.ranked, {
@@ -205,6 +209,7 @@ function announceComparison(state, index) {
     updateCompositionState(state);
     updateScatterState(state);
     updateParallelState(state);
+    updateDistrictExplorerState(state);
 
     // Either mode changing re-renders the one context slot and announces once.
     if (changed.includes('selectedDistrict') || changed.includes('selectedStation')) {

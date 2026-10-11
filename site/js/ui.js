@@ -274,7 +274,7 @@ function wireNav() {
         current.scrollIntoView({ block: 'start', behavior: motion() });
         current.focus({ preventScroll: true });
       } else if (view === 'districts') {
-        const deck = document.getElementById('district-analysis');
+        const deck = document.getElementById('district-explorer');
         deck.scrollIntoView({ block: 'start', behavior: motion() });
         // Focus the section itself rather than a chart control, so the reader
         // lands on the heading and can Tab into whichever chart they want.
