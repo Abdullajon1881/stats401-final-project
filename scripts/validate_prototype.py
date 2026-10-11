@@ -88,6 +88,7 @@ REQUIRED_SITE_FILES = [
     SITE_DIR / "js" / "ui.js",
     SITE_DIR / "js" / "dom.js",
     SITE_DIR / "js" / "data.js",
+    SITE_DIR / "js" / "district-explorer.js",
 ]
 
 VENDOR = SITE_DIR / "vendor"
@@ -1206,15 +1207,13 @@ def validate_contract() -> dict[str, int]:
 # ---------------------------------------------------------------------------
 # 10. story shell and the two same-year metric reconciliation
 # ---------------------------------------------------------------------------
-STORY_SECTION_IDS = ("hero", "current-access", "metric-bridge", "district-analysis")
+STORY_SECTION_IDS = ("hero", "current-access", "metric-bridge", "district-explorer", "district-analysis")
 # Web assets that belong to sections of the story not yet built. Nothing may
 # fetch them at start-up: they would add weight for views that do not exist yet.
 # The temporal chapter's own three files left this list when that chapter was
 # added (section 11 asserts that they are loaded), and so did the destination
 # chapter's three (section 12). The district-level files remain deferred.
-DEFERRED_ASSETS = (
-    "temporal_district.json", "urban_dimensions_district.json",
-)
+DEFERRED_ASSETS = ()
 DESTINATION_ASSETS = {
     "urbanCity": "urban_dimensions_city.json",
     "healthcarePoints": "healthcare_points.geojson",
@@ -1333,11 +1332,11 @@ def validate_story_shell() -> None:
     check(len(re.findall(r"<h1\b", markup)) == 1, "the page has exactly one <h1>")
     positions = [markup.find(f'id="{name}"') for name in
                  ("story-main", "hero", "current-access", "workspace", "metric-bridge",
-                  "district-analysis")]
+                  "temporal-story", "district-explorer", "district-analysis")]
     main_end = markup.find("</main>")
     check(all(p >= 0 for p in positions) and positions == sorted(positions)
           and positions[-1] < main_end,
-          "hero, current access (holding the workspace), metric bridge and district "
+          "hero, current access, metric bridge, temporal story, district explorer and district "
           "analysis appear in that order inside <main>")
     check(markup.find('id="method-dialog"') > main_end,
           "the native method dialog stays outside the story landmark")
@@ -1345,7 +1344,7 @@ def validate_story_shell() -> None:
         tag = opening_tag(markup, name)
         check(tag.startswith("<section") and " hidden" in tag,
               f"#{name} is a section that starts hidden until the data is accepted")
-    for heading in ("hero-h", "current-h", "bridge-h", "deck-h"):
+    for heading in ("hero-h", "current-h", "bridge-h", "district-explorer-h", "deck-h"):
         check(opening_tag(markup, heading).startswith("<h2"),
               f"#{heading} is a second-level heading under the page title")
     for heading in ("map-h", "context-h", "ranking-h"):
@@ -1454,7 +1453,7 @@ def validate_story_shell() -> None:
           < app.find("mapModule.initMap("),
           "the story is checked and rendered before any section is revealed")
     check(re.search(r"const STORY_SECTIONS = \[[^\]]*'hero'[^\]]*'current-access'"
-                    r"[^\]]*'metric-bridge'[^\]]*'district-analysis'", app, re.S) is not None,
+                    r"[^\]]*'metric-bridge'[^\]]*'temporal-story'[^\]]*'district-explorer'[^\]]*'district-analysis'", app, re.S) is not None,
           "a load failure hides every story section")
 
     # Shipped copy only: comments explaining the rule may name what it forbids.
@@ -1588,10 +1587,10 @@ def validate_temporal_story() -> None:
     check(tag.startswith("<section") and " hidden" in tag,
           "#temporal-story is a section that starts hidden")
     order = [markup.find(f'id="{name}"') for name in
-             ("metric-bridge", "temporal-story", "district-analysis")]
+             ("metric-bridge", "temporal-story", "district-explorer", "district-analysis")]
     check(all(p >= 0 for p in order) and order == sorted(order)
           and order[-1] < markup.find("</main>"),
-          "the temporal chapter sits between the metric bridge and district analysis, "
+          "the temporal chapter sits before the linked explorer and district analysis, "
           "inside <main>")
     check(opening_tag(markup, "temporal-h").startswith("<h2"), "the chapter has an h2")
     for heading in ("tline-h", "tmap-h", "tevents-h", "cf-h"):
@@ -1600,7 +1599,7 @@ def validate_temporal_story() -> None:
     check("el('h4', { id: `tev-" in temporal, "each station-set change is an h4 under its h3")
     check("'temporal-story'" in app and re.search(
         r"const STORY_SECTIONS = \[[^\]]*'metric-bridge',\s*'temporal-story',\s*"
-        r"'district-analysis'", app) is not None,
+        r"'district-explorer',\s*'district-analysis'", app) is not None,
           "a load failure hides the temporal chapter with the other sections")
     prepare_at = app.find("prepareTemporal(data)")
     story_at = app.find("initStory(data)")
@@ -2213,6 +2212,139 @@ def validate_destination_behaviour() -> None:
 # ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
+DISTRICT_EXPLORER_HARNESS = r"""
+import fs from 'node:fs';
+const [moduleUrl, dataDir] = process.argv.slice(1);
+const { prepareDistrictExplorer } = await import(moduleUrl);
+const read = (name) => JSON.parse(fs.readFileSync(`${dataDir}/${name}`, 'utf8'));
+const base = () => ({
+  city: read('city_summary.json'), districts: read('districts.geojson'),
+  urbanDistrict: read('urban_dimensions_district.json'), urbanCity: read('urban_dimensions_city.json'),
+  temporalDistrict: read('temporal_district.json'), temporalCity: read('temporal_city.json'), manifest: read('manifest.json'),
+});
+const attempt = (mutate) => { const data = base(); mutate(data); try { const result = prepareDistrictExplorer(data); return { threw: false, districts: result.districts.length, years: result.years }; } catch (error) { return { threw: true, message: String(error.message) }; } };
+const first = (d) => d.urbanDistrict.records[0];
+const temporal = (d) => d.temporalDistrict.records;
+const later = (d) => temporal(d).find((r) => r.year !== Math.min(...temporal(d).filter((x) => x.district_name === temporal(d)[0].district_name).map((x) => x.year)));
+const cases = {
+  valid: attempt(() => {}),
+  shuffled: attempt((d) => { d.urbanDistrict.records.reverse(); d.temporalDistrict.records.reverse(); }),
+  duplicate_urban: attempt((d) => d.urbanDistrict.records.push({ ...first(d) })),
+  missing_urban: attempt((d) => d.urbanDistrict.records.pop()),
+  unknown_urban: attempt((d) => { first(d).district_name = 'Unknown district'; }),
+  urban_metro_mismatch: attempt((d) => { first(d).metro_access_pct += 1; }),
+  composition_mismatch: attempt((d) => { first(d).bus_only_pct += 1; }),
+  destination_pct_mismatch: attempt((d) => { first(d).healthcare_10min_pct += 1; }),
+  overlap_healthcare: attempt((d) => { first(d).healthcare_and_education_10min_population = first(d).healthcare_10min_population + 1; }),
+  overlap_education: attempt((d) => { first(d).healthcare_and_education_10min_pct = first(d).education_10min_pct + 1; }),
+  healthcare_arithmetic: attempt((d) => { first(d).healthcare_total += 1; }),
+  education_arithmetic: attempt((d) => { first(d).education_total += 1; }),
+  per_10k: attempt((d) => { first(d).bus_stops_per_10k += 1; }),
+  network_density: attempt((d) => { first(d).walk_network_density_km_per_km2 += 1; }),
+  city_population: attempt((d) => { d.urbanCity.record.population_total += 1; }),
+  city_destination: attempt((d) => { d.urbanCity.record.healthcare_10min_population += 1; }),
+  city_facility: attempt((d) => { d.urbanCity.record.healthcare_facilities_in_analysis_districts += 1; }),
+  duplicate_temporal: attempt((d) => temporal(d).push({ ...temporal(d)[0] })),
+  missing_temporal: attempt((d) => d.temporalDistrict.records.pop()),
+  unknown_temporal: attempt((d) => { temporal(d)[0].district_name = 'Unknown district'; }),
+  unstable_id: attempt((d) => { later(d).district_id += 100; }),
+  duplicate_id: attempt((d) => { const a = temporal(d)[0]; const b = temporal(d).find((r) => r.district_name !== a.district_name); b.district_id = a.district_id; }),
+  temporal_pct: attempt((d) => { temporal(d)[0].metro_access_pct_standardized += 1; }),
+  baseline_growth: attempt((d) => { const name = temporal(d)[0].district_name; const r = temporal(d).filter((x) => x.district_name === name).sort((a,b) => a.year-b.year)[0]; r.population_growth_pct_from_2015 = 1; }),
+  baseline_change: attempt((d) => { const name = temporal(d)[0].district_name; const r = temporal(d).filter((x) => x.district_name === name).sort((a,b) => a.year-b.year)[0]; r.metro_access_pct_change_from_2015_pp = 1; }),
+  later_growth: attempt((d) => { later(d).population_growth_pct_from_2015 += 1; }),
+  later_change: attempt((d) => { later(d).metro_access_pct_change_from_2015_pp += 1; }),
+  state: attempt((d) => { temporal(d)[0].metro_state_id = 'wrong'; }),
+  station_count: attempt((d) => { temporal(d)[0].open_station_count += 1; }),
+  projection: attempt((d) => { temporal(d)[0].population_projection_flag = !temporal(d)[0].population_projection_flag; }),
+  geography: attempt((d) => { temporal(d)[0].geography_version = 'wrong'; }),
+  annual_population: attempt((d) => { d.temporalCity.records[0].population_modelled_available += 1; }),
+  annual_access: attempt((d) => { d.temporalCity.records[0].metro_access_population_standardized += 1; }),
+  manifest_urban: attempt((d) => { d.manifest.layers.urban_dimensions_district.features += 1; }),
+  manifest_temporal: attempt((d) => { d.manifest.layers.temporal_district.features += 1; }),
+  projection_boolean: attempt((d) => { temporal(d)[0].population_projection_flag = 'no'; }),
+  malformed_numeric: attempt((d) => { first(d).walk_network_km = 'x'; }),
+};
+console.log(JSON.stringify(cases));
+"""
+
+
+def validate_district_explorer() -> None:
+    section("13. Linked district explorer")
+    html = (SITE_DIR / "index.html").read_text(encoding="utf-8")
+    markup = re.sub(r"<!--.*?-->", "", html, flags=re.S)
+    sources = js_sources()
+    explorer = sources.get("district-explorer.js", "")
+    app = sources.get("app.js", "")
+    data_js = sources.get("data.js", "")
+    ui = sources.get("ui.js", "")
+    state = sources.get("state.js", "")
+    css = (SITE_DIR / "styles.css").read_text(encoding="utf-8")
+    tag = opening_tag(markup, "district-explorer")
+    check(bool(explorer), "site/js/district-explorer.js exists")
+    check(tag.startswith("<section") and " hidden" in tag and 'tabindex="-1"' in tag,
+          "district explorer is a hidden, focusable story section")
+    order = [markup.find(f'id="{name}"') for name in ("temporal-story", "district-explorer", "district-analysis")]
+    check(all(p >= 0 for p in order) and order == sorted(order) and order[-1] < markup.find("</main>"),
+          "district explorer sits between temporal story and district analysis inside main")
+    check(opening_tag(markup, "district-explorer-h").startswith("<h2")
+          and all(opening_tag(markup, ident).startswith("<h3") for ident in ("district-profile-h", "district-history-h", "district-supply-h")),
+          "district explorer uses h2 then h3 hierarchy")
+    check("urbanDistrict: 'urban_dimensions_district.json'" in data_js
+          and "temporalDistrict: 'temporal_district.json'" in data_js,
+          "data.js loads the final two Phase A district assets")
+    check("prepareDistrictExplorer(data)" in app and app.find("prepareDistrictExplorer(data)") < app.find("initStory(data)") < app.find("reveal(true)")
+          and app.find("reveal(true)") < app.find("initDistrictExplorer(districtExplorer)"),
+          "explorer preparation is fail-closed before reveal and initializes after reveal")
+    check("updateDistrictExplorerState(state)" in app, "explorer updates in the central shared-store subscription")
+    check("store.selectDistrict(hosts.select.value)" in explorer and "store.clearSelection()" in explorer,
+          "selector writes through the existing shared district store")
+    check("updateDistrictExplorerState(state) { if (hosts) render(state.selectedDistrict); }" in explorer,
+          "explorer state update reads state without writing it")
+    forbidden_state = ("selectedExplorerDistrict", "explorerDistrict", "activeDistrict", "currentExplorerDistrict", "districtExplorerSelection")
+    check(not any(term in explorer or term in state for term in forbidden_state),
+          "no second district-selection state exists")
+    check("comparisonDistricts" not in explorer, "explorer does not alter the comparison set")
+    check("PROFILE = [" in explorer and ".domain([0, 100])" in explorer and "de-city-ref" in explorer,
+          "five current-profile rows share a 0–100 scale with a shape city reference")
+    check("model.currentCity.metro_access_pct" in explorer and "model.city[d[2]]" in explorer,
+          "current profile reads the correct current city references")
+    check("metro_access_pct_standardized" in explorer and "model.cityHistory" in explorer
+          and ".domain([0, model.globalHistoryTop" in explorer,
+          "history uses standardized district and city series on a zero-based global scale")
+    check("population_projection_flag" in explorer and "is-projection" in explorer,
+          "history has a non-colour projection marker")
+    check("el('table'" in explorer and "Mapped walk-network length" in explorer,
+          "supply context uses a real table and precise walk-network labels")
+    visible = (markup[markup.find('id="district-explorer"'):markup.find('id="district-analysis"')] + explorer).lower()
+    check("entrance-aware" in visible and "siat-calibrated" in visible and "station-centre" in visible
+          and "worldpop" in visible and "not official measures of service capacity" in visible,
+          "method distinction and mapped-supply caveat are visible")
+    banned = ("composite score", "walkability score", "mobility score", "service score", "best district", "worst district", "rank 1")
+    check(not any(term in visible for term in banned), "explorer creates neither a composite score nor a new ranking")
+    check("getElementById('district-explorer')" in ui and "district-analysis" not in ui[ui.find("function wireNav()"):ui.find("function wireClear()")],
+          "Districts navigation targets the explorer only")
+    check(".de-table-wrap { overflow-x: auto" in css and "@media (max-width: 900px)" in css,
+          "explorer table and charts have responsive safeguards")
+
+    node = shutil.which("node")
+    if node is None:
+        check(False, "Node.js is available to exercise prepareDistrictExplorer()", critical=False)
+        return
+    result = subprocess.run([node, "--input-type=module", "-e", DISTRICT_EXPLORER_HARNESS,
+                             (SITE_DIR / "js" / "district-explorer.js").resolve().as_uri(), str(WEB_DATA_DIR)],
+                            capture_output=True, text=True, encoding="utf-8")
+    if not check(result.returncode == 0, f"prepareDistrictExplorer() runs under Node ({result.stderr.strip()[:160] or 'ok'})"):
+        return
+    out = json.loads(result.stdout.strip().splitlines()[-1])
+    for name in ("valid", "shuffled"):
+        case = out[name]
+        check(not case["threw"] and case["districts"] == 12 and case["years"] == list(range(2015, 2027)),
+              f"prepareDistrictExplorer() accepts {name} input with the same derived district and year sets")
+    for name, case in out.items():
+        if name in ("valid", "shuffled"):
+            continue
+        check(case["threw"], f"prepareDistrictExplorer() rejects {name} ({case.get('message') or 'did not throw'})")
 def main() -> int:
     print("=" * 74)
     print("Week 5 interim prototype - validation")
@@ -2236,6 +2368,7 @@ def main() -> int:
     validate_story_shell()
     validate_temporal_story()
     validate_destination_story()
+    validate_district_explorer()
 
     section("Summary")
     print(f"  passed  : {len(PASSED)}")
