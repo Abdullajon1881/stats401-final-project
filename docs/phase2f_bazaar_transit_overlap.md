@@ -108,21 +108,41 @@ negative/nonfinite population, NaN distances, values just beyond 800 m,
 unreachable infinite distances, invalid overlap labels, corrupted results and
 district-row reordering.
 
-## Reproduction
+## Reproduction and validation modes
 
-The repository needs the previously validated, gitignored inputs at their
+The analysis requires the previously validated, gitignored inputs at their
 recorded paths: `data/external/population_cells.parquet` and
 `data/external/tashkent_walk_network.graphml`. No download or source
 regeneration is performed.
 
+The validator has two deliberately distinct modes:
+
+- `--committed` runs from a clean clone without either large cache. It checks
+  the tracked output schemas, deterministic district identities and order,
+  arithmetic, frozen transit and Phase 2C reconciliation, manifest structure,
+  tracked input/output hashes, and the recorded cache pins. Cache provenance is
+  reported as recorded only: this mode does not inspect caches and does not
+  reroute.
+- `--full` requires both caches. In addition to the committed-artifact checks,
+  it verifies the actual cache hashes, validates cache records, and
+  independently reroutes the committed bazaar layer to reconstruct the overlap
+  outputs. Missing caches fail this mode; it never falls back to `--committed`.
+
 ```powershell
+# Fresh-clone, tracked-artifact evidence (no large caches required)
+.venv\Scripts\python.exe scripts\validate_phase2f_bazaar_transit_overlap.py --committed
+
+# Stronger cached-input and independent-routing evidence
+.venv\Scripts\python.exe scripts\validate_phase2f_bazaar_transit_overlap.py --full
+
+# Phase 2F analysis and synthetic regression tests
 .venv\Scripts\python.exe scripts\analyze_transit_bazaar_overlap.py
-.venv\Scripts\python.exe scripts\validate_phase2f_bazaar_transit_overlap.py
 .venv\Scripts\python.exe scripts\test_transit_bazaar_overlap.py
 ```
 
-The analysis and validator fail closed if the mandatory cache or marketplace
-hashes do not match the recorded provenance.
+The permanent frozen-file guard compares only named pre-Phase-2F analytical
+artifacts with the authorized base. It does not prohibit separately authorized
+future documentation, site, or other new-phase files.
 
 ## Limitations
 
