@@ -303,6 +303,21 @@ PHASE2C_HEALTHCARE_CATEGORIES = ("hospital", "clinic")
 PHASE2C_EDUCATION_CATEGORIES = ("school", "college", "university", "kindergarten")
 
 
+# ---------------------------------------------------------------------------
+# Phase 2F current bazaar--transit overlap
+# ---------------------------------------------------------------------------
+# These additive artifacts reuse the frozen current-period transit and bazaar
+# inputs. They neither replace nor amend the Phase 2C destination products.
+PHASE2F_ANALYSIS_VERSION = "phase2f-current-bazaar-transit-overlap-v1"
+TRANSIT_BAZAAR_OVERLAP_CITY_FILE = PROCESSED_DIR / "transit_bazaar_overlap_city.csv"
+TRANSIT_BAZAAR_OVERLAP_DISTRICT_FILE = (
+    PROCESSED_DIR / "transit_bazaar_overlap_district.csv"
+)
+PHASE2F_MANIFEST_PATH = DATA_DIR / "phase2f_bazaar_transit_overlap_manifest.json"
+PHASE2F_METHODOLOGY_FILE = DOCS_DIR / "phase2f_bazaar_transit_overlap.md"
+PHASE2F_ACCESS_DISTANCE_BUDGET_M = 800.0
+
+
 def worldpop_temporal_filename(year: int) -> str:
     """Return the pinned Global 2 filename for one requested model year."""
     if year not in TEMPORAL_YEARS:
