@@ -220,33 +220,58 @@ export function prepareDistrictExplorer(data) {
 }
 
 let model; let hosts; let selected = null; let redraw = null;
-const margin = { top: 24, right: 20, bottom: 32, left: 142 };
-function makeFrame(host, height, label) {
-  const width = Math.max(270, Math.floor(host.clientWidth));
+function makeFrame(host, height, label, margin, descriptionId) {
+  const width = Math.max(1, Math.floor(host.clientWidth));
   const svg = d3.select(host).selectAll('svg').data([null]).join('svg').attr('width', width)
-    .attr('height', height).attr('viewBox', `0 0 ${width} ${height}`).attr('role', 'img').attr('aria-label', label);
+    .attr('height', height).attr('viewBox', `0 0 ${width} ${height}`).attr('preserveAspectRatio', 'xMinYMin meet')
+    .attr('role', 'img').attr('aria-label', label).attr('aria-describedby', descriptionId);
   svg.selectAll('*').remove();
-  return { svg, width, height, innerW: width - margin.left - margin.right, innerH: height - margin.top - margin.bottom };
+  return { svg, width, height, margin, innerW: Math.max(1, width - margin.left - margin.right), innerH: height - margin.top - margin.bottom };
+}
+function profileReference(field) {
+  return field === 'metro_access_pct' ? model.currentCity.metro_access_pct : model.city[field];
+}
+function profileLabelLines(label, compact) {
+  if (label !== 'Healthcare + education overlap') return [label];
+  return compact ? ['Healthcare +', 'education', 'intersection'] : ['Healthcare + education', 'intersection'];
+}
+function drawProfileLabels(g, y, compact) {
+  const labels = g.append('g').attr('class', 'de-profile-labels').selectAll('text').data(PROFILE).join('text')
+    .attr('class', 'de-profile-label').attr('x', -8).attr('text-anchor', 'end')
+    .attr('y', (d) => y(d[0]) + y.bandwidth() / 2 - (profileLabelLines(d[0], compact).length - 1) * 5);
+  labels.each(function (d) {
+    d3.select(this).selectAll('tspan').data(profileLabelLines(d[0], compact)).join('tspan')
+      .attr('x', -8).attr('dy', (line, index) => index ? 10 : 0).text((line) => line);
+  });
 }
 function drawProfile(row) {
-  const frame = makeFrame(hosts.profile, 235, `Current access profile for ${model.labels.get(row.district_name)}; five district percentages compared with current city references.`);
+  const compact = hosts.profile.clientWidth < 420;
+  const margin = { top: 24, right: 40, bottom: 36, left: Math.max(84, Math.min(152, Math.round(hosts.profile.clientWidth * .32))) };
+  const frame = makeFrame(hosts.profile, compact ? 280 : 245,
+    `Current access profile for ${model.labels.get(row.district_name)}; five district percentages compared with current city references. A table following this chart provides every value.`,
+    margin, 'district-profile-alternative-caption');
   const y = d3.scaleBand().domain(PROFILE.map((d) => d[0])).range([0, frame.innerH]).padding(0.35);
   const x = d3.scaleLinear().domain([0, 100]).range([0, frame.innerW]);
   const g = frame.svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-  g.append('g').attr('class', 'de-grid').call(d3.axisBottom(x).ticks(5).tickFormat((v) => `${v}%`).tickSize(frame.innerH).tickSizeOuter(0))
-    .call((axis) => axis.select('.domain').remove()).attr('transform', `translate(0,0)`);
-  g.append('g').attr('class', 'de-axis').call(d3.axisLeft(y).tickSize(0));
+  const ticks = frame.innerW < 240 ? [0, 50, 100] : x.ticks(5);
+  g.append('g').attr('class', 'de-grid').attr('transform', `translate(0,${frame.innerH})`)
+    .call(d3.axisBottom(x).tickValues(ticks).tickFormat((v) => `${v}%`).tickSize(-frame.innerH).tickSizeOuter(0))
+    .call((axis) => axis.select('.domain').remove());
+  drawProfileLabels(g, y, compact);
   const marks = g.append('g').selectAll('g').data(PROFILE).join('g').attr('class', (d) => `de-profile-row de-${d[3]}`);
   marks.append('rect').attr('x', 0).attr('y', (d) => y(d[0]) + y.bandwidth() * .24).attr('height', y.bandwidth() * .52)
     .attr('width', (d) => x(row[d[1]])).attr('rx', 2);
-  marks.append('path').attr('class', 'de-city-ref').attr('transform', (d) => `translate(${x(d[2] === 'metro_access_pct' ? model.currentCity.metro_access_pct : model.city[d[2]])},${y(d[0]) + y.bandwidth() / 2})`)
+  marks.append('path').attr('class', 'de-city-ref').attr('transform', (d) => `translate(${x(profileReference(d[2]))},${y(d[0]) + y.bandwidth() / 2})`)
     .attr('d', d3.symbol().type(d3.symbolDiamond).size(42));
-  marks.append('text').attr('class', 'de-value').attr('x', (d) => Math.min(frame.innerW - 3, x(row[d[1]]) + 5)).attr('y', (d) => y(d[0]) + y.bandwidth() / 2 + 4).text((d) => fmt.pct(row[d[1]]));
+  marks.append('text').attr('class', 'de-value').attr('text-anchor', 'end').attr('x', frame.innerW + margin.right - 4)
+    .attr('y', (d) => y(d[0]) + y.bandwidth() / 2 + 4).text((d) => fmt.pct(row[d[1]]));
   frame.svg.append('text').attr('class', 'de-axis-title').attr('x', margin.left).attr('y', frame.height - 6).text('Share of analysed population (%)');
 }
 function drawHistory(rows) {
+  const margin = { top: 24, right: 16, bottom: 33, left: 42 };
   const frame = makeFrame(hosts.history, hosts.history.clientWidth < 480 ? 255 : 290,
-    `Standardized metro access history for ${model.labels.get(rows[0].district_name)}, with a dashed city reference from ${model.years[0]} to ${model.years.at(-1)}.`);
+    `Standardized metro access history for ${model.labels.get(rows[0].district_name)}, with a dashed city reference from ${model.years[0]} to ${model.years.at(-1)}. A table following this chart provides every annual value and projection flag.`,
+    margin, 'district-history-alternative-caption');
   const x = d3.scaleLinear().domain([model.years[0], model.years.at(-1)]).range([0, frame.innerW]);
   const y = d3.scaleLinear().domain([0, model.globalHistoryTop * 1.15]).nice().range([frame.innerH, 0]);
   const g = frame.svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
@@ -265,6 +290,32 @@ function profileLegend() {
     el('span', { class: 'de-key de-key--district' }, [el('i'), 'Selected district']),
     el('span', { class: 'de-key de-key--city' }, [el('i'), 'Current city reference']),
   ]);
+}
+function renderProfileAlternative(row) {
+  const head = (text) => el('th', { scope: 'col', text });
+  const rows = PROFILE.map(([label, field]) => [
+    label === 'Healthcare + education overlap' ? 'Healthcare + education intersection (stored)' : label,
+    fmt.pct(row[field]), fmt.pct(profileReference(field)),
+  ]);
+  replace(hosts.profileAlternative, el('div', { class: 'visually-hidden' }, el('table', {}, [
+    el('caption', { id: 'district-profile-alternative-caption', text: `Numerical current accessibility profile for ${model.labels.get(row.district_name)}. Healthcare + education is the stored intersection, not a sum.` }),
+    el('thead', {}, el('tr', {}, [head('Measure'), head('Selected district'), head('Current city reference')])),
+    el('tbody', {}, rows.map((item) => el('tr', {}, [el('th', { scope: 'row', text: item[0] }), el('td', { text: item[1] }), el('td', { text: item[2] })]))),
+  ])));
+}
+function renderHistoryAlternative(rows) {
+  const head = (text) => el('th', { scope: 'col', text });
+  const cityByYear = new Map(model.cityHistory.map((row) => [row.year, row]));
+  replace(hosts.historyAlternative, el('div', { class: 'visually-hidden' }, el('table', {}, [
+    el('caption', { id: 'district-history-alternative-caption', text: `Annual standardized metro-access values for ${model.labels.get(rows[0].district_name)}.` }),
+    el('thead', {}, el('tr', {}, [head('Year'), head('District standardized metro access'), head('City standardized metro access'), head('Population weights')])),
+    el('tbody', {}, rows.map((row) => {
+      const city = cityByYear.get(row.year);
+      return el('tr', {}, [el('th', { scope: 'row', text: row.year }), el('td', { text: fmt.pct2(row.metro_access_pct_standardized) }),
+        el('td', { text: fmt.pct2(city.metro_access_pct_standardized) }),
+        el('td', { text: row.population_projection_flag ? 'Projection flag' : 'Not flagged as a projection' })]);
+    })),
+  ])));
 }
 function renderSummary(row, history) {
   const first = history[0]; const latest = history.at(-1);
@@ -291,17 +342,17 @@ function renderSupply(row) {
 }
 function clear() {
   selected = null; hosts.select.value = ''; hosts.content.hidden = true; hosts.empty.hidden = false;
-  replace(hosts.summary, []); replace(hosts.supply, []); replace(hosts.network, []); d3.select(hosts.profile).selectAll('*').remove(); d3.select(hosts.history).selectAll('*').remove();
+  replace(hosts.summary, []); replace(hosts.profileAlternative, []); replace(hosts.historyAlternative, []); replace(hosts.supply, []); replace(hosts.network, []); d3.select(hosts.profile).selectAll('*').remove(); d3.select(hosts.history).selectAll('*').remove();
 }
 function render(name) {
   const row = model.urbanByName.get(name); const history = model.temporalByName.get(name);
   if (!row || !history) { clear(); return; }
   selected = name; hosts.select.value = name; hosts.empty.hidden = true; hosts.content.hidden = false;
-  renderSummary(row, history); drawProfile(row); drawHistory(history); renderSupply(row);
+  renderSummary(row, history); renderProfileAlternative(row); renderHistoryAlternative(history); drawProfile(row); drawHistory(history); renderSupply(row);
 }
 export function initDistrictExplorer(nextModel) {
   model = nextModel;
-  hosts = { select: document.getElementById('district-explorer-select'), empty: document.getElementById('district-explorer-empty'), content: document.getElementById('district-explorer-content'), summary: document.getElementById('district-explorer-summary'), profile: document.getElementById('district-current-profile'), profileLegend: document.getElementById('district-profile-legend'), history: document.getElementById('district-history'), supply: document.getElementById('district-supply'), network: document.getElementById('district-network') };
+  hosts = { select: document.getElementById('district-explorer-select'), empty: document.getElementById('district-explorer-empty'), content: document.getElementById('district-explorer-content'), summary: document.getElementById('district-explorer-summary'), profile: document.getElementById('district-current-profile'), profileAlternative: document.getElementById('district-profile-alternative'), profileLegend: document.getElementById('district-profile-legend'), history: document.getElementById('district-history'), historyAlternative: document.getElementById('district-history-alternative'), supply: document.getElementById('district-supply'), network: document.getElementById('district-network') };
   const options = model.districts.map((name) => ({ name, label: model.labels.get(name) })).sort((a, b) => a.label.localeCompare(b.label));
   replace(hosts.select, [el('option', { value: '', text: 'Select a district…' }), ...options.map((option) => el('option', { value: option.name, text: option.label }))]);
   hosts.select.addEventListener('change', () => { if (hosts.select.value) store.selectDistrict(hosts.select.value); else store.clearSelection(); });

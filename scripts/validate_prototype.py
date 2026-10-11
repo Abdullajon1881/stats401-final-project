@@ -2317,7 +2317,8 @@ def validate_district_explorer() -> None:
     check("comparisonDistricts" not in explorer, "explorer does not alter the comparison set")
     check("PROFILE = [" in explorer and ".domain([0, 100])" in explorer and "de-city-ref" in explorer,
           "five current-profile rows share a 0–100 scale with a shape city reference")
-    check("model.currentCity.metro_access_pct" in explorer and "model.city[d[2]]" in explorer,
+    check("function profileReference(field)" in explorer and "model.currentCity.metro_access_pct" in explorer
+          and "model.city[field]" in explorer and "profileReference(d[2])" in explorer,
           "current profile reads the correct current city references")
     check("pct(data.city, 'metro_access_pct', 'current city')" in explorer,
           "current city metro reference is independently constrained to 0–100")
@@ -2333,6 +2334,21 @@ def validate_district_explorer() -> None:
           "history uses standardized district and city series on a zero-based global scale")
     check("population_projection_flag" in explorer and "is-projection" in explorer,
           "history has a non-colour projection marker")
+    check('id="district-profile-alternative"' in markup and 'id="district-history-alternative"' in markup
+          and "renderProfileAlternative(row)" in explorer and "renderHistoryAlternative(history)" in explorer,
+          "both explorer SVGs have dynamically rendered semantic numerical alternatives")
+    check("Healthcare + education intersection (stored)" in explorer and "not a sum" in explorer
+          and "fmt.pct(row[field])" in explorer and "fmt.pct(profileReference(field))" in explorer,
+          "profile alternative reads all stored district and city percentages and identifies the overlap as an intersection")
+    check("rows.map((row)" in explorer and "fmt.pct2(row.metro_access_pct_standardized)" in explorer
+          and "fmt.pct2(city.metro_access_pct_standardized)" in explorer and "population_projection_flag" in explorer,
+          "history alternative reads every loaded year with district, city and projection values")
+    check("replace(hosts.profileAlternative, [])" in explorer and "replace(hosts.historyAlternative, [])" in explorer
+          and "aria-describedby', descriptionId" in explorer,
+          "accessible alternatives are linked to their SVGs and cleared in city or station mode")
+    check("Math.max(1, Math.floor(host.clientWidth))" in explorer and "preserveAspectRatio', 'xMinYMin meet'" in explorer
+          and "text-anchor', 'end'" in explorer and "profileLabelLines" in explorer,
+          "responsive profile geometry derives from the actual host width with bounded labels and values")
     check("el('table'" in explorer and "Mapped walk-network length" in explorer,
           "supply context uses a real table and precise walk-network labels")
     visible = (markup[markup.find('id="district-explorer"'):markup.find('id="district-analysis"')] + explorer).lower()

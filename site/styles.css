@@ -1367,6 +1367,7 @@ code {
 .de-grid text, .de-axis text { font-size: 10px; fill: var(--text-3); font-variant-numeric: tabular-nums; }
 .de-grid line { stroke: var(--line); } .de-axis .domain, .de-axis line { stroke: var(--line-2); }
 .de-axis-title { font-size: 10px; fill: var(--text-3); }
+.de-profile-label { font-size: 10px; fill: var(--text-2); }
 .de-profile-row rect { fill: var(--metro); } .de-healthcare rect { fill: var(--healthcare); } .de-education rect { fill: var(--education); } .de-bazaars rect { fill: var(--bazaar); } .de-overlap rect { fill: var(--text-2); }
 .de-city-ref { fill: var(--surface); stroke: var(--text); stroke-width: 1.5; }
 .de-value { font-size: 10px; fill: var(--text); font-variant-numeric: tabular-nums; }
