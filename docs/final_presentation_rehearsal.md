@@ -123,62 +123,7 @@ not spread evenly."
 
 ---
 
-## 7. Where access depends most on buses
-
-**Say:** This chart is sorted by bus-only share, because that is the second half
-of the question. Read the top row.
-
-Be careful here: a high bus-only share means the metro is not within a modelled
-ten-minute walk for most of that district's population. It says nothing about
-how good the buses are.
-
-**Show:** Scroll to District analysis. Point at the top of the stacked chart.
-Hover one row and show every other view responding.
-
-**Number:** the top district's bus-only share, read off the chart.
-
-**If asked about the 0.0% metro district:** its nearest analysed population cell
-is about 19.7 m outside the 800 m budget. That result is threshold-sensitive and
-should not be read as "no metro access exists there".
-
-**Next:** "A natural question is whether density explains any of this."
-
----
-
-## 8. Density vs access
-
-**Say:** If the metro followed population density, we would expect a clear upward
-trend. The dashed lines are the medians of these twelve districts — descriptive,
-not thresholds.
-
-**Show:** The scatter. Hover two or three points. Let the audience see the
-pattern themselves rather than asserting one.
-
-**Number:** none. This chart is about shape, not a value.
-
-**Next:** "Access is only one dimension of a district."
-
----
-
-## 9. Comparing whole districts
-
-**Say:** Six axes, each in its own real units. Pin a few districts and compare
-their profiles side by side.
-
-Flag the two MAPPED axes explicitly: bus stops per km² and bazaars per 100k come
-from OpenStreetMap, whose coverage varies. A thin count may mean a thinly
-surveyed district rather than a thinly served one.
-
-**Show:** Select a district, **Add to comparison**, repeat for two or three
-more. Point at the chips and the coloured lines.
-
-**Number:** none needed.
-
-**Next:** "Everything so far assumes people walk at 4.8 km/h."
-
----
-
-## 10. Current everyday destinations
+## 7. Current everyday destinations
 
 **Say:** The same current-period pedestrian-network model can ask a different
 question: who is within the ten-minute threshold of mapped healthcare,
@@ -202,7 +147,7 @@ change the city map, District Explorer or selected temporal year.
 
 ---
 
-## 11. Bazaar access and transit classes
+## 8. Bazaar access and transit classes
 
 **Say:** The bar now conditions on residents already within the modelled bazaar
 threshold. It partitions them into three mutually exclusive classes: metro plus
@@ -230,7 +175,7 @@ strictly standardized historical question."
 
 ---
 
-## 12. Why the temporal frame is separate
+## 9. Why the temporal frame is separate
 
 **Say:** The 2015–2026 series is not a history of the current headline. It uses
 station-centre proxies, fixed current geography and annual WorldPop model
@@ -251,7 +196,7 @@ standardized history without merging the methods."
 
 ---
 
-## 13. Linked District Explorer
+## 10. Linked District Explorer
 
 **Say:** Select one district in the main comparison, then open District
 Explorer. Its current profile uses current-period measures; its history uses the
@@ -263,7 +208,63 @@ district selection clears. Add two districts to comparison, then clear the
 comparison separately. This demonstrates that selected district, selected
 station and comparison are intentionally independent where appropriate.
 
-**Next:** "Now return to the assumptions that bound every current result."
+**Next:** "With a selected district still in view, compare where transit access
+depends most on buses, then add the district context behind it."
+
+---
+
+## 11. Where access depends most on buses
+
+**Say:** This chart is sorted by bus-only share, because that is the second half
+of the question. Read the top row.
+
+Be careful here: a high bus-only share means the metro is not within a modelled
+ten-minute walk for most of that district's population. It says nothing about
+how good the buses are.
+
+**Show:** Scroll to District analysis. Point at the top of the stacked chart.
+Hover one row and show every other view responding.
+
+**Number:** the top district's bus-only share, read off the chart.
+
+**If asked about the 0.0% metro district:** its nearest analysed population cell
+is about 19.7 m outside the 800 m budget. That result is threshold-sensitive and
+should not be read as "no metro access exists there".
+
+**Next:** "A natural question is whether density explains any of this."
+
+---
+
+## 12. Density vs access
+
+**Say:** If the metro followed population density, we would expect a clear upward
+trend. The dashed lines are the medians of these twelve districts — descriptive,
+not thresholds.
+
+**Show:** The scatter. Hover two or three points. Let the audience see the
+pattern themselves rather than asserting one.
+
+**Number:** none. This chart is about shape, not a value.
+
+**Next:** "Access is only one dimension of a district."
+
+---
+
+## 13. Comparing whole districts
+
+**Say:** Six axes, each in its own real units. Pin a few districts and compare
+their profiles side by side.
+
+Flag the two MAPPED axes explicitly: bus stops per km² and bazaars per 100k come
+from OpenStreetMap, whose coverage varies. A thin count may mean a thinly
+surveyed district rather than a thinly served one.
+
+**Show:** Select a district, **Add to comparison**, repeat for two or three
+more. Point at the chips and the coloured lines.
+
+**Number:** none needed.
+
+**Next:** "Everything so far assumes people walk at 4.8 km/h."
 
 ---
 

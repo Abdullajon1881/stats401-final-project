@@ -198,7 +198,9 @@
       bus-only and underserved use the same current-period transit classes as the metro headline;
       bus-only means bus access without metro access, not an absence of buses.</p>
     <div id="bazaar-transit-composition" class="bazaar-composition"
-         role="img" aria-label="Composition of bazaar-accessible population by mutually exclusive current transit class"></div>
+         role="img" aria-label="Composition of bazaar-accessible population by mutually exclusive current transit class; segment widths are proportional to residents"
+         aria-describedby="bazaar-transit-legend bazaar-transit-city-caption"></div>
+    <div id="bazaar-transit-legend"></div>
     <p class="panel-foot">The segments show simultaneous pedestrian-network proximity only. They
       do not measure journeys, transfers, frequency, affordability, opening hours, reliability,
       crowding, service quality or use. Bazaars are the mapped OpenStreetMap
@@ -207,7 +209,7 @@
 
     <div class="bazaar-table-wrap">
       <table class="bazaar-table">
-        <caption>City overlap: each percentage in the third column uses the entire current analysed population; the fourth uses only bazaar-accessible residents.</caption>
+        <caption id="bazaar-transit-city-caption">City overlap: each percentage in the third column uses the entire current analysed population; the fourth uses only bazaar-accessible residents.</caption>
         <thead><tr><th scope="col">Transit class + bazaar</th><th scope="col">Residents</th><th scope="col">Of city population</th><th scope="col">Of bazaar-accessible population</th></tr></thead>
         <tbody id="bazaar-transit-city-body"></tbody>
       </table>

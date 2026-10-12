@@ -1272,18 +1272,18 @@ code {
 }
 .bazaar-transit > .panel-sub { margin: 4px 0 12px; max-width: 84ch; }
 .bazaar-composition {
-  display: flex; min-height: 54px; overflow: hidden; border-radius: 4px;
-  border: 1px solid var(--line); background: var(--surface-2);
+  display: flex; height: 24px; overflow: hidden; border-radius: 4px;
+  background: var(--surface-2);
 }
 .bazaar-segment {
-  display: flex; align-items: center; min-width: 0; padding: 7px 9px;
-  color: #fff; font-size: 11px; line-height: 1.25; font-weight: 600;
-  font-variant-numeric: tabular-nums; border-right: 1px solid color-mix(in srgb, #fff 45%, transparent);
+  flex-shrink: 1; min-width: 0; padding: 0; border: 0;
 }
-.bazaar-segment:last-child { border-right: 0; }
 .bazaar-segment--metro { background: var(--metro); }
 .bazaar-segment--bus_only { background: var(--bus); color: var(--text); }
 .bazaar-segment--underserved { background: var(--under); color: var(--text); }
+.bazaar-legend { display: flex; flex-wrap: wrap; gap: 5px 14px; margin: 9px 0 0; padding: 0; list-style: none; }
+.bazaar-legend-item { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 11px; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.bazaar-legend-key { width: 10px; height: 10px; flex: 0 0 10px; border-radius: 1px; }
 .bazaar-table-wrap { overflow-x: auto; margin-top: 12px; border: 1px solid var(--line); border-radius: 4px; }
 .bazaar-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
 .bazaar-table th, .bazaar-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -1356,7 +1356,8 @@ code {
   .dest-cards { grid-template-columns: minmax(0, 1fr); }
   .dest-overlap { grid-template-columns: minmax(0, 1fr); }
   .bazaar-transit { padding: 12px; }
-  .bazaar-segment { padding: 6px; font-size: 10px; }
+  .bazaar-legend { gap: 5px 10px; }
+  .bazaar-legend-item { font-size: 10px; }
 }
 @media (max-width: 620px) {
   .destinations { padding: 32px 12px 28px; }

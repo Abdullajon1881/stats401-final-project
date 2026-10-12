@@ -2085,6 +2085,16 @@ def validate_destination_story() -> None:
           and 'id="bazaar-transit-district-body"' in chapter
           and chapter.count("<table") >= 2,
           "the overlap subsection has a titled composition and two native data tables")
+    segment_rule = re.search(r"\.bazaar-segment\s*\{([^}]*)\}", css, re.S)
+    segment_css = segment_rule.group(1) if segment_rule else ""
+    normalized_segment_css = re.sub(r"\s+", "", segment_css)
+    check(segment_rule is not None and "padding:0" in normalized_segment_css
+          and "border:0" in normalized_segment_css
+          and re.search(r"min-width:(?!0(?:;|$))", normalized_segment_css) is None,
+          "the composition segments carry no padding, border, or positive minimum width")
+    check("style: { flexGrow: String(population), flexBasis: '0' }" in code
+          and "bazaar-legend" in code and "aria-hidden': 'true'" in code,
+          "the composition bar is proportional while its visible legend supplies labels and values")
     for phrase in ("entire current analysed population", "named district&rsquo;s entire analysed population",
                    "amenity=marketplace", "not comparable to the standardized temporal", "straight-line link"):
         check(phrase in chapter, f"the overlap subsection states its required caveat: {phrase}")
@@ -2224,10 +2234,37 @@ const mutations = {
     p.district_name = 'Somewhere';
   },
   overlap_city_partition: (d) => { d.transitBazaarCity.record.bus_only_and_bazaar_10min_population += 1; },
+  overlap_city_baseline: (d) => {
+    d.transitBazaarCity.record.metro_access_population += 1;
+    d.transitBazaarCity.record.bus_only_population -= 1;
+  },
+  overlap_city_swapped_classes: (d) => {
+    const r = d.transitBazaarCity.record;
+    [r.metro_and_bazaar_10min_population, r.bus_only_and_bazaar_10min_population] =
+      [r.bus_only_and_bazaar_10min_population, r.metro_and_bazaar_10min_population];
+    [r.metro_and_bazaar_10min_pct, r.bus_only_and_bazaar_10min_pct] =
+      [r.bus_only_and_bazaar_10min_pct, r.metro_and_bazaar_10min_pct];
+  },
   overlap_district_identity: (d) => { d.transitBazaarDistrict.records[0].district_name = 'Unknown district'; },
+  overlap_district_reordered: (d) => {
+    [d.transitBazaarDistrict.records[0], d.transitBazaarDistrict.records[1]] =
+      [d.transitBazaarDistrict.records[1], d.transitBazaarDistrict.records[0]];
+  },
+  overlap_district_baseline: (d) => {
+    d.transitBazaarDistrict.records[0].metro_access_population += 1;
+    d.transitBazaarDistrict.records[0].bus_only_population -= 1;
+  },
   overlap_district_rollup: (d) => { d.transitBazaarDistrict.records[0].metro_and_bazaar_10min_population += 1; },
+  overlap_exceeds_transit_parent: (d) => {
+    const r = d.transitBazaarDistrict.records[0];
+    r.metro_and_bazaar_10min_population = r.metro_access_population + 1;
+    r.metro_and_bazaar_10min_pct = r.metro_and_bazaar_10min_population / r.population * 100;
+  },
   overlap_wrong_denominator: (d) => { d.transitBazaarDistrict.records[0].bus_only_and_bazaar_10min_pct += 1; },
+  overlap_payload_source: (d) => { d.transitBazaarDistrict.source = 'data/processed/transit_bazaar_overlap_city.csv'; },
   overlap_manifest_role: (d) => { d.manifest.layers.transit_bazaar_overlap_city.role = 'display_only'; },
+  overlap_missing_provenance: (d) => { delete d.manifest.layers.transit_bazaar_overlap_city.source_manifest; },
+  overlap_invalid_provenance: (d) => { d.manifest.layers.transit_bazaar_overlap_district.source_manifest = 'data/not-the-approved-manifest.json'; },
 };
 for (const [name, mutate] of Object.entries(mutations)) {
   const d = fresh();
@@ -2274,6 +2311,8 @@ def validate_destination_behaviour() -> None:
           f"committed data prepares: bazaar count reconciles ({valid['bazaars']})")
     check(out["overlap"]["districts"] == 12,
           "committed data prepares: all twelve bazaar–transit districts reconcile")
+    check(out["overlap"]["city"] > 0,
+          "committed data prepares: the unmodified city bazaar–transit result reconciles")
     for name, label in (
         ("population_mismatch", "a population total off the current snapshot"),
         ("walking_time_mismatch", "a walking time off the current snapshot"),
@@ -2290,10 +2329,18 @@ def validate_destination_behaviour() -> None:
         ("share_population_disagree", "a stored share that disagrees with its population"),
         ("outside_point_names_district", "an outside routing source that names a district"),
         ("overlap_city_partition", "a city bazaar–transit partition that no longer reconciles"),
+        ("overlap_city_baseline", "a city transit baseline that no longer matches the current headline"),
+        ("overlap_city_swapped_classes", "swapped city overlap classes"),
         ("overlap_district_identity", "a bazaar–transit district absent from the current analysis"),
+        ("overlap_district_reordered", "bazaar–transit districts in a non-authoritative order"),
+        ("overlap_district_baseline", "a district transit baseline that no longer matches GeoJSON"),
         ("overlap_district_rollup", "a district overlap that no longer rolls up to the city"),
+        ("overlap_exceeds_transit_parent", "a bazaar overlap exceeding its transit parent"),
         ("overlap_wrong_denominator", "a district overlap percentage with the wrong denominator"),
+        ("overlap_payload_source", "a browser overlap payload with the wrong committed CSV source"),
         ("overlap_manifest_role", "a Phase 2F data layer with the wrong analytical role"),
+        ("overlap_missing_provenance", "missing Phase 2F provenance metadata"),
+        ("overlap_invalid_provenance", "invalid Phase 2F provenance metadata"),
     ):
         case = out[name]
         check(case["threw"], f"prepareDestinations() throws on {label} "

@@ -235,11 +235,12 @@ function prepareDistricts(collection) {
  * contract before the chapter is revealed; no fallback, sorting, or repair is
  * allowed in the browser. */
 const OVERLAP_CLASSES = [
-  ['metro', 'Metro + bazaar', 'metro_and_bazaar_10min_population', 'metro_and_bazaar_10min_pct'],
-  ['bus_only', 'Bus-only + bazaar', 'bus_only_and_bazaar_10min_population', 'bus_only_and_bazaar_10min_pct'],
-  ['underserved', 'Underserved + bazaar', 'underserved_and_bazaar_10min_population', 'underserved_and_bazaar_10min_pct'],
+  ['metro', 'Metro + bazaar', 'metro_and_bazaar_10min_population', 'metro_and_bazaar_10min_pct', 'metro_access_population'],
+  ['bus_only', 'Bus-only + bazaar', 'bus_only_and_bazaar_10min_population', 'bus_only_and_bazaar_10min_pct', 'bus_only_population'],
+  ['underserved', 'Underserved + bazaar', 'underserved_and_bazaar_10min_population', 'underserved_and_bazaar_10min_pct', 'underserved_population'],
 ];
-// Inputs are committed to six decimal places; allow one last-place sum error.
+// The committed CSVs round independently to six decimal places. A three-class
+// conservation check can therefore accumulate up to three last-place errors.
 const OVERLAP_TOLERANCE = 3e-6;
 const near = (a, b) => Math.abs(a - b) <= OVERLAP_TOLERANCE;
 
@@ -267,7 +268,10 @@ function prepareTransitBazaarOverlap(data, districts) {
       || cityLayer.features !== 1 || districtLayer.features !== 12
       || cityLayer.source !== 'data/processed/transit_bazaar_overlap_city.csv'
       || districtLayer.source !== 'data/processed/transit_bazaar_overlap_district.csv'
-      || !isText(cityLayer.source_manifest) || !isText(districtLayer.source_manifest)) {
+      || cityLayer.source_manifest !== 'data/phase2f_bazaar_transit_overlap_manifest.json'
+      || districtLayer.source_manifest !== 'data/phase2f_bazaar_transit_overlap_manifest.json'
+      || cityPayload.source !== cityLayer.source || districtPayload.source !== districtLayer.source
+      || cityPayload.source_manifest !== cityLayer.source_manifest) {
     fail('manifest.json', 'does not carry the complete analytical Phase 2F web-data contract');
   }
   const city = cityPayload.record;
@@ -285,59 +289,98 @@ function prepareTransitBazaarOverlap(data, districts) {
       fail(cityFile, `${mine} does not match the current city headline`);
     }
   }
+  for (const [, , , , field] of OVERLAP_CLASSES) {
+    if (!data.city || !near(requireFinite(city, field, cityFile),
+      requireFinite(data.city, field, 'city_summary.json'))) {
+      fail(cityFile, `${field} does not match the current city baseline`);
+    }
+  }
   if (!data.urbanCity || !data.urbanCity.record
       || !near(city.bazaar_10min_population, data.urbanCity.record.bazaar_10min_population)) {
     fail(cityFile, 'bazaar-access total does not match the current urban-dimensions result');
   }
-  const cityTransit = OVERLAP_CLASSES.reduce((sum, [kind]) =>
-    sum + requireFinite(city, `${kind === 'metro' ? 'metro_access' : kind}_population`, cityFile), 0);
+  const cityBazaar = requireFinite(city, 'bazaar_10min_population', cityFile);
+  if (cityBazaar > total + OVERLAP_TOLERANCE) fail(cityFile, 'bazaar access exceeds the city population');
+  const cityTransit = OVERLAP_CLASSES.reduce((sum, [, , , , field]) =>
+    sum + requireFinite(city, field, cityFile), 0);
   if (!near(cityTransit, total)) fail(cityFile, 'three transit classes do not partition the city population');
-  const cityOverlap = OVERLAP_CLASSES.reduce((sum, [, , population, pct]) => {
+  const cityOverlap = OVERLAP_CLASSES.reduce((sum, [, , population, pct, baseline]) => {
     const value = requireFinite(city, population, cityFile);
     const share = requireFinite(city, pct, cityFile);
     if (!near(value / total * 100, share)) fail(cityFile, `${pct} has the wrong city denominator`);
+    if (value > city[baseline] + OVERLAP_TOLERANCE || value > cityBazaar + OVERLAP_TOLERANCE) {
+      fail(cityFile, `${population} exceeds its current-period parent population`);
+    }
     return sum + value;
   }, 0);
-  if (!near(cityOverlap, requireFinite(city, 'bazaar_10min_population', cityFile))) {
+  if (!near(cityOverlap, cityBazaar)) {
     fail(cityFile, 'the transit–bazaar classes do not partition bazaar access');
   }
 
-  const expectedNames = new Set(districts.map((feature) => feature.properties.district_name));
+  const districtByName = new Map();
+  for (const feature of districts) {
+    const props = feature.properties;
+    if (!props || !isText(props.district_name) || districtByName.has(props.district_name)) {
+      fail('districts.geojson', 'cannot establish unique authoritative district identities');
+    }
+    requireFinite(props, 'calibrated_population', 'districts.geojson', true);
+    for (const [, , , , field] of OVERLAP_CLASSES) requireFinite(props, field, 'districts.geojson');
+    districtByName.set(props.district_name, props);
+  }
+  const expectedNames = [...districtByName.keys()];
+  const expectedNameSet = new Set(expectedNames);
   const urbanRecords = data.urbanDistrict && data.urbanDistrict.records;
-  if (!Array.isArray(urbanRecords) || urbanRecords.length !== expectedNames.size) {
+  if (!Array.isArray(urbanRecords) || urbanRecords.length !== expectedNames.length) {
     fail('urban_dimensions_district.json', 'cannot establish the twelve-district correspondence');
   }
   const urbanByName = new Map(urbanRecords.map((record) => [record.district_name, record]));
+  if (urbanByName.size !== urbanRecords.length) {
+    fail('urban_dimensions_district.json', 'does not retain unique district identities');
+  }
   const rows = districtPayload.records;
-  if (rows.length !== expectedNames.size || districtLayer.features !== rows.length) {
+  if (rows.length !== expectedNames.length || districtLayer.features !== rows.length) {
     fail(districtFile, 'does not have exactly one record for every analysis district');
   }
   const seen = new Set();
   const sums = Object.fromEntries(['population', 'bazaar_10min_population', ...OVERLAP_CLASSES.map(([, , field]) => field)]
     .map((field) => [field, 0]));
   const checked = rows.map((row, index) => {
-    if (!isText(row.district_name) || seen.has(row.district_name) || !expectedNames.has(row.district_name)
+    if (!isText(row.district_name) || row.district_name !== expectedNames[index]
+        || seen.has(row.district_name) || !expectedNameSet.has(row.district_name)
         || !urbanByName.has(row.district_name)) {
-      fail(districtFile, `record ${index} lacks a unique matching current-analysis district`);
+      fail(districtFile, `record ${index} lacks the expected current-analysis district identity and order`);
     }
     seen.add(row.district_name);
     const population = requireFinite(row, 'population', districtFile, true);
     const urban = urbanByName.get(row.district_name);
+    const baseline = districtByName.get(row.district_name);
     if (!near(population, urban.population)) {
       fail(districtFile, `${row.district_name} population does not match urban dimensions`);
     }
-    const transit = OVERLAP_CLASSES.reduce((sum, [kind]) =>
-      sum + requireFinite(row, `${kind === 'metro' ? 'metro_access' : kind}_population`, districtFile), 0);
+    if (!near(population, baseline.calibrated_population)) {
+      fail(districtFile, `${row.district_name} population does not match the current district baseline`);
+    }
+    const transit = OVERLAP_CLASSES.reduce((sum, [, , , , field]) => {
+      const value = requireFinite(row, field, districtFile);
+      if (!near(value, baseline[field])) {
+        fail(districtFile, `${row.district_name} ${field} does not match the current district baseline`);
+      }
+      return sum + value;
+    }, 0);
     if (!near(transit, population)) fail(districtFile, `${row.district_name} transit classes do not partition population`);
     let overlap = 0;
-    for (const [, , field, pct] of OVERLAP_CLASSES) {
+    const bazaar = requireFinite(row, 'bazaar_10min_population', districtFile);
+    if (bazaar > population + OVERLAP_TOLERANCE) fail(districtFile, `${row.district_name} bazaar access exceeds its population`);
+    for (const [, , field, pct, baselineField] of OVERLAP_CLASSES) {
       const value = requireFinite(row, field, districtFile);
       const share = requireFinite(row, pct, districtFile);
       if (!near(value / population * 100, share)) fail(districtFile, `${row.district_name} ${pct} has the wrong denominator`);
+      if (value > row[baselineField] + OVERLAP_TOLERANCE || value > bazaar + OVERLAP_TOLERANCE) {
+        fail(districtFile, `${row.district_name} ${field} exceeds its current-period parent population`);
+      }
       overlap += value;
       sums[field] += value;
     }
-    const bazaar = requireFinite(row, 'bazaar_10min_population', districtFile);
     if (!near(overlap, bazaar)) fail(districtFile, `${row.district_name} classes do not partition bazaar access`);
     if (!near(bazaar, urban.bazaar_10min_population)) {
       fail(districtFile, `${row.district_name} bazaar total does not match urban dimensions`);
@@ -346,7 +389,7 @@ function prepareTransitBazaarOverlap(data, districts) {
     sums.bazaar_10min_population += bazaar;
     return row;
   });
-  if (seen.size !== expectedNames.size) fail(districtFile, 'does not cover all twelve analysis districts');
+  if (seen.size !== expectedNames.length) fail(districtFile, 'does not cover all twelve analysis districts');
   if (!near(sums.population, total) || !near(sums.bazaar_10min_population, city.bazaar_10min_population)) {
     fail(districtFile, 'district totals do not roll up to the city result');
   }
@@ -436,22 +479,30 @@ export function initDestinations(model) {
     contextTitle: document.getElementById('dest-context-h'),
     context: document.getElementById('dest-context'),
     overlapComposition: document.getElementById('bazaar-transit-composition'),
+    overlapLegend: document.getElementById('bazaar-transit-legend'),
     overlapCityBody: document.getElementById('bazaar-transit-city-body'),
     overlapDistrictBody: document.getElementById('bazaar-transit-district-body'),
   };
 
   function renderBazaarTransitOverlap() {
     const total = overlap.city.bazaar_10min_population;
-    const segment = ([kind, label, field, pct]) => {
+    const segment = ([kind, label, field]) => {
       const population = overlap.city[field];
-      const conditional = population / total * 100;
       return el('div', {
         class: `bazaar-segment bazaar-segment--${kind}`,
         style: { flexGrow: String(population), flexBasis: '0' },
-        title: `${label}: ${fmt.people(population)} residents (${fmt.pct3(conditional)} of bazaar-accessible residents)`,
-      }, [el('span', { text: `${label}: ${fmt.pct3(conditional)}` })]);
+        'aria-hidden': 'true',
+      });
     };
     replace(hosts.overlapComposition, OVERLAP_CLASSES.map(segment));
+    replace(hosts.overlapLegend, el('ul', { class: 'bazaar-legend' }, OVERLAP_CLASSES.map(([kind, label, field]) => {
+      const population = overlap.city[field];
+      const conditional = population / total * 100;
+      return el('li', { class: 'bazaar-legend-item' }, [
+        el('i', { class: `bazaar-legend-key bazaar-segment--${kind}`, 'aria-hidden': 'true' }),
+        el('span', { text: `${label}: ${fmt.pct3(conditional)} of bazaar-accessible residents (${fmt.people(population)})` }),
+      ]);
+    })));
     replace(hosts.overlapCityBody, OVERLAP_CLASSES.map(([kind, label, field, pct]) => el('tr', {}, [
       el('th', { scope: 'row', text: label }),
       el('td', { text: fmt.people(overlap.city[field]) }),
