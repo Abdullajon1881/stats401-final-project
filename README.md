@@ -1,124 +1,108 @@
-# Tashkent Transit & Walkability: Who Can Reach the Metro in Ten Minutes?
+# Tashkent Transit & Walkability — completed project
 
-**Group members:** Doniyor Erkinov (de82), Saidkamolkhon Bakhodirov (sb932)
+An interactive, reproducible study of current walking access to Tashkent’s metro, mapped bus stops and everyday destinations. It explains what the network model estimates without presenting access as observed travel or service quality.
 
-## 1. Topic, Goals, and Questions
+**Live production sites:** [main project site](https://stats401-final-project.saidkamolbahodirov.workers.dev/) and [transit & walkability site](https://tashkent-transit-walkability.saidkamolbahodirov.workers.dev/).
 
-Tashkent has expanded quickly, and the metro has expanded with it. But a metro line on a city map does not automatically mean that most residents can actually reach it on foot. Our project asks: **What share of Tashkent lives within a 10-minute walk of the metro, and which districts depend entirely on buses without having access to subway?**
+The historical assignment proposal remains unchanged at [docs/proposal.md](docs/proposal.md).
 
-We want to turn that question into an interactive view of transit access across the city. The main audience is Tashkent residents and commuters, with a secondary audience of people interested in transport planning or comparing districts. Our goals are to estimate metro walking access, show where bus service fills the gap.
+## Research question
 
-Main questions:
+> What share of the analysed Tashkent population is within a modelled ten-minute walk of metro access, and how do metro, bus-only and underserved access vary by district and everyday destination?
 
-1. What share of Tashkent’s population lives within 10-minute walk of a metro station? (less than 1km)
-2. Which districts have the highest and lowest metro-access coverage?
-3. Which districts have little or no metro coverage and depend mostly on buses?
-4. Are some dense residential areas relatively underserved with public transport?
-5. How does access to bazaars (markets) overlap with metro and bus access?
+The completed study answers five linked questions: the citywide metro share; district variation in metro access; where access is bus-only rather than metro access; how density and access sit together; and how mapped bazaar access overlaps with the three current transit classes.
 
-We will present the 10-minute result as an estimate, not an exact fact. Walking speed, street-network completeness, station entrances, and modeled population distribution all introduce uncertainty in calculation.
+## Findings and scope
 
-## 2. Datasets
+The current, entrance-aware model covers **12 Tashkent districts** and an analysed population of **3,212,200**. Yangi Toshkent is excluded because it has no matching official SIAT population row; including it would invent a denominator.
 
-We plan to combine four sources.
+At the 10-minute / 800 m / 4.8 km/h walking assumption, the model estimates **13.56%** of the analysed population has metro access, **72.04%** is bus-only, and **14.40%** reaches neither mapped transit class. “Bus-only” means within the mapped bus-stop threshold while outside the metro threshold; it says nothing about bus frequency, reliability, routes, fares or actual use.
 
-**OpenStreetMap (OSM):** pedestrian streets, metro stations and entrances, district boundaries, and some bus/POI locations. We will obtain the data programmatically with OSMnx and use the walking network to calculate network-based catchments instead of drawing simple circles around stations.
+The current destination chapter uses the same pedestrian-network framework for mapped healthcare, education and marketplace sources. It preserves the committed healthcare-and-education intersection rather than adding two shares.
 
-**WorldPop:** approximately 100 m gridded population estimates for Uzbekistan. We will clip the raster to Tashkent to estimate where people live within each district.
+### Bazaar–transit overlap
 
-**Uzbekistan National Statistics Committee / SIAT:** official population totals for Tashkent and its districts. We will use these totals to calibrate the WorldPop distribution so our district estimates stay consistent with official statistics.
+Among residents with modelled access to a mapped bazaar, 91,271.537286 are in the metro-and-bazaar class, 370,579.615668 are bus-only-and-bazaar, and 1,830.726976 are underserved-and-bazaar. These mutually exclusive intersections partition 463,681.879929 bazaar-accessible residents. The site distinguishes this conditional composition from the source CSV percentages, which use the entire city or named district population as denominator.
 
-**Transport/open data:** current bus stops and routes will come from Uzbekistan’s transport/open-data sources where usable machine-readable records are available, supplemented by OSM and collected from Yandex Maps. 
+Mapped bazaars are OpenStreetMap `amenity=marketplace` sources, not a market census. The overlap describes simultaneous modelled proximity, not journeys, transfers, frequency, affordability, opening hours, service quality or actual market use. It is a current-period result and is not comparable to the standardized temporal frame.
 
-Processing will be done in Python. We will standardize names, remove duplicates, project the data into a metric coordinate system, calculate walking time on the street network, merge overlapping catchments, and intersect them with population cells. We expect tens of thousands of street-network edges, hundreds to thousands of transit points, all across 12 Tashkent districts. Final D3-ready outputs will be compact CSV and GeoJSON files.
+## Website and interactions
 
-Data links:
+Five coordinated district visualization idioms make up the current story:
 
-- https://siat.stat.uz/data/3890/?lang=en
-- https://hub.worldpop.org/project/categories?id=3
-- https://www.openstreetmap.org/
-- https://data.egov.uz/
+- MapLibre access map with display-only context layers;
+- ranked metro-access comparison;
+- 100% metro / bus-only / underserved population composition;
+- density-versus-access scatterplot; and
+- parallel-coordinate comparison of selected districts.
 
-## 3. Analysis and Visualization Methods
+The site also has a current everyday-destinations chapter, a methodological bridge to the separate standardized series, a 2015–2026 temporal chapter with station-state events and descriptive counterfactual diagnostics, and a linked District Explorer. A district selection coordinates the main views and explorer; station selection is separate and mutually exclusive. Destination switching is local to its chapter, while the static bazaar-overlap tables add no second selection store.
 
-We will use Python with `pandas`, `geopandas`, `osmnx`, `networkx`, `shapely`, and raster-processing tools. The final interface will use HTML/CSS and D3.js.
+## Methods and data
 
-Our main walking-speed assumption will be about 5 km/h. Residents inside overlapping station catchments will be counted once. For the “bus-only” category, we plan to count residents outside the 10-minute metro catchment but inside a 10-minute walking catchment of at least one bus stop. This measures physical access, not bus frequency or reliability, which we will state clearly.
+The current headline uses pedestrian-network shortest-path distance from each population-cell centre, connected by a straight line to its nearest mapped walkable edge, to a metro access point. Mapped entrances are used when available; ten stations use station-point fallbacks, creating positional uncertainty.
 
-The project will contain five connected visualization idioms:
+| Input | Role |
+|---|---|
+| OpenStreetMap | Pedestrian network, metro access points, stations, bus stops, marketplaces, destinations and boundaries |
+| SIAT | Official 2026-Q2 district population totals |
+| WorldPop R2025A | Within-district population weights, calibrated to official totals |
+| OpenFreeMap / OpenMapTiles | Basemap style and tiles |
 
-1. **Interactive access map** — metro walking isochrones, population density, bus stops, bazaars, and district boundaries.
-2. **Ranked district dot plot** — percentage of residents within a 10-minute metro walk.
-3. **100% stacked bar chart** — metro-accessible, bus-only, and underserved population by district.
-4. **Scatterplot** — population density versus metro coverage to identify dense but poorly served districts.
-5. **Parallel-coordinates view** — compare selected districts across metro coverage, bus availability, density, and bazaar access.
+The **standardized 2015–2026 temporal series** is methodologically separate: it holds current pedestrian geography and station-centre proxies fixed, uses annual WorldPop model weights, and changes station opening state. It supports comparison between its own years, not with the entrance-aware current headline.
 
-Users should be able to locate, compare, filter, identify outliers, and explore relationships.
+Analytical files in `site/data/` are typed copies of audited outputs. Isochrones, density grids, lines and point layers are visualization-only context; no published population share is calculated from their drawn geometry.
 
-## 4. Initial Visualization Sketches
+## Limits and uncertainty
 
-**Access map**
-```text
-+------------- Tashkent -------------+
-|  [10-min metro areas]              |
-|  ○ station   • bus   ▒ population  |
-|  click district → update views     |
-+------------------------------------+
+- Modelled physical walking proximity is not observed behaviour.
+- OpenStreetMap completeness affects networks, entrances, stops and POIs.
+- The cell-centre connector is straight-line and may cross an unmapped barrier; it is not asserted to be walkable.
+- The tested 4.0–5.6 km/h walking-speed range changes the metro share materially. This does not validate every other assumption.
+- Display isochrones are cartographic context, not population estimates.
+- Mapped facilities and marketplaces are not measures of capacity or quality.
+
+## Repository guide
+
+| Path | Contents |
+|---|---|
+| `site/` | Static production site, vendored D3/MapLibre assets and generated browser data |
+| `scripts/` | Reproducible builders, validators and analysis tooling |
+| `data/processed/` | Audited committed analytical outputs |
+| `data/phase2f_bazaar_transit_overlap_manifest.json` | Phase F1 provenance and hashes for bazaar–transit overlap |
+| `docs/` | Methodology, sources, integration notes, archival proposal and presentation guide |
+
+## Run and validate
+
+The committed website is already built. Serve it over HTTP (not `file://`):
+
+```powershell
+python -m http.server 8000 -d site
 ```
-*Interactive map: shows where metro walking access overlaps with residential population.*
 
-**District ranking**
-```text
-Yunusabad    -----------●
-Mirabad      --------●
-...
-Yangikhayot  --●
+Then browse to `http://localhost:8000`. Regenerate only browser data from audited committed artifacts with:
+
+```powershell
+python scripts/build_web_data.py
+python scripts/validate_prototype.py
 ```
-*Dot plot: makes access differences between districts easy to compare.*
 
-**Access composition**
-```text
-District A |████ metro ███ bus ░ underserved|
-District B |██ metro █████ bus ░░░░          |
+Release checks:
+
+```powershell
+python scripts/validate_data.py
+python scripts/validate_analysis.py
+python scripts/validate_week6.py
+python scripts/validate_final.py
+python scripts/validate_phase2f_bazaar_transit_overlap.py --committed
+python scripts/validate_phase2f_bazaar_transit_overlap.py --full
+python scripts/test_transit_bazaar_overlap.py
 ```
-*100% stacked bars: shows how each district’s population is split across access categories.*
 
-**Density vs. coverage**
-```text
-coverage ↑      •
-         |  •       •
-         |      ×
-         +------------→ density
-```
-*Scatterplot: reveals dense districts with unexpectedly weak metro access.*
+Phase F1 `--committed` validates its committed-artifact contract and provenance. `--full` additionally exercises the reproducible analysis path, requiring gitignored routing and source-data caches. A fresh clone can serve the committed site and validate committed artifacts, but cannot recreate every geospatial input without acquiring the documented external sources.
 
-**District comparison**
-```text
-Population  Metro  Bus  Bazaar  Density
-      \       /\    \      /      /
-       \_____/  \____\____/______/
-```
-*Parallel coordinates: compares several districts across multiple access measures.*
+## Dependencies and licensing
 
-## 5. Group Roles and Responsibilities
+The static site has no package-manager build step. It vendors D3 7.9.0 (ISC) and MapLibre GL JS 5.24.0 (BSD-3-Clause), with license files under `site/vendor/`. OpenStreetMap data are used under ODbL and map attribution is retained. No API key, token or secret is embedded.
 
-**Doniyor Erkinov (Group Leader)** will coordinate the project, manage data acquisition and documentation, help validate transport data, lead cleaning, and organize presentations.
-
-**Saidkamolkhon Bakhodirov** will lead the geospatial analysis, visualization design, D3.js implementation, linked interactions, interface development, and testing.
-
-Both members will contribute to the research questions, interpretation, debugging, and presentation.
-
-## 6. Interim Presentation Deliverables
-
-By the interim presentation, we expect to have a cleaned pedestrian network, verified metro locations, district boundaries, initial population calibration, and a first set of 10-minute walking catchments. We also plan to show district summaries, a fixed definition of “bus-only” access, and have at least one working D3 prototype.
-
-## 7. Timeline and Milestones
-
-| Week | Milestone | Tasks | Responsible | Expected output |
-|---|---|---|---|---|
-| 2 | Project definition | Finalize questions, sources, assumptions | Both | Proposal + source plan |
-| 3 | Data preparation | Acquire and clean OSM, WorldPop, SIAT, transit data | Doniyor + Saidkamolkhon | Clean datasets |
-| 4 | Geospatial analysis | Walking network, isochrones, population calibration, district metrics | Saidkamolkhon + Doniyor review | Analysis tables + GeoJSON |
-| 5 | Interim prototype | Exploratory analysis, map, first linked chart | Both | Interim demo |
-| 6 | Full visualization | Remaining views, filters, tooltips, linked highlighting, sensitivity tests | Both | Five connected views |
-| 7 | Final integration | Validate results, refine design, test, document limitations, rehearse | Both | Final site + presentation |
+For detailed methods and reproduction, read [final integration](docs/final_integration.md), [Phase F1 overlap methods](docs/phase2f_bazaar_transit_overlap.md), and the [presentation guide](docs/final_presentation_rehearsal.md).

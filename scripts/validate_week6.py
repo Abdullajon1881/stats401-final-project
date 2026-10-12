@@ -486,7 +486,10 @@ def validate_provenance() -> None:
         f"{BASELINE_MAIN[:10]} ({changed_processed or 'no diff'})",
     )
 
-    for path in ("data/analysis_manifest.json", "README.md", "docs/proposal.md"):
+    # README is intentionally allowed to evolve from the original proposal into
+    # the completed-project landing page. The archival proposal and audited
+    # analysis manifest remain the immutable Week 4 provenance record.
+    for path in ("data/analysis_manifest.json", "docs/proposal.md"):
         diff = git("diff", "--stat", BASELINE_MAIN, "--", path)
         check(diff == "", f"{path} is unchanged since {BASELINE_MAIN[:10]} ({diff or 'no diff'})")
 

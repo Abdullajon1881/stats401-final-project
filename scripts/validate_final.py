@@ -18,7 +18,9 @@ Checks are structural or data-driven. A comment is never accepted as evidence.
 
 from __future__ import annotations
 
+import csv
 import json
+import math
 import re
 import subprocess
 import sys
@@ -34,7 +36,11 @@ JS_DIR = SITE_DIR / "js"
 WEB_DATA_DIR = SITE_DIR / "data"
 DOCS_DIR = cfg.REPO_ROOT / "docs"
 
-BASELINE_MAIN = "158f9ba2e2fff171db35281df83e836d565ca6eb"
+BASELINE_MAIN = "f14b94b4ec878d62cb9ef24b8905d7a5e025d9bc"
+PRODUCTION_URLS = (
+    "https://stats401-final-project.saidkamolbahodirov.workers.dev/",
+    "https://tashkent-transit-walkability.saidkamolbahodirov.workers.dev/",
+)
 
 PASSED = 0
 WARNINGS: list[str] = []
@@ -112,10 +118,21 @@ def validate_baseline() -> None:
         text = integration.read_text(encoding="utf-8").lower()
         for topic in ("research question", "bus-only", "sensitivity", "limitations",
                       "yangi toshkent", "accessibility", "dependencies",
-                      "publication status", "running the site"):
+                      "publication status", "running the site", "bazaar", "temporal",
+                      "district explorer"):
             check(topic in text, f"final_integration.md covers {topic}")
-        check("not deployed" in text,
-              "final_integration.md does not claim the site is deployed")
+        check(all(url in text for url in PRODUCTION_URLS) and "production" in text
+              and "not deployed" not in text,
+              "final_integration.md truthfully identifies both production deployments")
+
+    readme = (cfg.REPO_ROOT / "README.md")
+    if readme.exists():
+        text = readme.read_text(encoding="utf-8").lower()
+        check("completed project" in text and "production" in text
+              and all(url.lower() in text for url in PRODUCTION_URLS),
+              "README is a completed-project overview with production links")
+        check("we plan to" not in text and "interim presentation deliverables" not in text,
+              "README is not the historical proposal")
 
     rehearsal = (DOCS_DIR / "final_presentation_rehearsal.md")
     if rehearsal.exists():
@@ -443,7 +460,8 @@ def validate_frozen() -> None:
         f"{BASELINE_MAIN[:10]}",
     )
 
-    for path in ("README.md", "docs/proposal.md", "data/analysis_manifest.json"):
+    for path in ("docs/proposal.md", "data/analysis_manifest.json",
+                 "data/phase2f_bazaar_transit_overlap_manifest.json"):
         diff = git("diff", "--stat", BASELINE_MAIN, "--", path)
         check(diff == "", f"{path} is unchanged since {BASELINE_MAIN[:10]}")
 
@@ -468,6 +486,65 @@ def validate_frozen() -> None:
         check(ok, f"{key} = {want!r} (found {got!r})")
     check(abs(float(city.get("analysis_population", 0)) - 3_212_200) < 1e-9,
           f"analysis population = 3,212,200 (found {city.get('analysis_population')!r})")
+
+
+def validate_bazaar_transit_contract() -> None:
+    """Final release checks for the current-only, audited Phase 2F panel."""
+    section("8b. Bazaar–transit release contract")
+    city_source = cfg.PROCESSED_DIR / "transit_bazaar_overlap_city.csv"
+    district_source = cfg.PROCESSED_DIR / "transit_bazaar_overlap_district.csv"
+    source_manifest = cfg.DATA_DIR / "phase2f_bazaar_transit_overlap_manifest.json"
+    city_web = load_json(WEB_DATA_DIR / "transit_bazaar_overlap_city.json")
+    district_web = load_json(WEB_DATA_DIR / "transit_bazaar_overlap_district.json")
+    web_manifest = load_json(WEB_DATA_DIR / "manifest.json")
+    with city_source.open(encoding="utf-8", newline="") as handle:
+        source_city = next(csv.DictReader(handle))
+    with district_source.open(encoding="utf-8", newline="") as handle:
+        source_districts = list(csv.DictReader(handle))
+    city = city_web.get("record", {})
+    districts = district_web.get("records", [])
+    layers = web_manifest.get("layers", {})
+
+    check(city_web.get("role") == district_web.get("role") == "analytical"
+          and city_web.get("source") == "data/processed/transit_bazaar_overlap_city.csv"
+          and district_web.get("source") == "data/processed/transit_bazaar_overlap_district.csv",
+          "Phase 2F web files are analytical, typed copies of the committed CSVs")
+    check(len(districts) == len(source_districts) == 12
+          and [r.get("district_name") for r in districts] == [r["district_name"] for r in source_districts],
+          "Phase 2F web district records retain all twelve source identities and order")
+    check(all(entry.get("role") == "analytical" and entry.get("source_manifest")
+              == "data/phase2f_bazaar_transit_overlap_manifest.json"
+              for entry in (layers.get("transit_bazaar_overlap_city", {}),
+                            layers.get("transit_bazaar_overlap_district", {}))),
+          "web manifest records both Phase 2F analytical layers and provenance manifest")
+    check(source_manifest.exists() and city.get("analysis_version")
+          == "phase2f-current-bazaar-transit-overlap-v1" and city.get("period") == "current",
+          "Phase 2F panel identifies its committed current-period analysis")
+    source_values = {k: float(v) for k, v in source_city.items()
+                     if k not in ("analysis", "analysis_version", "period")}
+    check(all(isinstance(city.get(k), (int, float)) and math.isfinite(city[k])
+              and abs(float(city[k]) - value) <= 1e-12 for k, value in source_values.items()),
+          "Phase 2F city values retain source precision and numeric types")
+    total = city.get("population_total", 0)
+    overlaps = [city.get(f"{name}_and_bazaar_10min_population", float("nan"))
+                for name in ("metro", "bus_only", "underserved")]
+    check(isinstance(total, (int, float)) and total > 0
+          and all(isinstance(value, (int, float)) and math.isfinite(value) and value >= 0
+                  for value in overlaps)
+          and abs(sum(overlaps) - city.get("bazaar_10min_population", float("nan"))) <= 3e-6,
+          "Phase 2F city overlap classes preserve the bazaar-access denominator")
+    product = " ".join(product_copy().values()).lower()
+    check("how does bazaar access overlap with transit?" in product
+          and "of city population" in product and "of district" in product
+          and "of bazaar-accessible population" in product,
+          "the site labels city, district and conditional denominators distinctly")
+    required_caveats = ("amenity=marketplace", "not comparable to the standardized temporal",
+                        "not measure journeys", "straight-line")
+    check(all(phrase in product for phrase in required_caveats),
+          "the site retains Phase 2F marketplace, scope, connector and frame caveats")
+    forbidden = ("caused by bazaar", "historical bazaar", "journey flow", "market priority")
+    hits = [phrase for phrase in forbidden if phrase in product]
+    check(not hits, f"the Phase 2F panel makes no causal, historical or priority claim ({hits or 'none'})")
 
 
 # ---------------------------------------------------------------------------
@@ -625,6 +702,7 @@ def main() -> int:
     validate_hardening()
     validate_publishable()
     validate_frozen()
+    validate_bazaar_transit_contract()
     validate_web_manifest_stage()
     validate_evidence_limited_claims()
     validate_rehearsal_method()
