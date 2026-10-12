@@ -38,6 +38,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -96,8 +97,19 @@ WEB_FILES = {
     "urban_dimensions_district": "urban_dimensions_district.json",
     "healthcare_points": "healthcare_points.geojson",
     "education_points": "education_points.geojson",
+    "transit_bazaar_overlap_city": "transit_bazaar_overlap_city.json",
+    "transit_bazaar_overlap_district": "transit_bazaar_overlap_district.json",
     "manifest": "manifest.json",
 }
+
+# Phase 2F is intentionally read from its committed artifacts directly rather
+# than from config.py: it is a completed, additive analysis whose source files
+# are protected by its own validator.  This web build verifies its manifest
+# before it copies even one value into the browser contract.
+PHASE2F_CITY_FILE = cfg.PROCESSED_DIR / "transit_bazaar_overlap_city.csv"
+PHASE2F_DISTRICT_FILE = cfg.PROCESSED_DIR / "transit_bazaar_overlap_district.csv"
+PHASE2F_MANIFEST_FILE = cfg.DATA_DIR / "phase2f_bazaar_transit_overlap_manifest.json"
+PHASE2F_ANALYSIS_VERSION = "phase2f-current-bazaar-transit-overlap-v1"
 
 
 # ---------------------------------------------------------------------------
@@ -276,6 +288,9 @@ def load_inputs() -> dict:
         "urban_dimensions_district": require(cfg.URBAN_DIMENSIONS_DISTRICT_FILE),
         "healthcare_facilities": require(cfg.HEALTHCARE_FACILITIES_FILE),
         "education_facilities": require(cfg.EDUCATION_FACILITIES_FILE),
+        "transit_bazaar_overlap_city": require(PHASE2F_CITY_FILE),
+        "transit_bazaar_overlap_district": require(PHASE2F_DISTRICT_FILE),
+        "phase2f_manifest": require(PHASE2F_MANIFEST_FILE),
     }
     if not paths["population_cells"].exists():
         raise FileNotFoundError(
@@ -774,6 +789,40 @@ def read_csv_records(path: Path) -> tuple[list[str], list[dict]]:
     return columns, records
 
 
+def canonical_text_bytes(path: Path) -> bytes:
+    """Bytes governed by a canonical_utf8_lf Phase 2F manifest entry."""
+    return path.read_bytes().replace(b"\r\n", b"\n")
+
+
+def validate_phase2f_manifest(paths: dict) -> dict:
+    """Refuse a stale, reordered, or altered Phase 2F source contract."""
+    manifest = json.loads(paths["phase2f_manifest"].read_text(encoding="utf-8"))
+    if manifest.get("analysis_version") != PHASE2F_ANALYSIS_VERSION:
+        raise ValueError("Phase 2F manifest has an unexpected analysis_version")
+    if manifest.get("period") != "current" or manifest.get("historical_or_causal_claim") is not False:
+        raise ValueError("Phase 2F manifest must describe a current, non-causal analysis")
+    if manifest.get("output_rows") != {
+        "data/processed/transit_bazaar_overlap_city.csv": 1,
+        "data/processed/transit_bazaar_overlap_district.csv": 12,
+    }:
+        raise ValueError("Phase 2F manifest does not declare the required 1 city / 12 district rows")
+    expected = {
+        "data/processed/transit_bazaar_overlap_city.csv": paths["transit_bazaar_overlap_city"],
+        "data/processed/transit_bazaar_overlap_district.csv": paths["transit_bazaar_overlap_district"],
+    }
+    outputs = manifest.get("output_files")
+    if not isinstance(outputs, dict) or set(outputs) != set(expected):
+        raise ValueError("Phase 2F manifest has an unexpected output-file contract")
+    for name, path in expected.items():
+        item = outputs[name]
+        raw = canonical_text_bytes(path)
+        if item.get("hash_basis") != "canonical_utf8_lf" \
+                or item.get("sha256") != hashlib.sha256(raw).hexdigest() \
+                or item.get("size_bytes") != len(raw):
+            raise ValueError(f"Phase 2F manifest does not authenticate {name}")
+    return manifest
+
+
 def rel(path: Path) -> str:
     return str(path.relative_to(cfg.REPO_ROOT)).replace("\\", "/")
 
@@ -911,6 +960,119 @@ def build_urban_dimensions(paths: dict) -> dict:
             "urban_dimensions_district": (len(district), district_size)}
 
 
+# ---------------------------------------------------------------------------
+# Phase 2F current bazaar–transit overlap (analytical, copied not recomputed)
+# ---------------------------------------------------------------------------
+PHASE2F_CITY_FIELDS = (
+    "analysis", "analysis_version", "period", "population_total", "population_cells",
+    "walking_speed_kmh", "walking_time_minutes", "distance_budget_m",
+    "metro_access_population", "bus_only_population", "underserved_population",
+    "bazaar_10min_population", "metro_and_bazaar_10min_population",
+    "metro_and_bazaar_10min_pct", "bus_only_and_bazaar_10min_population",
+    "bus_only_and_bazaar_10min_pct", "underserved_and_bazaar_10min_population",
+    "underserved_and_bazaar_10min_pct",
+)
+PHASE2F_DISTRICT_FIELDS = (
+    "district_name", "population", "metro_access_population", "bus_only_population",
+    "underserved_population", "bazaar_10min_population", "metro_and_bazaar_10min_population",
+    "metro_and_bazaar_10min_pct", "bus_only_and_bazaar_10min_population",
+    "bus_only_and_bazaar_10min_pct", "underserved_and_bazaar_10min_population",
+    "underserved_and_bazaar_10min_pct",
+)
+PHASE2F_CLASSES = ("metro", "bus_only", "underserved")
+# CSV populations are committed to six decimal places.  A three-term sum can
+# differ from the separately rounded total by one final decimal place.
+PHASE2F_TOLERANCE = 3e-6
+
+
+def _phase2f_baseline_field(kind: str) -> str:
+    return "metro_access_population" if kind == "metro" else f"{kind}_population"
+
+
+def _phase2f_number(record: dict, field: str, label: str, *, positive: bool = False) -> float:
+    value = record.get(field)
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value):
+        raise ValueError(f"{label}: {field} must be a finite number")
+    if value < 0 or (positive and value <= 0):
+        raise ValueError(f"{label}: {field} must be {'positive' if positive else 'non-negative'}")
+    return float(value)
+
+
+def _phase2f_close(left: float, right: float, label: str) -> None:
+    if abs(left - right) > PHASE2F_TOLERANCE:
+        raise ValueError(f"Phase 2F {label} does not reconcile ({left} != {right})")
+
+
+def build_transit_bazaar_overlap(paths: dict) -> dict:
+    """Copy the authenticated Phase 2F records into typed, deterministic JSON."""
+    step("STEP 11b  Bazaar–transit overlap (ANALYTICAL, copied from Phase 2F)")
+    source_manifest = validate_phase2f_manifest(paths)
+    city_columns, city_rows = read_csv_records(paths["transit_bazaar_overlap_city"])
+    district_columns, districts = read_csv_records(paths["transit_bazaar_overlap_district"])
+    if tuple(city_columns) != PHASE2F_CITY_FIELDS or len(city_rows) != 1:
+        raise ValueError("Phase 2F city CSV must have its exact committed columns and one row")
+    if tuple(district_columns) != PHASE2F_DISTRICT_FIELDS or len(districts) != 12:
+        raise ValueError("Phase 2F district CSV must have its exact committed columns and 12 rows")
+    if [row["district_name"] for row in districts] != sorted(row["district_name"] for row in districts):
+        raise ValueError("Phase 2F district CSV is not in the committed ascending district order")
+    require_unique(districts, ("district_name",), "Phase 2F district")
+
+    city = city_rows[0]
+    if city["analysis_version"] != PHASE2F_ANALYSIS_VERSION or city["period"] != "current":
+        raise ValueError("Phase 2F city CSV carries an unexpected analysis identity")
+    total = _phase2f_number(city, "population_total", "Phase 2F city", positive=True)
+    for field in ("population_cells", "walking_speed_kmh", "walking_time_minutes", "distance_budget_m"):
+        _phase2f_number(city, field, "Phase 2F city", positive=True)
+    _phase2f_close(sum(_phase2f_number(city, _phase2f_baseline_field(kind), "Phase 2F city")
+                        for kind in PHASE2F_CLASSES), total, "city transit partition")
+    _phase2f_close(sum(_phase2f_number(city, f"{kind}_and_bazaar_10min_population", "Phase 2F city")
+                        for kind in PHASE2F_CLASSES),
+                   _phase2f_number(city, "bazaar_10min_population", "Phase 2F city"),
+                   "city bazaar partition")
+    for kind in PHASE2F_CLASSES:
+        population = _phase2f_number(city, f"{kind}_and_bazaar_10min_population", "Phase 2F city")
+        pct = _phase2f_number(city, f"{kind}_and_bazaar_10min_pct", "Phase 2F city")
+        _phase2f_close(population / total * 100, pct, f"city {kind} percentage")
+
+    for row in districts:
+        label = f"Phase 2F district {row['district_name']!r}"
+        population = _phase2f_number(row, "population", label, positive=True)
+        _phase2f_close(sum(_phase2f_number(row, _phase2f_baseline_field(kind), label)
+                            for kind in PHASE2F_CLASSES), population, f"{row['district_name']} transit partition")
+        _phase2f_close(sum(_phase2f_number(row, f"{kind}_and_bazaar_10min_population", label)
+                            for kind in PHASE2F_CLASSES),
+                       _phase2f_number(row, "bazaar_10min_population", label),
+                       f"{row['district_name']} bazaar partition")
+        for kind in PHASE2F_CLASSES:
+            overlap = _phase2f_number(row, f"{kind}_and_bazaar_10min_population", label)
+            pct = _phase2f_number(row, f"{kind}_and_bazaar_10min_pct", label)
+            _phase2f_close(overlap / population * 100, pct,
+                           f"{row['district_name']} {kind} percentage")
+    for field in PHASE2F_CITY_FIELDS:
+        if field.endswith("_population") or field == "population_total":
+            district_field = "population" if field == "population_total" else field
+            _phase2f_close(sum(float(row[district_field]) for row in districts), float(city[field]),
+                           f"district-to-city {field}")
+
+    note = ("Authenticated Phase 2F current bazaar–transit overlap, copied from committed "
+            "CSV rows at full precision; no access measure, share, ranking or score is recomputed.")
+    city_size = write_json(WEB_DATA_DIR / WEB_FILES["transit_bazaar_overlap_city"], {
+        "role": ANALYTICAL_ROLE,
+        "source": rel(paths["transit_bazaar_overlap_city"]),
+        "source_manifest": rel(paths["phase2f_manifest"]),
+        "note": note,
+        "record": city,
+    })
+    district_size = write_records("transit_bazaar_overlap_district",
+                                  paths["transit_bazaar_overlap_district"], districts, note)
+    log("    city 1 record, districts 12 records (source manifest authenticated)")
+    return {
+        "transit_bazaar_overlap_city": (1, city_size),
+        "transit_bazaar_overlap_district": (len(districts), district_size),
+        "_phase2f_manifest": source_manifest,
+    }
+
+
 FACILITY_POINT_FIELDS = {
     "healthcare_points": (
         "facility_id", "name", "facility_category", "district_name",
@@ -1002,6 +1164,19 @@ def main() -> int:
     counts["metro_station_history"], sizes["metro_station_history"], open_by_year = \
         build_station_history(paths)
     contract.update(build_urban_dimensions(paths))
+    phase2f_contract = build_transit_bazaar_overlap(paths)
+    phase2f_source_manifest = phase2f_contract.pop("_phase2f_manifest")
+    # Phase 2F is a current-period extension of the same baseline, not a new
+    # population or walking specification.  Stop before emitting web files if
+    # its authenticated sources do not align with the current headline.
+    _, phase2f_city = read_csv_records(paths["transit_bazaar_overlap_city"])
+    for mine, theirs in (("population_total", "analysis_population"),
+                         ("walking_speed_kmh", "walking_speed_kmh"),
+                         ("walking_time_minutes", "walking_time_minutes"),
+                         ("distance_budget_m", "distance_budget_m")):
+        _phase2f_close(float(phase2f_city[0][mine]), float(city[theirs]),
+                       f"current baseline {mine}")
+    contract.update(phase2f_contract)
     step("STEP 12  Healthcare and education points (DISPLAY ONLY)")
     facility_counts = {}
     for key, source in (("healthcare_points", "healthcare_facilities"),
@@ -1131,6 +1306,20 @@ def main() -> int:
                              "full precision; not recomputed"),
                 }
                 for key, (rows, size) in contract.items()
+            },
+            **{
+                key: {
+                    "file": WEB_FILES[key], "role": ANALYTICAL_ROLE,
+                    "features": rows, "bytes": size,
+                    "source": rel(paths[key]),
+                    "source_bytes": len(canonical_text_bytes(paths[key])),
+                    "source_manifest": rel(paths["phase2f_manifest"]),
+                    "source_manifest_sha256_lf_normalised": content_hash(paths["phase2f_manifest"]),
+                    "source_manifest_output_sha256": phase2f_source_manifest["output_files"][rel(paths[key])]["sha256"],
+                    "note": ("authenticated Phase 2F CSV rows serialised as typed JSON "
+                             "records at full precision; not recomputed"),
+                }
+                for key, (rows, size) in phase2f_contract.items()
             },
             "metro_station_history": {
                 "file": WEB_FILES["metro_station_history"], "role": DISPLAY_ROLE,

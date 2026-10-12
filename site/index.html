@@ -191,6 +191,39 @@
       of the two shares and not a score.</p>
   </section>
 
+  <section class="bazaar-transit" aria-labelledby="bazaar-transit-h">
+    <h3 id="bazaar-transit-h" class="tpanel-title">How does bazaar access overlap with transit?</h3>
+    <p class="panel-sub">Among residents estimated to be within a modelled ten-minute walk of a
+      mapped bazaar, the three segments below partition that bazaar-accessible population. Metro,
+      bus-only and underserved use the same current-period transit classes as the metro headline;
+      bus-only means bus access without metro access, not an absence of buses.</p>
+    <div id="bazaar-transit-composition" class="bazaar-composition"
+         role="img" aria-label="Composition of bazaar-accessible population by mutually exclusive current transit class"></div>
+    <p class="panel-foot">The segments show simultaneous pedestrian-network proximity only. They
+      do not measure journeys, transfers, frequency, affordability, opening hours, reliability,
+      crowding, service quality or use. Bazaars are the mapped OpenStreetMap
+      <code>amenity=marketplace</code> layer, not a complete market census; each population-cell
+      and source connector is a straight-line link to a mapped walkable edge.</p>
+
+    <div class="bazaar-table-wrap">
+      <table class="bazaar-table">
+        <caption>City overlap: each percentage in the third column uses the entire current analysed population; the fourth uses only bazaar-accessible residents.</caption>
+        <thead><tr><th scope="col">Transit class + bazaar</th><th scope="col">Residents</th><th scope="col">Of city population</th><th scope="col">Of bazaar-accessible population</th></tr></thead>
+        <tbody id="bazaar-transit-city-body"></tbody>
+      </table>
+    </div>
+    <div class="bazaar-table-wrap">
+      <table class="bazaar-table bazaar-table--district">
+        <caption>District overlap: percentages use the named district&rsquo;s entire analysed population. The three classes are mutually exclusive and sum to each district&rsquo;s bazaar-accessible population.</caption>
+        <thead><tr><th scope="col">District</th><th scope="col">District population</th><th scope="col">Metro + bazaar residents</th><th scope="col">Of district</th><th scope="col">Bus-only + bazaar residents</th><th scope="col">Of district</th><th scope="col">Underserved + bazaar residents</th><th scope="col">Of district</th></tr></thead>
+        <tbody id="bazaar-transit-district-body"></tbody>
+      </table>
+    </div>
+    <p class="muted">This current-period overlap is not comparable to the standardized temporal
+      frame below, which uses a different population and station-centre method for year-to-year
+      comparison.</p>
+  </section>
+
   <dl id="dest-method" class="dest-method" aria-label="Current method"></dl>
 
   <div class="dest-grid">
