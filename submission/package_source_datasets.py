@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 import tempfile
 import zipfile
@@ -145,9 +146,12 @@ def build_inventory(manifest: dict, records: list, manifest_path: Path) -> dict:
         ],
         "notes": [
             "These are the ORIGINAL source binaries, excluded from Git for size (data/external/ is gitignored).",
-            "The cleaned/processed datasets and full provenance manifests are committed in the repository.",
-            "The OSM pedestrian-network GraphML has no committed SHA-256; the value above is a freshly "
-            "computed integrity reference, not a proof of historical identity.",
+            "The cleaned/processed datasets and the provenance manifests are committed in the repository.",
+            "WorldPop raster: the committed manifest records a SHA-256, so exact byte identity is verified here.",
+            "OSM walk network: an OSMnx-derived network snapshot used by the analysis (NOT a raw OSM API "
+            "export). The committed manifest records its size but NO SHA-256, so the SHA-256 shown above is a "
+            "freshly computed integrity reference for THIS archive's bytes — it does not prove those bytes are "
+            "the historical snapshot.",
             "Packaged by submission/package_source_datasets.py; no dataset was downloaded or substituted.",
         ],
     }
@@ -206,12 +210,28 @@ def verify_archive(output_zip: Path, records: list) -> None:
                 raise PackagingError(f"archived {rec['filename']} does not match its recorded SHA-256")
 
 
-def run_packaging(manifest_path: Path, external_dir: Path, output_zip: Path) -> dict:
+def run_packaging(manifest_path: Path, external_dir: Path, output_zip: Path, *,
+                  _verify=verify_archive) -> dict:
+    """Validate the originals and write a verified archive, fail-safe.
+
+    Fail-safe output contract:
+      * refuses to overwrite an existing destination (never silently replaces a prior deliverable);
+      * writes to a sibling temp file and only atomically promotes it to the final name once the
+        full size/hash/ZIP-content verification passes;
+      * removes the temp file on any failure, so a half-written archive can never be mistaken for a
+        completed deliverable, and an existing archive is never deleted when a new attempt fails;
+      * always writes outside the repository.
+    """
     output_zip = Path(output_zip).resolve()
     if REPO_ROOT in output_zip.parents or output_zip.parent == REPO_ROOT:
         raise PackagingError(
             f"refusing to write the archive inside the repository ({output_zip}); "
             f"choose a path outside it so large binaries are never committed to Git")
+    if output_zip.exists():
+        raise PackagingError(
+            f"refusing to overwrite an existing archive: {output_zip}\n"
+            f"  Move or delete it yourself, or choose a new --output path. This tool never replaces or "
+            f"deletes a prior deliverable.")
     manifest, specs = load_specs(manifest_path)
     records, records_paths = [], []
     for spec in specs:
@@ -219,8 +239,27 @@ def run_packaging(manifest_path: Path, external_dir: Path, output_zip: Path) -> 
         records.append(rec)
         records_paths.append((rec, Path(external_dir) / rec["filename"]))
     inventory = build_inventory(manifest, records, manifest_path)
-    write_archive(records_paths, inventory, output_zip)
-    verify_archive(output_zip, records)
+
+    output_zip.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = output_zip.with_name(f"{output_zip.name}.partial-{os.getpid()}")
+    try:
+        if tmp_path.exists():
+            tmp_path.unlink()
+        write_archive(records_paths, inventory, tmp_path)
+        _verify(tmp_path, records)
+        # Promote only after a clean verification. A late existence check keeps us from clobbering
+        # an archive that appeared during packaging (we still never delete it — os.replace onto a
+        # missing target is a rename; if it reappeared, refuse).
+        if output_zip.exists():
+            raise PackagingError(f"destination appeared during packaging; refusing to overwrite {output_zip}")
+        os.replace(tmp_path, output_zip)
+    except BaseException:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+        raise
     return {"output_zip": str(output_zip), "inventory": inventory}
 
 
@@ -258,16 +297,11 @@ def _self_test() -> int:
         out = tmp / "out" / "archive.zip"
 
         checks = []
-
-        # 1. Happy path: validate + package + verify.
         _, specs = load_specs(man_path)
-        records, records_paths = [], []
-        for spec in specs:
-            rec = validate_source(spec, ext)
-            records.append(rec); records_paths.append((rec, ext / rec["filename"]))
-        inv = build_inventory(manifest, records, man_path)
-        write_archive(records_paths, inv, out)
-        verify_archive(out, records)
+
+        # 1. Happy path: full run_packaging (validate -> temp -> verify -> atomic promote).
+        result = run_packaging(man_path, ext, out)
+        records = result["inventory"]["files"]
         checks.append(("valid fixtures package and verify", out.exists()))
         checks.append(("worldpop sha verified against manifest", records[0]["sha256_verified_against_manifest"] is True))
         checks.append(("network sha recorded but NOT claimed verified", records[1]["sha256_verified_against_manifest"] is False))
@@ -276,6 +310,8 @@ def _self_test() -> int:
         checks.append(("archive holds exactly the 2 originals + inventory + README",
                        names == {"uzb_pop_2026_CN_100m_R2025A_v1.tif", "tashkent_walk_network.graphml",
                                  "inventory.json", "README.txt"}))
+        checks.append(("no leftover .partial file after success",
+                       list(out.parent.glob("*.partial-*")) == []))
 
         # 2. Fail-closed: missing file.
         try:
@@ -309,6 +345,31 @@ def _self_test() -> int:
             checks.append(("refuses in-repo output path", False))
         except PackagingError:
             checks.append(("refuses in-repo output path", True))
+
+        # 6. Collision: refuse to overwrite an existing archive and leave it intact.
+        before_bytes = out.read_bytes()
+        try:
+            run_packaging(man_path, ext, out)
+            checks.append(("refuses to overwrite an existing archive", False))
+        except PackagingError:
+            checks.append(("refuses to overwrite an existing archive", True))
+        checks.append(("existing archive left byte-for-byte intact after refused overwrite",
+                       out.exists() and out.read_bytes() == before_bytes))
+
+        # 7. Failure cleanup: a verification failure leaves no completed or partial archive.
+        fresh = tmp / "out2" / "archive2.zip"
+
+        def _boom(_zip, _records):
+            raise PackagingError("simulated post-write verification failure")
+
+        try:
+            run_packaging(man_path, ext, fresh, _verify=_boom)
+            checks.append(("failed verification raises", False))
+        except PackagingError:
+            checks.append(("failed verification raises", True))
+        checks.append(("no completed archive after failed verification", not fresh.exists()))
+        checks.append(("no partial file left after failed verification",
+                       list(fresh.parent.glob("*.partial-*")) == []))
 
         ok = all(p for _, p in checks)
         for name, passed in checks:
