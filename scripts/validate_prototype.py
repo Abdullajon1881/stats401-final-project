@@ -832,6 +832,8 @@ ANALYTICAL_CONTRACT = {
     "temporal_counterfactual": (cfg.PHASE2_ACCESS_COUNTERFACTUAL_FILE, 12),
     "urban_dimensions_city": (cfg.URBAN_DIMENSIONS_CITY_FILE, 1),
     "urban_dimensions_district": (cfg.URBAN_DIMENSIONS_DISTRICT_FILE, 12),
+    "transit_bazaar_overlap_city": (cfg.PROCESSED_DIR / "transit_bazaar_overlap_city.csv", 1),
+    "transit_bazaar_overlap_district": (cfg.PROCESSED_DIR / "transit_bazaar_overlap_district.csv", 12),
 }
 EXACT_COORDINATE_LAYERS = ("metro_station_history", "healthcare_points", "education_points")
 DISPLAY_CONTRACT = {
@@ -1148,10 +1150,12 @@ def validate_contract_manifest(counts: dict[str, int]) -> None:
     by_path = {entry["path"]: entry for entry in recorded.values()}
     phase2 = load_json(cfg.PHASE2_ANALYSIS_MANIFEST_PATH)
     phase2c = load_json(cfg.PHASE2C_MANIFEST_PATH)
+    phase2f = load_json(cfg.DATA_DIR / "phase2f_bazaar_transit_overlap_manifest.json")
     audited_hashes = {
         **{p: e["sha256"] for p, e in phase2.get("input_files", {}).items()},
         **{p: e["sha256"] for p, e in phase2.get("output_files", {}).items()},
         **{p: e["sha256"] for p, e in phase2c.get("output_files", {}).items()},
+        **{p: e["sha256"] for p, e in phase2f.get("output_files", {}).items()},
     }
 
     contract = {
@@ -1177,6 +1181,17 @@ def validate_contract_manifest(counts: dict[str, int]) -> None:
         check(audited_hashes.get(src) == hashed,
               f"manifest {key}: source hash equals the Phase 2 audited manifest's "
               f"({(audited_hashes.get(src) or 'unrecorded')[:12]})")
+
+    for key in ("transit_bazaar_overlap_city", "transit_bazaar_overlap_district"):
+        entry = layers.get(key, {})
+        source = ANALYTICAL_CONTRACT[key][0]
+        canonical_size = len(source.read_bytes().replace(b"\r\n", b"\n"))
+        check(entry.get("source_manifest") == "data/phase2f_bazaar_transit_overlap_manifest.json",
+              f"manifest {key}: records the Phase 2F source manifest")
+        check(entry.get("source_bytes") == canonical_size,
+              f"manifest {key}: canonical source byte count exact")
+        check(entry.get("source_manifest_output_sha256") == phase2f["output_files"][str(source.relative_to(cfg.REPO_ROOT)).replace("\\", "/")]["sha256"],
+              f"manifest {key}: records the authenticated Phase 2F source hash")
 
     validate_coordinate_precision_metadata(manifest)
 
@@ -1216,6 +1231,9 @@ STORY_SECTION_IDS = ("hero", "current-access", "metric-bridge", "district-explor
 DEFERRED_ASSETS = ()
 DESTINATION_ASSETS = {
     "urbanCity": "urban_dimensions_city.json",
+    "urbanDistrict": "urban_dimensions_district.json",
+    "transitBazaarCity": "transit_bazaar_overlap_city.json",
+    "transitBazaarDistrict": "transit_bazaar_overlap_district.json",
     "healthcarePoints": "healthcare_points.geojson",
     "educationPoints": "education_points.geojson",
 }
@@ -1737,8 +1755,9 @@ def validate_temporal_story() -> None:
     arithmetic = re.search(
         r"(?:" + "|".join(DIAGNOSTIC_FIELDS) + r")\]?\s*[-+*/](?!=)", temporal_code)
     check(arithmetic is None, "the diagnostic series are never combined arithmetically")
-    check("--bus" not in (SITE_DIR / "styles.css").read_text(encoding="utf-8")
-          .split("standardized temporal chapter")[-1],
+    temporal_css = (SITE_DIR / "styles.css").read_text(encoding="utf-8") \
+        .split("standardized temporal chapter")[-1].split("current destination chapter")[0]
+    check("--bus" not in temporal_css,
           "the diagnostic series do not borrow the bus colour")
     check("stroke-dasharray: 7 4" in (SITE_DIR / "styles.css").read_text(encoding="utf-8")
           and "stroke-dasharray: 2 3" in (SITE_DIR / "styles.css").read_text(encoding="utf-8"),
@@ -1888,14 +1907,13 @@ def validate_temporal_behaviour() -> None:
 # ---------------------------------------------------------------------------
 # 12. the current destination chapter
 # ---------------------------------------------------------------------------
-# Inputs the destination chapter must never read: the district-level results
-# (a later chapter), the standardized temporal files, and the current transit
-# map's layers. Its geography is the district outlines and its own points.
+# Inputs the destination chapter must never read: standardized temporal files
+# or the current transit map's layers.  Phase F2 deliberately reads the two
+# current district contracts solely to validate the static overlap table.
 DESTINATION_FORBIDDEN_TOKENS = (
     "isochrone", "metroLines", "data.access", "data.stations", "data.bus",
     "data.density", "data.mask", "temporalCity", "temporalEvents",
-    "temporalCounterfactual", "stationHistory", "urbanDimensionsDistrict",
-    "urban_dimensions_district",
+    "temporalCounterfactual", "stationHistory",
 )
 DESTINATION_RANKING_WORDS = (
     "composite score", "walkability score", "overall score", "best district",
@@ -1926,6 +1944,7 @@ def validate_destination_story() -> None:
     data_js = sources.get("data.js", "")
     css = (SITE_DIR / "styles.css").read_text(encoding="utf-8")
     dest_css = css.split("current destination chapter")[-1].split("prefers-reduced-motion")[0]
+    chapter = markup[markup.find('id="destination-access"'):markup.find('id="metric-bridge"')]
 
     # --- architecture ---------------------------------------------------
     check(bool(dest), "site/js/destinations.js exists")
@@ -1939,7 +1958,7 @@ def validate_destination_story() -> None:
           "the destination chapter sits after current access and before the metric bridge, "
           "inside <main>")
     check(opening_tag(markup, "dest-h").startswith("<h2"), "the chapter has an h2")
-    for heading in ("dest-overlap-h", "dest-map-h", "dest-context-h"):
+    for heading in ("dest-overlap-h", "bazaar-transit-h", "dest-map-h", "dest-context-h"):
         check(opening_tag(markup, heading).startswith("<h3"),
               f"#{heading} is an h3 under the chapter heading")
     check(re.search(r"const STORY_SECTIONS = \[[^\]]*'workspace',\s*'destination-access',\s*"
@@ -1964,7 +1983,7 @@ def validate_destination_story() -> None:
     check(sorted(imports) == ["./data.js", "./dom.js"],
           f"the destination module imports only dom.js and data.js ({imports})")
     found = [t for t in DESTINATION_FORBIDDEN_TOKENS if t in dest]
-    check(not found, f"the destination module reads no district, temporal or transit-map "
+    check(not found, f"the destination module reads no temporal or transit-map "
                      f"input ({found or 'none'})")
     check("store." not in code and "let active = 'healthcare';" in code,
           "the destination type is local to the chapter and starts at healthcare")
@@ -2014,6 +2033,71 @@ def validate_destination_story() -> None:
     check(urban_payload["role"] == "analytical" and layers["urban_dimensions_city"]["role"]
           == "analytical" and layers["bazaars"]["role"] == "display_only",
           "the city results are analytical and every point layer is display only")
+
+    # --- Phase F2: authenticated bazaar–transit overlap -----------------
+    overlap_city_payload = load_json(WEB_DATA_DIR / WEB_FILES["transit_bazaar_overlap_city"])
+    overlap_district_payload = load_json(WEB_DATA_DIR / WEB_FILES["transit_bazaar_overlap_district"])
+    overlap_city = overlap_city_payload.get("record", {})
+    overlap_districts = overlap_district_payload.get("records", [])
+    overlap_keys = ("metro", "bus_only", "underserved")
+    check(overlap_city_payload.get("role") == overlap_district_payload.get("role") == "analytical"
+          and layers["transit_bazaar_overlap_city"]["role"] == "analytical"
+          and layers["transit_bazaar_overlap_district"]["role"] == "analytical",
+          "Phase 2F web records and manifest are analytical")
+    check(len(overlap_districts) == 12 and len({r.get("district_name") for r in overlap_districts}) == 12,
+          "Phase 2F carries twelve unique district records")
+    check(all(overlap_city[k] == city[v] for k, v in (
+        ("population_total", "analysis_population"), ("walking_speed_kmh", "walking_speed_kmh"),
+        ("walking_time_minutes", "walking_time_minutes"), ("distance_budget_m", "distance_budget_m"))),
+          "Phase 2F uses the current metro headline's denominator and walking specification")
+    city_overlap = sum(overlap_city[f"{k}_and_bazaar_10min_population"] for k in overlap_keys)
+    city_transit = (overlap_city["metro_access_population"] + overlap_city["bus_only_population"]
+                    + overlap_city["underserved_population"])
+    check(abs(city_overlap - overlap_city["bazaar_10min_population"]) <= 3e-6
+          and abs(city_transit - overlap_city["population_total"]) <= 3e-6,
+          "Phase 2F city transit and bazaar partitions conserve their denominators")
+    names = {f["properties"]["district_name"] for f in load_json(WEB_DATA_DIR / WEB_FILES["districts"])["features"]}
+    urban_by_name = {r["district_name"]: r for r in load_json(WEB_DATA_DIR / WEB_FILES["urban_dimensions_district"])["records"]}
+    check({r.get("district_name") for r in overlap_districts} == names == set(urban_by_name),
+          "Phase 2F district identities exactly match the current district and urban records")
+    district_ok = []
+    for row in overlap_districts:
+        total = row["population"]
+        overlap_total = sum(row[f"{k}_and_bazaar_10min_population"] for k in overlap_keys)
+        transit_total = row["metro_access_population"] + row["bus_only_population"] + row["underserved_population"]
+        shares_ok = all(abs(row[f"{k}_and_bazaar_10min_population"] / total * 100
+                            - row[f"{k}_and_bazaar_10min_pct"]) <= 3e-6 for k in overlap_keys)
+        district_ok.append(all(isinstance(row[f], (int, float)) and math.isfinite(row[f]) and row[f] >= 0
+                               for f in row if f != "district_name")
+                           and total > 0 and abs(overlap_total - row["bazaar_10min_population"]) <= 3e-6
+                           and abs(transit_total - total) <= 3e-6 and shares_ok
+                           and abs(total - urban_by_name[row["district_name"]]["population"]) <= 3e-6)
+    check(all(district_ok), "every Phase 2F district has finite bounds, full partitions and whole-district denominators")
+    check(all(abs(sum(r[district_field] for r in overlap_districts) - overlap_city[city_field]) <= 3e-6
+              for district_field, city_field in (("population", "population_total"),
+                  ("bazaar_10min_population", "bazaar_10min_population"),
+                  ("metro_and_bazaar_10min_population", "metro_and_bazaar_10min_population"),
+                  ("bus_only_and_bazaar_10min_population", "bus_only_and_bazaar_10min_population"),
+                  ("underserved_and_bazaar_10min_population", "underserved_and_bazaar_10min_population"))),
+          "all Phase 2F district populations and overlap classes roll up to the city")
+    check("How does bazaar access overlap with transit?" in chapter
+          and 'id="bazaar-transit-city-body"' in chapter
+          and 'id="bazaar-transit-district-body"' in chapter
+          and chapter.count("<table") >= 2,
+          "the overlap subsection has a titled composition and two native data tables")
+    segment_rule = re.search(r"\.bazaar-segment\s*\{([^}]*)\}", css, re.S)
+    segment_css = segment_rule.group(1) if segment_rule else ""
+    normalized_segment_css = re.sub(r"\s+", "", segment_css)
+    check(segment_rule is not None and "padding:0" in normalized_segment_css
+          and "border:0" in normalized_segment_css
+          and re.search(r"min-width:(?!0(?:;|$))", normalized_segment_css) is None,
+          "the composition segments carry no padding, border, or positive minimum width")
+    check("style: { flexGrow: String(population), flexBasis: '0' }" in code
+          and "bazaar-legend" in code and "aria-hidden': 'true'" in code,
+          "the composition bar is proportional while its visible legend supplies labels and values")
+    for phrase in ("entire current analysed population", "named district&rsquo;s entire analysed population",
+                   "amenity=marketplace", "not comparable to the standardized temporal", "straight-line link"):
+        check(phrase in chapter, f"the overlap subsection states its required caveat: {phrase}")
 
     # --- nothing analytical typed in -----------------------------------------
     typed_targets = [u[k] for k in (
@@ -2069,8 +2153,9 @@ def validate_destination_story() -> None:
           and "el('button', {\n      type: 'button'" in code,
           "each destination card is a real button exposing its pressed state")
     check(".focus(" not in code, "choosing a type never moves focus")
-    check("--healthcare: #f06b8a" in dest_css and "--education:  #9f8cff" in dest_css
-          and not any(t in dest_css for t in ("--metro", "--bus", "--under")),
+    map_css = dest_css.split(".bazaar-transit")[0]
+    check("--healthcare: #f06b8a" in map_css and "--education:  #9f8cff" in map_css
+          and not any(t in map_css for t in ("--metro", "--bus", "--under")),
           "destination colours never borrow the metro, bus or underserved hues")
 
     # --- wording ----------------------------------------------------------
@@ -2104,6 +2189,9 @@ const read = (f) => JSON.parse(fs.readFileSync(`${dataDir}/${f}`, 'utf8'));
 const fresh = () => ({
   city: read('city_summary.json'),
   urbanCity: read('urban_dimensions_city.json'),
+  urbanDistrict: read('urban_dimensions_district.json'),
+  transitBazaarCity: read('transit_bazaar_overlap_city.json'),
+  transitBazaarDistrict: read('transit_bazaar_overlap_district.json'),
   healthcarePoints: read('healthcare_points.geojson'),
   educationPoints: read('education_points.geojson'),
   bazaars: read('bazaars.geojson'),
@@ -2116,6 +2204,7 @@ out.valid = Object.fromEntries(Object.entries(m.dimensions).map(([k, d]) => [k, 
   points: d.points.length, inside: d.inside, outside: d.outside,
   categories: Object.fromEntries(d.categories),
 }]));
+out.overlap = { city: m.overlap.city.bazaar_10min_population, districts: m.overlap.districts.length };
 const mutations = {
   population_mismatch: (d) => { d.urbanCity.record.population_total += 1; },
   walking_time_mismatch: (d) => { d.urbanCity.record.walking_time_minutes += 1; },
@@ -2144,6 +2233,38 @@ const mutations = {
     const p = d.healthcarePoints.features.find((f) => f.properties.district_assignment !== 'within').properties;
     p.district_name = 'Somewhere';
   },
+  overlap_city_partition: (d) => { d.transitBazaarCity.record.bus_only_and_bazaar_10min_population += 1; },
+  overlap_city_baseline: (d) => {
+    d.transitBazaarCity.record.metro_access_population += 1;
+    d.transitBazaarCity.record.bus_only_population -= 1;
+  },
+  overlap_city_swapped_classes: (d) => {
+    const r = d.transitBazaarCity.record;
+    [r.metro_and_bazaar_10min_population, r.bus_only_and_bazaar_10min_population] =
+      [r.bus_only_and_bazaar_10min_population, r.metro_and_bazaar_10min_population];
+    [r.metro_and_bazaar_10min_pct, r.bus_only_and_bazaar_10min_pct] =
+      [r.bus_only_and_bazaar_10min_pct, r.metro_and_bazaar_10min_pct];
+  },
+  overlap_district_identity: (d) => { d.transitBazaarDistrict.records[0].district_name = 'Unknown district'; },
+  overlap_district_reordered: (d) => {
+    [d.transitBazaarDistrict.records[0], d.transitBazaarDistrict.records[1]] =
+      [d.transitBazaarDistrict.records[1], d.transitBazaarDistrict.records[0]];
+  },
+  overlap_district_baseline: (d) => {
+    d.transitBazaarDistrict.records[0].metro_access_population += 1;
+    d.transitBazaarDistrict.records[0].bus_only_population -= 1;
+  },
+  overlap_district_rollup: (d) => { d.transitBazaarDistrict.records[0].metro_and_bazaar_10min_population += 1; },
+  overlap_exceeds_transit_parent: (d) => {
+    const r = d.transitBazaarDistrict.records[0];
+    r.metro_and_bazaar_10min_population = r.metro_access_population + 1;
+    r.metro_and_bazaar_10min_pct = r.metro_and_bazaar_10min_population / r.population * 100;
+  },
+  overlap_wrong_denominator: (d) => { d.transitBazaarDistrict.records[0].bus_only_and_bazaar_10min_pct += 1; },
+  overlap_payload_source: (d) => { d.transitBazaarDistrict.source = 'data/processed/transit_bazaar_overlap_city.csv'; },
+  overlap_manifest_role: (d) => { d.manifest.layers.transit_bazaar_overlap_city.role = 'display_only'; },
+  overlap_missing_provenance: (d) => { delete d.manifest.layers.transit_bazaar_overlap_city.source_manifest; },
+  overlap_invalid_provenance: (d) => { d.manifest.layers.transit_bazaar_overlap_district.source_manifest = 'data/not-the-approved-manifest.json'; },
 };
 for (const [name, mutate] of Object.entries(mutations)) {
   const d = fresh();
@@ -2188,6 +2309,10 @@ def validate_destination_behaviour() -> None:
     check(valid["bazaars"]["points"] == u["bazaar_routing_sources"]
           and valid["bazaars"]["outside"] == 0,
           f"committed data prepares: bazaar count reconciles ({valid['bazaars']})")
+    check(out["overlap"]["districts"] == 12,
+          "committed data prepares: all twelve bazaar–transit districts reconcile")
+    check(out["overlap"]["city"] > 0,
+          "committed data prepares: the unmodified city bazaar–transit result reconciles")
     for name, label in (
         ("population_mismatch", "a population total off the current snapshot"),
         ("walking_time_mismatch", "a walking time off the current snapshot"),
@@ -2203,6 +2328,19 @@ def validate_destination_behaviour() -> None:
         ("overlap_exceeds_healthcare", "an overlap larger than the healthcare result"),
         ("share_population_disagree", "a stored share that disagrees with its population"),
         ("outside_point_names_district", "an outside routing source that names a district"),
+        ("overlap_city_partition", "a city bazaar–transit partition that no longer reconciles"),
+        ("overlap_city_baseline", "a city transit baseline that no longer matches the current headline"),
+        ("overlap_city_swapped_classes", "swapped city overlap classes"),
+        ("overlap_district_identity", "a bazaar–transit district absent from the current analysis"),
+        ("overlap_district_reordered", "bazaar–transit districts in a non-authoritative order"),
+        ("overlap_district_baseline", "a district transit baseline that no longer matches GeoJSON"),
+        ("overlap_district_rollup", "a district overlap that no longer rolls up to the city"),
+        ("overlap_exceeds_transit_parent", "a bazaar overlap exceeding its transit parent"),
+        ("overlap_wrong_denominator", "a district overlap percentage with the wrong denominator"),
+        ("overlap_payload_source", "a browser overlap payload with the wrong committed CSV source"),
+        ("overlap_manifest_role", "a Phase 2F data layer with the wrong analytical role"),
+        ("overlap_missing_provenance", "missing Phase 2F provenance metadata"),
+        ("overlap_invalid_provenance", "invalid Phase 2F provenance metadata"),
     ):
         case = out[name]
         check(case["threw"], f"prepareDestinations() throws on {label} "

@@ -123,7 +123,97 @@ not spread evenly."
 
 ---
 
-## 7. Where access depends most on buses
+## 7. Current everyday destinations
+
+**Say:** The same current-period pedestrian-network model can ask a different
+question: who is within the ten-minute threshold of mapped healthcare,
+education or a bazaar? These are separate accessibility results, not a combined
+service score.
+
+**Show:** Scroll to *What else is within a ten-minute walk?* Switch the three
+destination cards and let the routing-source map update. Then pause on the
+healthcare-and-education panel.
+
+**Say:** The healthcare-and-education figure is the committed intersection:
+one population cell must reach both source types. It is not the sum of the two
+shares. The dots are source proxies, not capacity, quality or the population
+served by an individual facility.
+
+**Interaction cue:** Switch from healthcare to education to bazaars with the
+keyboard as well as the pointer. Explain that this control is local: it does not
+change the city map, District Explorer or selected temporal year.
+
+**Next:** "The bazaar result lets us ask one more carefully bounded question."
+
+---
+
+## 8. Bazaar access and transit classes
+
+**Say:** The bar now conditions on residents already within the modelled bazaar
+threshold. It partitions them into three mutually exclusive classes: metro plus
+bazaar, bus-only plus bazaar, and underserved plus bazaar. The largest segment
+is bus-only plus bazaar. That does not mean those residents cannot use metro or
+that buses are good or bad; it only describes this threshold classification.
+
+**Show:** The bar and its city table. Point out the two denominator labels: the
+bar uses conditional shares among bazaar-accessible residents, while the source
+percentages in the table use the entire analysed city population. Then scroll
+the responsive district table to show all 12 district rows and the tiny
+underserved intersection without rounding it to zero.
+
+**Number:** 91,271.537286 metro-and-bazaar; 370,579.615668 bus-only-and-bazaar;
+1,830.726976 underserved-and-bazaar; 463,681.879929 bazaar-accessible overall.
+
+**Say:** Bazaars mean OpenStreetMap `amenity=marketplace` sources, not a market
+census. The finding measures simultaneous modelled network proximity—not trips,
+transfers, frequency, fares, opening hours, affordability or market use. Like
+the rest of the model, each population-cell or source connector is a straight
+link to a mapped walkable edge.
+
+**Next:** "These are current results; the next chapter answers a different,
+strictly standardized historical question."
+
+---
+
+## 9. Why the temporal frame is separate
+
+**Say:** The 2015–2026 series is not a history of the current headline. It uses
+station-centre proxies, fixed current geography and annual WorldPop model
+weights. The current headline is entrance-aware and SIAT-calibrated. They answer
+different questions and should not be compared as a change between two values.
+
+**Show:** The methodological bridge, then the standardized line chart. Move the
+year control with the keyboard, show the station history map, and pause at a
+projected year marker if one is present. Open a network-event diagnostic and
+name it descriptive: station-state and population changes occur together, so it
+does not attribute a change to a station opening.
+
+**Interaction cue:** Return the year control to its initial position before
+moving on. Confirm it has not changed the current destination or overlap panel.
+
+**Next:** "The final view combines current district context with that separate
+standardized history without merging the methods."
+
+---
+
+## 10. Linked District Explorer
+
+**Say:** Select one district in the main comparison, then open District
+Explorer. Its current profile uses current-period measures; its history uses the
+standardized frame. The explorer links the selection but never makes those
+metrics interchangeable.
+
+**Show:** Select a district, clear it with Escape, select a station and show the
+district selection clears. Add two districts to comparison, then clear the
+comparison separately. This demonstrates that selected district, selected
+station and comparison are intentionally independent where appropriate.
+
+**Next:** "With a selected district still in view, compare where transit access
+depends most on buses, then add the district context behind it."
+
+---
+
+## 11. Where access depends most on buses
 
 **Say:** This chart is sorted by bus-only share, because that is the second half
 of the question. Read the top row.
@@ -145,7 +235,7 @@ should not be read as "no metro access exists there".
 
 ---
 
-## 8. Density vs access
+## 12. Density vs access
 
 **Say:** If the metro followed population density, we would expect a clear upward
 trend. The dashed lines are the medians of these twelve districts — descriptive,
@@ -160,7 +250,7 @@ pattern themselves rather than asserting one.
 
 ---
 
-## 9. Comparing whole districts
+## 13. Comparing whole districts
 
 **Say:** Six axes, each in its own real units. Pin a few districts and compare
 their profiles side by side.
@@ -178,7 +268,7 @@ more. Point at the chips and the coloured lines.
 
 ---
 
-## 10. Sensitivity
+## 14. Sensitivity
 
 **Say:** The headline is sensitive to the walking-speed assumption. Across the
 tested 4.0–5.6 km/h range the modelled metro share moves by several percentage
@@ -200,7 +290,7 @@ population surface is right.
 
 ---
 
-## 11. Limitations
+## 15. Limitations
 
 **Say:** Physical walking access only — no frequency, no fare, no reliability,
 no crowding. The cell-to-network link is a straight line and may not be
@@ -215,7 +305,7 @@ district's 0.0% is decided by about twenty metres.
 
 ---
 
-## 12. Takeaway
+## 16. Takeaway
 
 **Say:** On this model, metro walking access in Tashkent is narrow and
 concentrated along the lines: about one resident in seven of the analysed
@@ -248,3 +338,9 @@ is on the page rather than buried in a repository.
   category and carries no information about service quality.
 - *Would the answer change with a different walking speed?* — Yes, by several
   percentage points. The table is in the Method dialog.
+- *Does the overlap show where people shop or transfer?* — No. It is simultaneous
+  modelled walking proximity to mapped sources; it has no trip, transfer,
+  frequency, affordability, opening-hours or observed-use data.
+- *Why are the temporal and current figures different?* — They use different,
+  explicitly displayed analytical frames. The temporal series is comparable
+  across its own years, not to the current entrance-aware headline.

@@ -60,6 +60,38 @@ those readings.
 | 4 | Density vs access scatter | Do denser districts have better modelled access? | `site/js/scatter.js` |
 | 5 | Parallel coordinates | How does one district's whole profile compare? | `site/js/parallel.js` |
 
+## Destination access and bazaar–transit overlap
+
+The current-destinations chapter uses the same current-period 800 m,
+ten-minute, 4.8 km/h pedestrian-network model as the headline. It reports
+healthcare, education and mapped bazaar access separately, keeps the committed
+healthcare-and-education intersection as an intersection, and gives its source
+points a routing-proxy map rather than treating point density as access.
+
+Phase F1 adds the audited bazaar–transit intersection. Of the population with
+modelled access to an OpenStreetMap `amenity=marketplace` source, the three
+mutually exclusive current classes are metro-and-bazaar (91,271.537286),
+bus-only-and-bazaar (370,579.615668), and underserved-and-bazaar
+(1,830.726976). They partition the 463,681.879929 bazaar-accessible residents.
+The website's composition bar labels these as conditional shares of
+bazaar-accessible population; its native city and 12-district tables label the
+published CSV percentages as shares of the entire city or named district.
+
+“Bus-only” remains a mutually exclusive threshold class, not a claim that a
+metro-accessible resident cannot use a bus. Marketplaces are a mapped lower
+bound, not a market census. The intersection measures simultaneous modelled
+walking proximity, not journeys, transfers, service frequency, affordability,
+opening hours, reliability or use. Its cell/source connectors are straight-line
+links to a mapped walkable edge. These current results are not comparable to
+the standardized temporal frame.
+
+The standardized chapter covers 2015–2026 using station-centre proxies, fixed
+current geography and annual WorldPop weights. It contains station-state events
+and descriptive counterfactual diagnostics; neither is causal attribution. The
+method bridge explicitly keeps this series separate from the entrance-aware,
+SIAT-calibrated current frame. The linked District Explorer joins current
+district profile data with standardized history without changing either method.
+
 ## Interaction model
 
 One store (`site/js/state.js`) owns the selection; all five views read it and
@@ -201,7 +233,22 @@ No API key, no token, no secret.
 
 ## Publication status
 
-**Not deployed.** The site is publication-ready as a static directory: `site/`
-contains only relative first-party URLs, no secrets, no absolute paths, and no
-build step. GitHub Pages has not been enabled and no repository settings have
-been changed.
+The completed static site is published in production at:
+
+- <https://stats401-final-project.saidkamolbahodirov.workers.dev/>
+- <https://tashkent-transit-walkability.saidkamolbahodirov.workers.dev/>
+
+Both deployments serve the same relative first-party static assets from `site/`;
+the only runtime network request is the attributed OpenFreeMap basemap. The
+build records hashes, source paths, row counts and byte sizes for analytical
+web artifacts. Phase F1 sources are authenticated against their committed
+manifest before browser JSON is emitted. `validate_prototype.py` exercises the
+actual pre-render contracts and malformed-data failures; `validate_final.py`
+protects completed copy, frozen analytical sources, accessibility, provenance,
+sensitivity and evidence-limited claims.
+
+The MapLibre `wood-pattern` image diagnostic has been observed as a nonblocking
+third-party basemap-style warning. No safe, independently verified remediation
+was established without changing basemap semantics, so it remains a known minor
+console limitation rather than a change to the style or an error-suppression
+rule.

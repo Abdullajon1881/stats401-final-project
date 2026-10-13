@@ -34,6 +34,10 @@ export const FILES = {
   // points are the `bazaars` layer above.
   urbanCity: 'urban_dimensions_city.json',
   urbanDistrict: 'urban_dimensions_district.json',
+  // The audited current-period Phase 2F intersection of the three mutually
+  // exclusive transit classes with OSM marketplace proximity.
+  transitBazaarCity: 'transit_bazaar_overlap_city.json',
+  transitBazaarDistrict: 'transit_bazaar_overlap_district.json',
   temporalDistrict: 'temporal_district.json',
   healthcarePoints: 'healthcare_points.geojson',
   educationPoints: 'education_points.geojson',
@@ -66,6 +70,7 @@ export async function loadAll() {
 const nf0 = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const nf2 = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nf3 = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 // en-US: millions read as 'M'; en-GB writes a lowercase 'm' that reads as metres.
 const nfCompact = new Intl.NumberFormat('en-US', {
   notation: 'compact', maximumSignificantDigits: 3,
@@ -76,6 +81,7 @@ export const fmt = {
   pct: (v) => `${nf1.format(v)}%`,
   // Two places where two methods sit side by side and one place would blur them.
   pct2: (v) => `${nf2.format(v)}%`,
+  pct3: (v) => `${nf3.format(v)}%`,
   // Signed percentage points, with a true minus sign. A value that rounds to
   // zero reads 0.00 pp rather than a signed zero.
   pp: (v) => {
