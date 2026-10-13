@@ -15,7 +15,7 @@ Demo order follows the assignment: **Motivation → Questions → Data → Visua
 - **13.6%** metro access · **72.0%** bus-only · **14.4%** underserved (mutually exclusive, sum to 100%).
 - **3,212,200** residents across **12** districts (Yangi Toshkent excluded — no official total).
 - **Mirabad 24.9%** highest metro; **Uchtepa 0.0%** lowest (its nearest cell is ~**19.7 m** beyond the 800 m budget).
-- **Uchtepa 95.2%** highest bus-only dependence.
+- **Uchtepa 95.2%** highest bus-only share (metro not within a 10-min walk — not a statement about bus service).
 - Bazaar overlap: of residents near a bazaar, **19.7% metro+bazaar, 79.9% bus-only+bazaar, 0.4% underserved+bazaar.**
 
 ## Which interaction demonstrates each of the five visualizations

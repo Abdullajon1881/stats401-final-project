@@ -3,11 +3,27 @@
 Release audited: `main = aa2b494dcf07b2a6de840a8c7c7975e17b416dfd` (tree `471d4a56…`).
 Status key: ✅ complete · 🟡 complete pending owner confirmation · ⛔ requires owner-supplied input · 📝 recommendation only.
 
+> This is a compliance map against the course rubric, not a predicted grade. No score is estimated.
+
+## Rubric compliance (weighted criteria) — concrete evidence
+
+| Criterion (weight) | Evidence in this project | Status |
+|---|---|---|
+| **Data acquisition & analysis (15%)** | OSM + SIAT + WorldPop acquired via `scripts/acquire_data.py`; pedestrian-network routing in `scripts/analyze_accessibility.py`; 37 committed processed outputs; full provenance in `data/source_manifest.json` (+ SHA-256s). Original binaries pending delivery (deliverable #1). | 🟡 (originals pending) |
+| **Visualization design & effectiveness (25%)** | Five distinct idioms — MapLibre metro-access map, ranked dot/bar, 100% stacked composition, density scatter, parallel coordinates — aligned category colours, accessible, with MAPPED-coverage caveats. Screenshots in `submission/figures/`. | ✅ |
+| **Technical implementation & interaction (20%)** | Vanilla ES modules, D3 7.9.0 + MapLibre 5.24.0, static Cloudflare Workers deploy; one shared selection store; ≥5 interactions (coordinated district select, hover highlight, Escape/clear, ≤4-district comparison pinning, destination switch, temporal year slider, mutually-exclusive station select, layer toggles, search combobox). | ✅ |
+| **Storytelling & meaningfulness (15%)** | Single scrolling narrative question → findings → destinations → bazaar overlap → separate temporal history → District Explorer → limitations; report Results ties each idiom to a research question and insight. | ✅ |
+| **Final report (10%)** | `submission/final_report.md` + `.pdf`, six required sections, ≈1,713 words, figure appendix, What–Why–How discussion. | 🟡 (Roles pending) |
+| **Presentation & demo (10%)** | `docs/final_presentation_rehearsal.md` + `submission/presentation_quick_reference.md` (Motivation→Questions→Data→Story→Insights→Conclusion), interaction-led demo + Q&A. | 🟡 (speaking split pending) |
+| **Completeness & documentation (5%)** | README, methodology docs, `source_dataset_inventory.md`, `submission_checklist.md`, provenance manifests, licences/attribution. | ✅ |
+
+Feature presence: **5 distinct idioms ✅**, **≥5 meaningful interactions ✅**, **complex geographic + multidimensional viz ✅**, **coherent story ✅**, **all report sections ✅**, **authentic screenshots ✅**, **print-ready poster ✅**, **processed data + reproducibility docs ✅ / original binaries pending ⛔**, **working published website ✅**, **presentation + live-demo plan ✅**.
+
 ## A. Required submission deliverables (rubric §"Required submission deliverables")
 
 | # | Deliverable | Status | Evidence / location |
 |---|---|---|---|
-| 1 | Source dataset(s) | ⛔ PENDING | OSM/SIAT **processed** data committed with provenance+SHA256, but the two **original source binaries** (WorldPop raster, OSM walk-network GraphML) are gitignored and **not yet delivered**. The rubric requires source datasets; no evidence the team accepts links in place of files. Owner must supply a separate archive. See `submission/source_dataset_inventory.md` §6. |
+| 1 | Source dataset(s) | ⛔ PENDING (tooling ready) | OSM/SIAT **processed** data committed with provenance+SHA256. The two **original source binaries** (WorldPop raster, OSM walk-network GraphML) are gitignored and **not yet delivered**. A fail-closed packaging utility `submission/package_source_datasets.py` is committed and self-tested; the owner runs it in a cache-equipped checkout to build the verifiable archive (`python3 -I submission/package_source_datasets.py`). The real archive is **not** created in this environment (originals absent). See `source_dataset_inventory.md` §6. |
 | 2 | Cleaned / processed dataset(s) | ✅ | 37 files in `data/processed/` + 23 typed browser copies in `site/data/` (hashed in `site/data/manifest.json`). |
 | 3 | Collection / crawler code | ✅ | `scripts/acquire_data.py`. |
 | 4 | Data cleaning & analysis code | ✅ | `scripts/analyze_accessibility.py`, `analyze_transit_bazaar_overlap.py`, `build_web_data.py`, validators/tests. |
@@ -40,7 +56,7 @@ Status key: ✅ complete · 🟡 complete pending owner confirmation · ⛔ requ
 | Conclusion | ✅ |
 | Roles & Responsibilities | 🟡 reproduced from proposal; **owner must confirm final contributions** |
 | Screenshots of finished visualizations | ✅ Figure 1 authentic metro-access map (owner screenshot) + charts 02–07 embedded; D3 facilities map kept as a labelled supplementary figure |
-| Word count ~1,500 | ✅ body ≈ 1,678 words (tightened from 1,755; target ≈ 1,500–1,600; counts the per-visualization explanations as report content) |
+| Word count ~1,500 | ✅ body ≈ 1,713 words (tightened from 1,755; counts the per-visualization explanations as report content; accepted by the project lead) |
 
 ## D. Poster (rubric §"Required final project poster")
 
