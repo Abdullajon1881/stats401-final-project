@@ -247,12 +247,25 @@ def run_packaging(manifest_path: Path, external_dir: Path, output_zip: Path, *,
             tmp_path.unlink()
         write_archive(records_paths, inventory, tmp_path)
         _verify(tmp_path, records)
-        # Promote only after a clean verification. A late existence check keeps us from clobbering
-        # an archive that appeared during packaging (we still never delete it — os.replace onto a
-        # missing target is a rename; if it reappeared, refuse).
-        if output_zip.exists():
-            raise PackagingError(f"destination appeared during packaging; refusing to overwrite {output_zip}")
-        os.replace(tmp_path, output_zip)
+        # Promote only after a clean verification, with a genuinely non-overwriting operation:
+        # os.link() creates the final name as a hard link to the verified temp and fails atomically
+        # (FileExistsError) if the destination already exists. There is no check-then-replace window,
+        # so a racing process cannot be clobbered. tmp_path is a sibling of output_zip (same directory
+        # and therefore the same filesystem), which hard links require.
+        try:
+            os.link(tmp_path, output_zip)
+        except FileExistsError as exc:
+            raise PackagingError(
+                f"destination already exists; refusing to overwrite {output_zip}") from exc
+        except (OSError, NotImplementedError, AttributeError) as exc:
+            # Hard links unsupported here (e.g. some filesystems): fail safely rather than fall back
+            # to an overwriting rename. The temp is cleaned up by the handler below.
+            raise PackagingError(
+                f"cannot atomically create {output_zip} via hard link ({exc}); refusing to fall back "
+                f"to an overwriting operation. Use an --output path on a filesystem that supports hard "
+                f"links.") from exc
+        # Both names now point to the verified archive; drop the temp name, keeping only the final one.
+        os.unlink(tmp_path)
     except BaseException:
         if tmp_path.exists():
             try:
@@ -370,6 +383,26 @@ def _self_test() -> int:
         checks.append(("no completed archive after failed verification", not fresh.exists()))
         checks.append(("no partial file left after failed verification",
                        list(fresh.parent.glob("*.partial-*")) == []))
+
+        # 8. Collision at the PROMOTION step: the destination appears AFTER the early check, during
+        # packaging. The hard-link promotion must fail atomically and leave the racing file intact.
+        promo = tmp / "out3" / "archive3.zip"
+        sentinel = b"PRE-EXISTING-ARCHIVE-FROM-ANOTHER-PROCESS"
+
+        def _race_then_verify(zip_path, records):
+            promo.parent.mkdir(parents=True, exist_ok=True)
+            promo.write_bytes(sentinel)          # simulate another process creating the destination
+            verify_archive(zip_path, records)     # the temp itself still verifies cleanly
+
+        try:
+            run_packaging(man_path, ext, promo, _verify=_race_then_verify)
+            checks.append(("promotion-step collision refused", False))
+        except PackagingError:
+            checks.append(("promotion-step collision refused", True))
+        checks.append(("racing destination preserved byte-for-byte on promotion collision",
+                       promo.exists() and promo.read_bytes() == sentinel))
+        checks.append(("no partial file left after promotion collision",
+                       list(promo.parent.glob("*.partial-*")) == []))
 
         ok = all(p for _, p in checks)
         for name, passed in checks:
