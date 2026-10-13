@@ -2,14 +2,16 @@
 
 The chart figures (02–07) are **unaltered screenshots of the real build** (merged `main` =
 `aa2b494dcf07b2a6de840a8c7c7975e17b416dfd`), captured locally over HTTP with Chromium at a
-1440 px viewport and 2× device scale. No numerical labels, cartography, or values were added,
-removed, or edited. Every value shown is read from the committed analytical data in `site/data/`.
+1440 px viewport and 2× device scale. Figure 1 is the **project owner's authentic production
+screenshot** of the deployed MapLibre map (1920×1037), saved to PNG without recolouring, redrawing,
+stretching, or any change to map features or values. No numerical labels or cartography were added or
+edited. Every value shown is read from the committed analytical data in `site/data/`.
 
 ## Core visualizations
 
 | File | Visualization (idiom) | Research question | What it shows |
 |---|---|---|---|
-| `01-current-metro-access-map.png` *(PENDING — see below)* | Geographic **metro-access** map (MapLibre) | **Q1** | The modelled ten-minute metro service area, district outlines, 154 metro access points and the population-density grid — *where* the 13.6% lives. **This file is not yet present; it must be the project owner's production screenshot (see "Main map" below).** |
+| `01-current-metro-access-map.png` | Geographic **metro-access** map (MapLibre) | **Q1** | The modelled ten-minute metro-access areas (teal shading), metro lines, station and entrance markers, and the population-density grid over the city, with the glance panel (13.6% / 72.0% / 14.4% over 3,212,200 residents) and the per-district metro-access ranking. Authentic production screenshot supplied by the project owner from the deployed site (not captured in the build sandbox). |
 | `02-district-ranking.png` | Ranked district comparison | Q2 | Districts ranked by modelled metro-access share; Mirabad highest (24.89%), Uchtepa lowest (0.00%). |
 | `03-population-composition.png` | 100% metro / bus-only / underserved composition | Q3 | Per-district split across the three mutually exclusive transit classes, sorted by bus-only share (Uchtepa 95.2% highest). |
 | `04-density-vs-access.png` | Density-vs-access scatterplot | Q4 | Population density against metro access with median guides; no clean upward trend. |
@@ -21,19 +23,13 @@ removed, or edited. Every value shown is read from the committed analytical data
 
 | File | What it is | Honest scope |
 |---|---|---|
-| `01-geographic-routing-map.png` | **Destinations routing-source map** (D3), drawn from the same build. Shows the 12 district outlines and the mapped healthcare routing-source points. | **Supplementary only.** It illustrates the analysis district geography and that routing follows the pedestrian network (hollow points lie outside the analysis districts). **It depicts facility source locations — it does NOT depict metro-access coverage** and must not be presented as the Q1 metro-access map. |
+| `01-geographic-routing-map.png` | **Destination facilities routing-source map** (D3), drawn from the same build. Shows the 12 district outlines and the mapped healthcare routing-source points. | **Supplementary only.** It illustrates the analysis district geography and that routing follows the pedestrian network (hollow points lie outside the analysis districts). **It depicts facility source locations — it does NOT depict metro-access coverage** and is not the Q1 metro-access map. |
 
-## Main map (Q1) — status: PENDING owner-supplied production screenshot
+## Provenance of Figure 1
 
-The project's **primary geographic idiom for Q1 is the interactive MapLibre metro-access map** (teal
-service-area shading, station/entrance points, population-density grid). It renders correctly on the
-**production sites** (owner-confirmed).
-
-In this sandboxed build environment the MapLibre map **cannot be screenshotted**, because the remote
-basemap host (`tiles.openfreemap.org`) is blocked by the environment's egress proxy (HTTP 403) and the
-map's data overlays only draw after the basemap style loads. Therefore the authentic main-map screenshot
-must be the **project owner's production screenshot**, saved here as
-`01-current-metro-access-map.png`, captioned as *supplied by the project owner from the deployed site*
-(not captured in this sandbox). **That image was not available when this revision was prepared**, so the
-file is a placeholder entry; it must be added before the package is submission-ready. No synthetic or
-AI-generated map is used in its place.
+`01-current-metro-access-map.png` is the **project owner's production screenshot** of the deployed
+MapLibre metro-access map (OpenFreeMap basemap, OpenStreetMap data — attribution visible in the figure).
+It was supplied because the live map could not be screenshotted inside the build environment, where the
+remote basemap host (`tiles.openfreemap.org`) is blocked by the egress proxy. The image was saved to PNG
+as supplied (1920×1037), with no colour, geometry, marker, value, or feature alteration. No synthetic or
+AI-generated map is used anywhere in this package.

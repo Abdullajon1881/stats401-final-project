@@ -13,8 +13,8 @@ Status key: ✅ complete · 🟡 complete pending owner confirmation · ⛔ requ
 | 4 | Data cleaning & analysis code | ✅ | `scripts/analyze_accessibility.py`, `analyze_transit_bazaar_overlap.py`, `build_web_data.py`, validators/tests. |
 | 5 | Complete visualization source code | ✅ | `site/` (vanilla ES modules, D3 7.9.0, MapLibre 5.24.0). |
 | 6 | Published website / dashboard | ✅ | https://tashkent-transit-walkability.saidkamolbahodirov.workers.dev/ and https://stats401-final-project.saidkamolbahodirov.workers.dev/ (owner confirmed production render). |
-| 7 | Final report (~1,500 words) | 🟡 | `submission/final_report.md` (+ `final_report.pdf`, ≈ 1,678 words). Roles section needs owner confirmation; Figure 1 (metro-access map) pending owner screenshot. |
-| 8 | Final project poster | 🟡 | `submission/poster.html` (editable) + `submission/poster.pdf` (A1 landscape). Main metro-access map integration pending owner screenshot; current geographic figure is labelled supplementary. |
+| 7 | Final report (~1,500 words) | 🟡 | `submission/final_report.md` (+ `final_report.pdf`, ≈ 1,713 words). Figure 1 is the authentic owner metro-access screenshot. Roles section still needs owner confirmation. |
+| 8 | Final project poster | ✅ | `submission/poster.html` (editable) + `submission/poster.pdf` (A1 landscape). Geographic panel now shows the authentic metro-access map. |
 | 9 | Reproducibility documentation | ✅ | `README.md`, `docs/final_integration.md`, `docs/data_sources.md`, `submission/source_dataset_inventory.md`. |
 
 ## B. Required visualization features (rubric §"Required visualization features")
@@ -39,7 +39,7 @@ Status key: ✅ complete · 🟡 complete pending owner confirmation · ⛔ requ
 | Discussion (What–Why–How; strengths, limitations, improvements) | ✅ |
 | Conclusion | ✅ |
 | Roles & Responsibilities | 🟡 reproduced from proposal; **owner must confirm final contributions** |
-| Screenshots of finished visualizations | 🟡 charts 02–07 embedded (authentic); Figure 1 metro-access map pending owner screenshot; D3 geography kept as a labelled supplementary figure |
+| Screenshots of finished visualizations | ✅ Figure 1 authentic metro-access map (owner screenshot) + charts 02–07 embedded; D3 facilities map kept as a labelled supplementary figure |
 | Word count ~1,500 | ✅ body ≈ 1,678 words (tightened from 1,755; target ≈ 1,500–1,600; counts the per-visualization explanations as report content) |
 
 ## D. Poster (rubric §"Required final project poster")
@@ -51,8 +51,8 @@ Status key: ✅ complete · 🟡 complete pending owner confirmation · ⛔ requ
 | 10-minute model explained | ✅ |
 | Data-source/method summary | ✅ |
 | Main metro/bus-only/underserved findings | ✅ stat tiles 13.6 / 72.0 / 14.4 |
-| Selected original charts/screenshots | 🟡 composition, bazaar overlap, temporal embedded; metro-access map pending owner screenshot |
-| Geographic context | 🟡 supplementary routing-source geography (labelled); interactive metro-access map on live site via QR; production screenshot pending |
+| Selected original charts/screenshots | ✅ authentic metro-access map, composition, bazaar overlap, temporal |
+| Geographic context | ✅ authentic MapLibre metro-access map (access shading, stations, density grid) |
 | Bazaar–transit finding | ✅ |
 | Limitations | ✅ |
 | Takeaway for non-site viewers | ✅ |
@@ -93,6 +93,7 @@ Neither is required; both are deferred pending project-lead authorization becaus
 
 ## Outstanding items that block "submission-approved"
 
-1. ⛔ **Authentic metro-access map (Figure 1)** — owner must attach the production MapLibre screenshot; it will be saved as `figures/01-current-metro-access-map.png` and slotted into the report Figure 1 and the poster. The basemap is blocked in this build environment, so it cannot be captured here.
-2. ⛔ **Team contributions** — confirm each member's final role (report §6, presentation division). Do not infer from commit history.
-3. ⛔ **Source-dataset delivery** — supply the two original source binaries (WorldPop raster, OSM GraphML) as a separate archive, or confirm with evidence that provider links + provenance manifests are accepted (see inventory §6).
+1. ⛔ **Team contributions** — confirm each member's final role (report §6, presentation division). Do not infer from commit history.
+2. ⛔ **Source-dataset delivery** — supply the two original source binaries (WorldPop raster, OSM GraphML) as a separate archive, or confirm with evidence that provider links + provenance manifests are accepted (see inventory §6).
+
+*(The authentic metro-access map for Figure 1 and the poster has been integrated — `figures/01-current-metro-access-map.png`, the owner's production screenshot.)*
