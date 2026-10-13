@@ -58,24 +58,34 @@ copies live in `site/data/` (23 files), each recorded in `site/data/manifest.jso
 
 - **OSM-derived processed files** — committed and redistributable under ODbL (attribution retained on the site).
 - **SIAT-derived processed file** — committed and redistributable under CC BY 4.0 (attribution retained).
-- **WorldPop raster** — redistributable under CC BY 4.0 **but excluded from Git** for size; provide via the provider URL or the owner's archive. SHA256 committed for verification.
+- **WorldPop raster** — redistributable under CC BY 4.0 **but excluded from Git** for size; must be delivered via the provider URL or the owner's archive. SHA256 committed for verification.
 - **OSM walk-network GraphML** — ODbL, excluded for size; re-pullable via `acquire_data.py`.
 - **No secrets, credentials, or licence-restricted archives** are committed or required.
 
-## 6. What the project owner must supply for a "raw files" upload (if the course requires it)
+## 6. Source-dataset delivery — STATUS: PENDING (required deliverable, not yet delivered)
 
-GitHub carries all **cleaned/processed** datasets and all **provenance + hashes**. If STATS 401
-requires the raw/original binaries as a separate archive, the owner should provide **one archive**
-containing the two gitignored source caches:
+The STATS 401 rubric lists **source dataset(s)** as a **required** deliverable. There is **no evidence
+in this repository or the supplied material that the teaching team accepts provider links and provenance
+manifests in place of the original source files.** Until the owner confirms otherwise, source-dataset
+delivery is therefore classified **PENDING**, not optional.
 
-1. `data/external/uzb_pop_2026_CN_100m_R2025A_v1.tif` (WorldPop raster, SHA256 `bfc656b8…`)
-2. `data/external/tashkent_walk_network.graphml` (OSM walk network)
+**Committed now (in Git):** all **cleaned/processed** datasets (§2) and full **provenance + content hashes**
+for every source. These satisfy the "processed data" requirement.
 
-and, optionally, the derived `data/external/population_cells.parquet` (SHA256 `948871e5…`).
-Each can instead be regenerated from the committed scripts and provider URLs. **These files are
-not present in this build environment** (they are gitignored and the original caches are not here),
-so they cannot be attached from this session — they must come from the owner's original environment
-or a fresh `acquire_data.py` run with network access to the providers.
+**Not yet delivered — the two original source binaries the owner must supply** (they are gitignored and the
+original caches are **not present in this build environment**, so they cannot be attached from this session;
+they must come from the owner's original environment or a fresh `acquire_data.py` run with network access):
 
-> **USER INPUT REQUIRED:** Confirm whether STATS 401 wants raw binaries uploaded separately. If yes,
-> the owner supplies the archive above; nothing in the code or processed data needs to change.
+1. `data/external/uzb_pop_2026_CN_100m_R2025A_v1.tif` — WorldPop raster (SHA256 `bfc656b8…`).
+2. `data/external/tashkent_walk_network.graphml` — OSM walk network.
+   *(and, if the derived cache is also wanted, `data/external/population_cells.parquet`, SHA256 `948871e5…`.)*
+
+**Delivery mechanism:** because these are large binaries, they should be provided through a **separate
+archive or an instructor-approved delivery mechanism** (not committed to Git without explicit permission).
+Each file is verifiable against the committed SHA256.
+
+> **⛔ USER INPUT REQUIRED (blocks "submission-approved"):**
+> (a) Supply the two original source binaries above as a separate archive (or confirm, with evidence, that
+> the teaching team accepts provider links + provenance manifests instead); and
+> (b) confirm the course's required delivery channel for raw data.
+> Until then, the **source-dataset deliverable is PENDING.**
