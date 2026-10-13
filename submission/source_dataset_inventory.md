@@ -84,6 +84,22 @@ they must come from the owner's original environment or a fresh `acquire_data.py
 archive or an instructor-approved delivery mechanism** (not committed to Git without explicit permission).
 Each file is verifiable against the committed SHA256.
 
+**Packaging utility:** `submission/package_source_datasets.py` builds that archive, fail-closed, from the
+committed manifest. In a cache-equipped checkout (with `data/external/` present) the owner runs:
+
+```bash
+python3 -I submission/package_source_datasets.py
+# → writes stats401_source_datasets_<date>.zip OUTSIDE the repo, containing only the two originals
+#   plus inventory.json + README.txt, after validating sizes, verifying WorldPop's committed SHA-256,
+#   computing the GraphML SHA-256, and re-checking ZIP integrity. It never downloads or substitutes data.
+```
+
+The tool validates both file sizes, verifies WorldPop's committed SHA-256
+(`bfc656b8…`), and records a freshly computed SHA-256 for the OSM GraphML while stating that the historical
+manifest proves no cryptographic identity for it. Its logic is covered by a fixture-based self-test
+(`python3 -I submission/package_source_datasets.py --self-test`). **In this build environment the originals
+are absent, so the real archive has NOT been created** — only the utility and its self-test are delivered.
+
 > **⛔ USER INPUT REQUIRED (blocks "submission-approved"):**
 > (a) Supply the two original source binaries above as a separate archive (or confirm, with evidence, that
 > the teaching team accepts provider links + provenance manifests instead); and
