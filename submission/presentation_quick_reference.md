@@ -64,10 +64,16 @@ show the district selection clears).
 
 ---
 
-## Suggested speaking division — **requires owner confirmation**
+## Suggested speaking division (confirmed roles)
 
-The proposal lists Doniyor Erkinov (coordination, data acquisition, cleaning, presentation) and
-Saidkamolkhon Bakhodirov (geospatial analysis, visualization/D3, interactions, interface, testing).
-A natural split would have one present motivation/data/method and the other the visualization story and
-live demo — **but confirm the actual division with both members before presenting.** Do not assume it from
-commit history.
+Aligned with the confirmed contributions:
+
+- **Doniyor Erkinov** — open with **motivation, the research questions, the data sources** (OSM / SIAT /
+  WorldPop), the acquisition, preparation and validation of those datasets, and the methodological
+  framing; close by helping interpret the findings and limitations.
+- **Saidkamolkhon Bakhodirov** — lead the **live demo and visualization story**: the pedestrian-network
+  model, the five coordinated idioms, the interactions, the bazaar–transit overlap, and the separate
+  temporal frame.
+
+Both members take the Q&A together, since both contributed to interpretation, limitations and conclusions.
+Adjust to the time given.

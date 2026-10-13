@@ -13,8 +13,8 @@ Status key: ✅ complete · 🟡 complete pending owner confirmation · ⛔ requ
 | **Visualization design & effectiveness (25%)** | Five distinct idioms — MapLibre metro-access map, ranked dot/bar, 100% stacked composition, density scatter, parallel coordinates — aligned category colours, accessible, with MAPPED-coverage caveats. Screenshots in `submission/figures/`. | ✅ |
 | **Technical implementation & interaction (20%)** | Vanilla ES modules, D3 7.9.0 + MapLibre 5.24.0, static Cloudflare Workers deploy; one shared selection store; ≥5 interactions (coordinated district select, hover highlight, Escape/clear, ≤4-district comparison pinning, destination switch, temporal year slider, mutually-exclusive station select, layer toggles, search combobox). | ✅ |
 | **Storytelling & meaningfulness (15%)** | Single scrolling narrative question → findings → destinations → bazaar overlap → separate temporal history → District Explorer → limitations; report Results ties each idiom to a research question and insight. | ✅ |
-| **Final report (10%)** | `submission/final_report.md` + `.pdf`, six required sections, ≈1,713 words, figure appendix, What–Why–How discussion. | 🟡 (Roles pending) |
-| **Presentation & demo (10%)** | `docs/final_presentation_rehearsal.md` + `submission/presentation_quick_reference.md` (Motivation→Questions→Data→Story→Insights→Conclusion), interaction-led demo + Q&A. | 🟡 (speaking split pending) |
+| **Final report (10%)** | `submission/final_report.md` + `.pdf`, six required sections, ≈ 1,780 words, figure appendix, What–Why–How discussion; Roles confirmed by owners. | ✅ |
+| **Presentation & demo (10%)** | `docs/final_presentation_rehearsal.md` + `submission/presentation_quick_reference.md` (Motivation→Questions→Data→Story→Insights→Conclusion), interaction-led demo + Q&A; confirmed speaking division. | ✅ |
 | **Completeness & documentation (5%)** | README, methodology docs, `source_dataset_inventory.md`, `submission_checklist.md`, provenance manifests, licences/attribution. | ✅ |
 
 Feature presence: **5 distinct idioms ✅**, **≥5 meaningful interactions ✅**, **complex geographic + multidimensional viz ✅**, **coherent story ✅**, **all report sections ✅**, **authentic screenshots ✅**, **print-ready poster ✅**, **processed data + reproducibility docs ✅ / original binaries pending ⛔**, **working published website ✅**, **presentation + live-demo plan ✅**.
@@ -29,7 +29,7 @@ Feature presence: **5 distinct idioms ✅**, **≥5 meaningful interactions ✅*
 | 4 | Data cleaning & analysis code | ✅ | `scripts/analyze_accessibility.py`, `analyze_transit_bazaar_overlap.py`, `build_web_data.py`, validators/tests. |
 | 5 | Complete visualization source code | ✅ | `site/` (vanilla ES modules, D3 7.9.0, MapLibre 5.24.0). |
 | 6 | Published website / dashboard | ✅ | https://tashkent-transit-walkability.saidkamolbahodirov.workers.dev/ and https://stats401-final-project.saidkamolbahodirov.workers.dev/ (owner confirmed production render). |
-| 7 | Final report (~1,500 words) | 🟡 | `submission/final_report.md` (+ `final_report.pdf`, ≈ 1,713 words). Figure 1 is the authentic owner metro-access screenshot. Roles section still needs owner confirmation. |
+| 7 | Final report (~1,500 words) | ✅ | `submission/final_report.md` (+ `final_report.pdf`, ≈ 1,780 words). Figure 1 is the authentic owner metro-access screenshot. Roles & Responsibilities confirmed by the project owners. |
 | 8 | Final project poster | ✅ | `submission/poster.html` (editable) + `submission/poster.pdf` (A1 landscape). Geographic panel now shows the authentic metro-access map. |
 | 9 | Reproducibility documentation | ✅ | `README.md`, `docs/final_integration.md`, `docs/data_sources.md`, `submission/source_dataset_inventory.md`. |
 
@@ -54,9 +54,9 @@ Feature presence: **5 distinct idioms ✅**, **≥5 meaningful interactions ✅*
 | Results (each of 5 idioms: what / which RQ / what users do / insight; + destinations, overlap, temporal) | ✅ |
 | Discussion (What–Why–How; strengths, limitations, improvements) | ✅ |
 | Conclusion | ✅ |
-| Roles & Responsibilities | 🟡 reproduced from proposal; **owner must confirm final contributions** |
+| Roles & Responsibilities | ✅ confirmed by the project owners (report §6) |
 | Screenshots of finished visualizations | ✅ Figure 1 authentic metro-access map (owner screenshot) + charts 02–07 embedded; D3 facilities map kept as a labelled supplementary figure |
-| Word count ~1,500 | ✅ body ≈ 1,713 words (tightened from 1,755; counts the per-visualization explanations as report content; accepted by the project lead) |
+| Word count ~1,500 | ✅ body ≈ 1,780 words (counts the per-visualization explanations and the confirmed Roles section as report content; length accepted by the project lead) |
 
 ## D. Poster (rubric §"Required final project poster")
 
@@ -80,7 +80,7 @@ Feature presence: **5 distinct idioms ✅**, **≥5 meaningful interactions ✅*
 | Item | Status |
 |---|---|
 | Live-demo running order (Motivation→Questions→Data→Story→Insights→Conclusion) | ✅ `docs/final_presentation_rehearsal.md` (existing) + `submission/presentation_quick_reference.md` (new companion) |
-| Speaking division | 🟡 pending owner confirmation |
+| Speaking division | ✅ confirmed roles reflected in `presentation_quick_reference.md` |
 | Emphasis on interactions & findings | ✅ |
 
 ## F. Website quality review (rubric high-weight criteria) — recommendations only
@@ -109,7 +109,8 @@ Neither is required; both are deferred pending project-lead authorization becaus
 
 ## Outstanding items that block "submission-approved"
 
-1. ⛔ **Team contributions** — confirm each member's final role (report §6, presentation division). Do not infer from commit history.
-2. ⛔ **Source-dataset delivery** — supply the two original source binaries (WorldPop raster, OSM GraphML) as a separate archive, or confirm with evidence that provider links + provenance manifests are accepted (see inventory §6).
+1. ⛔ **Source-dataset delivery** — supply the two original source binaries (WorldPop raster, OSM GraphML) as a separate archive, or confirm with evidence that provider links + provenance manifests are accepted (see inventory §6).
+
+*(Team contributions are now confirmed by the project owners — report §6 and the presentation speaking division are final.)*
 
 *(The authentic metro-access map for Figure 1 and the poster has been integrated — `figures/01-current-metro-access-map.png`, the owner's production screenshot.)*

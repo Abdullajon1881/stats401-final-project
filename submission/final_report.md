@@ -65,12 +65,13 @@ On this model, metro walking access in Tashkent is narrow and uneven: about one 
 
 ## 6. Roles and Responsibilities
 
-The proposal assigns the division of work below, reproduced as the documented basis. **These precise final contributions require confirmation by the project owners before submission; they must not be inferred from commit authorship.**
+The division of work below is confirmed by the project owners.
 
-- **Doniyor Erkinov (Group Leader, per proposal):** project coordination, data acquisition and documentation, transport-data validation, data cleaning, and presentation organisation.
-- **Saidkamolkhon Bakhodirov (per proposal):** geospatial analysis, visualization design, D3.js implementation, linked interactions, interface development, and testing.
+**Doniyor Erkinov — Group Leader, Data Acquisition & Research Coordination.** Doniyor led project coordination and contributed to the data foundation of the research: acquiring and preparing the transportation, geographic and population datasets; supporting data cleaning and consistency checks; validating source information; and organising the research documentation. He also coordinated the presentation preparation and contributed to interpreting the findings and communicating the project's methodology and results.
 
-Both members contributed to the research questions, interpretation, debugging, and presentation. **[ACTION REQUIRED: confirm or revise each person's final contribution before this report is submitted. Until then this report is not submission-approved.]**
+**Saidkamolkhon Bakhodirov — Geospatial Analysis, Visualization & Technical Development.** Saidkamolkhon led the technical implementation: the pedestrian-network accessibility analysis, the district-level metrics, the visualization design and the interactive dashboard. His responsibilities included implementing the geographic and statistical visualizations with Python, D3.js and MapLibre, developing the coordinated interactions, integrating the analytical outputs into the website, and conducting testing and validation.
+
+**Shared contributions.** Both members defined the research questions, reviewed and interpreted the accessibility patterns, identified the methodological limitations, debugged, and prepared the final presentation — connecting the data analysis with the interactive visual story and the project's conclusions.
 
 ---
 
