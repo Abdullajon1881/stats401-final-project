@@ -6,6 +6,8 @@ An interactive, reproducible study of current walking access to Tashkent’s met
 
 The historical assignment proposal remains unchanged at [docs/proposal.md](docs/proposal.md).
 
+**Final submission:** the final report (PDF and Word), the A0 poster, report screenshots, the source-data guide and a deliverable-by-deliverable checklist with reproduction steps are collected in [submission/](submission/README.md).
+
 ## Research question
 
 > What share of the analysed Tashkent population is within a modelled ten-minute walk of metro access, and how do metro, bus-only and underserved access vary by district and everyday destination?
