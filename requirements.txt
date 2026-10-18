@@ -9,3 +9,8 @@ pandas==3.0.2
 numpy==2.4.3
 networkx==3.6.1
 requests==2.33.1
+# Imported by the Week 4+ routing (scipy.sparse) and the parquet cell caches,
+# but missing from the original pin list. Versions verified for the final
+# submission by running every committed-artifact validator and test suite.
+scipy==1.17.1
+pyarrow==26.0.0

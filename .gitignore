@@ -11,6 +11,9 @@ venv/
 env/
 .ipynb_checkpoints/
 
+# --- Submission tooling (puppeteer-core, installed by `npm install` in submission/tools) ---
+submission/tools/node_modules/
+
 # --- Caches / tooling ---
 .cache/
 .pytest_cache/

@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tashkent Transit Poster</title>
+<meta name="viewport" content="width=3179">
+<!--
+  A0 portrait research poster (841 x 1189 mm = 3179 x 4494 CSS px at 96 dpi).
+  Rendered to PDF by submission/tools/render_poster.js, which fails on overflow.
+  Layout follows the academic-poster templates supplied for the course: a split
+  title band, full-width tinted section bands with icon-circle headings,
+  lettered result figures, big-number infographic callouts and a references /
+  QR-code footer. Every number comes from the committed outputs in
+  data/processed/ (mapping in submission/README.md).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #13202b;
+    --ink-2: #3c4b59;
+    --muted: #64748a;
+    --line: #d3dbe2;
+    --page: #f2f5f7;
+    --surface: #ffffff;
+    --tint: #e4eff1;
+    --tint-warm: #f7efe4;
+    --dark: #0f1820;
+    --dark-2: #182531;
+    --accent: #0e6f7e;          /* heading accent, text-safe on white */
+    --accent-dark: #35c2d6;     /* site metro teal, used on dark bands */
+    /* categorical classes on the light surface (validated palette) */
+    --metro: #168fa3;
+    --bus: #c98428;
+    --under: #a2adba;
+    /* the same classes on dark surfaces (the website's own tokens) */
+    --metro-d: #35c2d6;
+    --bus-d: #dd9a41;
+    --under-d: #6f8098;
+    --sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  @page { size: 841mm 1189mm; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 3179px; height: 4494px; overflow: hidden;
+    background: var(--page); color: var(--ink);
+    font-family: var(--sans); font-size: 28px; line-height: 1.36;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    display: flex; flex-direction: column;
+  }
+  body > * { flex: none; }
+  h1, h2, h3, h4, p, figure { margin: 0; }
+  b, strong { font-weight: 700; }
+  .wrap { padding: 0 110px; }
+
+  /* ── title band: title | headline | introduction ── */
+  .masthead { display: grid; grid-template-columns: 1.38fr 0.96fr 0.96fr; }
+  .title-block { background: var(--dark); color: #fff; padding: 62px 60px 52px 110px; position: relative; overflow: hidden; }
+  .title-block .lines { position: absolute; right: -130px; bottom: 0; width: 420px; height: 420px; opacity: 0.32; }
+  .eyebrow { font-size: 26px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-dark); font-weight: 700; position: relative; }
+  .title-block h1 { font-size: 108px; line-height: 1.02; font-weight: 800; letter-spacing: -0.025em; margin-top: 26px; position: relative; }
+  .subtitle { font-size: 37px; color: #b9c8d6; margin-top: 24px; font-weight: 500; line-height: 1.22; position: relative; max-width: 900px; }
+  .authors { font-size: 31px; margin-top: 30px; font-weight: 600; line-height: 1.45; position: relative; }
+  .authors span { color: #8fa3b6; font-weight: 400; }
+
+  .headline { background: var(--dark-2); color: #fff; padding: 62px 56px 52px; }
+  .headline .lbl { font-size: 26px; letter-spacing: 0.16em; text-transform: uppercase; color: #8fa3b6; font-weight: 700; }
+  .hero-num { font-size: 184px; font-weight: 800; line-height: 0.9; letter-spacing: -0.045em; margin-top: 28px; }
+  .hero-text { font-size: 29px; color: #d5e0ea; margin-top: 18px; line-height: 1.32; }
+  .hero-text b { color: #fff; }
+  .hero-bar { display: block; margin-top: 30px; width: 100%; height: auto; }
+  .hero-meta { margin-top: 18px; font-size: 21px; color: #8fa3b6; line-height: 1.35; }
+
+  .intro-block { background: #0e5560; color: #fff; padding: 62px 110px 52px 56px; }
+  .intro-block h2 { font-size: 50px; font-weight: 800; }
+  .intro-block p { margin-top: 16px; font-size: 26px; color: #e4f1f3; line-height: 1.36; }
+  .intro-block h3 { font-size: 32px; margin-top: 26px; font-weight: 800; }
+  .rq { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 11px; }
+  .rq li { display: grid; grid-template-columns: 46px 1fr; gap: 16px; align-items: center; font-size: 26px; color: #eef7f8; line-height: 1.28; }
+  .rq li i { font-style: normal; width: 46px; height: 46px; border-radius: 50%; background: #fff; color: #0e5560; display: grid; place-items: center; font-weight: 800; font-size: 27px; }
+
+  /* ── section heading: icon circle + bar ── */
+  .sec-head { display: flex; align-items: center; margin-bottom: 26px; }
+  .sec-head .dot { width: 88px; height: 88px; border-radius: 50%; background: var(--accent); flex: none; display: grid; place-items: center; position: relative; z-index: 1; }
+  .sec-head .dot svg { width: 46px; height: 46px; }
+  .sec-head .bar { background: #cfe2e6; height: 64px; flex: 1; margin-left: -26px; padding: 0 32px 0 56px; display: flex; align-items: center; justify-content: space-between; }
+  .sec-head h2 { font-size: 40px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
+  .sec-head .aside { font-size: 25px; color: var(--ink-2); }
+
+  .band { padding: 36px 0; }
+  .band--tint { background: var(--tint); }
+  .band--white { background: var(--surface); }
+
+  /* ── method ── */
+  .steps { display: grid; grid-template-columns: 1fr 56px 1fr 56px 1.18fr 56px 1fr; align-items: stretch; }
+  .step { background: var(--surface); border-radius: 20px; padding: 24px 28px 22px; border: 2px solid #cfe0e4; }
+  .step-top { display: flex; align-items: center; gap: 22px; }
+  .step-icon { width: 84px; height: 84px; border-radius: 50%; background: var(--tint); flex: none; display: grid; place-items: center; }
+  .step-icon svg { width: 48px; height: 48px; }
+  .step .n { font-size: 23px; font-weight: 800; color: var(--accent); letter-spacing: 0.14em; text-transform: uppercase; }
+  .step h3 { font-size: 32px; font-weight: 800; line-height: 1.1; margin-top: 2px; }
+  .step ul { margin: 14px 0 0; padding-left: 26px; font-size: 24px; color: var(--ink-2); line-height: 1.32; }
+  .step li { margin-bottom: 5px; }
+  .step li b { color: var(--ink); }
+  .chev { display: grid; place-items: center; }
+  .chev svg { width: 40px; height: 96px; }
+  .netfig { display: grid; grid-template-columns: 180px 1fr; gap: 22px; align-items: center; margin-top: 16px; }
+  .netfig svg { width: 180px; height: 180px; }
+  .netfig p { font-size: 23px; color: var(--ink-2); line-height: 1.3; }
+
+  /* ── results ── */
+  .fig { background: var(--dark); border-radius: 16px; overflow: hidden; position: relative; }
+  .fig img { display: block; }
+  .cap .badge { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--ink); color: #fff; font-weight: 800; font-size: 24px; margin-right: 12px; vertical-align: 2px; }
+  .cap { margin-top: 14px; font-size: 23px; color: var(--ink-2); line-height: 1.32; }
+  .cap h3 { font-size: 29px; font-weight: 800; color: var(--ink); margin-bottom: 6px; line-height: 1.15; }
+  .cap h3 .q { font-size: 22px; font-weight: 800; color: var(--accent); letter-spacing: 0.1em; margin-left: 10px; text-transform: uppercase; }
+  .cap b { color: var(--ink); }
+  .row { display: flex; gap: 40px; align-items: flex-start; }
+  .row1 { justify-content: space-between; gap: 0; }
+  .row + .row { margin-top: 32px; }
+  .row1 img { height: 600px; width: auto; }
+  .row1 figure:nth-child(1) { width: 781px; }
+  .row1 figure:nth-child(2) { width: 431px; }
+  .row1 figure:nth-child(3) { width: 800px; }
+  .row1 figure:nth-child(4) { width: 600px; }
+  .row2 .e { width: 660px; flex: none; }
+  .row2 .e img { width: 660px; height: auto; }
+
+  .linked { background: var(--tint); border-radius: 16px; padding: 24px 28px 22px; width: 1210px; flex: none; }
+  .linked h3 { font-size: 29px; font-weight: 800; line-height: 1.15; }
+  .linked .sub { font-size: 22px; color: var(--ink-2); margin-top: 4px; }
+  .linked .fig { margin-top: 14px; border-radius: 10px; }
+  .linked .fig img { width: 100%; height: auto; }
+  .ix { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 20px; }
+  .ix li { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: start; font-size: 21px; color: var(--ink-2); line-height: 1.26; }
+  .ix li b { color: var(--ink); display: block; font-size: 24px; }
+  .ix .ic { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; }
+  .ix .ic svg { width: 26px; height: 26px; }
+
+  .card { background: var(--surface); border-radius: 20px; padding: 24px 30px 22px; border: 2px solid var(--line); flex: 1; min-width: 0; }
+  .card .kicker { font-size: 22px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+  .card h3 { font-size: 30px; font-weight: 800; line-height: 1.14; margin-top: 4px; }
+  .card .note { font-size: 22px; color: var(--muted); margin-top: 10px; line-height: 1.3; }
+  .card svg { display: block; width: 100%; height: auto; margin-top: 12px; }
+  .card svg text { font-family: var(--sans); }
+
+  /* ── discussion / conclusion ── */
+  .split { display: grid; grid-template-columns: 1.12fr 1fr; }
+  .split > section { padding: 36px 110px 30px; }
+  .split .disc { background: var(--tint); padding-right: 64px; }
+  .split .conc { background: var(--tint-warm); padding-left: 64px; }
+  .split h2 { font-size: 48px; font-weight: 800; }
+  .split h3 { font-size: 29px; font-weight: 800; margin-top: 20px; }
+  .wwh { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 22px; background: var(--surface); }
+  .wwh th { background: #0e3b45; color: #fff; text-align: left; padding: 9px 14px; font-weight: 700; }
+  .wwh td { padding: 7px 14px; border-bottom: 2px solid #e1e8ec; vertical-align: top; color: var(--ink-2); line-height: 1.24; }
+  .wwh td:first-child { font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+  .ticks { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; font-size: 23px; color: var(--ink-2); line-height: 1.28; }
+  .ticks li { display: grid; grid-template-columns: 30px 1fr; gap: 8px; }
+  .ticks li::before { content: ""; width: 16px; height: 16px; border-radius: 50%; margin-top: 8px; background: var(--accent); }
+  .ticks.warn li::before { background: var(--muted); border-radius: 3px; transform: rotate(45deg); width: 15px; height: 15px; }
+  .ticks b { color: var(--ink); }
+  .answers { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 12px; }
+  .answers li { display: grid; grid-template-columns: 50px 1fr; gap: 18px; font-size: 25px; line-height: 1.3; align-items: center; }
+  .answers li i { font-style: normal; width: 50px; height: 50px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 27px; }
+  .answers b { color: var(--ink); }
+  .takeaway { margin-top: 20px; font-size: 24px; color: var(--ink); background: #fff; border-left: 9px solid var(--accent); padding: 20px 26px; border-radius: 0 12px 12px 0; line-height: 1.34; }
+  .future { margin-top: 6px; font-size: 23px; color: var(--ink-2); line-height: 1.3; }
+  #sens { display: block; width: 100%; height: auto; margin-top: 6px; }
+
+  /* ── footer ── */
+  .footer { background: var(--dark); color: #c8d4df; display: grid; grid-template-columns: 1.6fr 1fr 0.95fr; gap: 64px; padding: 30px 110px 28px; margin-top: auto; }
+  .footer h4 { color: #fff; font-size: 30px; font-weight: 800; margin-bottom: 10px; }
+  .refs { font-size: 18px; line-height: 1.34; columns: 2; column-gap: 44px; }
+  .refs p { break-inside: avoid; margin-bottom: 6px; }
+  .refs i { color: #e5edf4; }
+  .data p { font-size: 21px; line-height: 1.36; margin-bottom: 6px; }
+  .data b { color: #fff; }
+  .qr { display: grid; grid-template-columns: 170px 1fr; gap: 30px; align-items: center; }
+  .qr .code { background: #fff; padding: 12px; border-radius: 12px; width: 170px; height: 170px; }
+  .qr .code img { width: 100%; height: 100%; display: block; }
+  .qr .lbl { font-size: 31px; font-weight: 800; color: #fff; line-height: 1.15; }
+  .qr .url { font-size: 21px; color: var(--accent-dark); margin-top: 12px; word-break: break-all; line-height: 1.3; }
+  .qr .repo { font-size: 21px; color: #8fa3b6; margin-top: 8px; word-break: break-all; line-height: 1.3; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ TITLE BAND ═══════════ -->
+<header class="masthead">
+  <div class="title-block">
+    <svg class="lines" viewBox="0 0 900 900" aria-hidden="true">
+      <g fill="none" stroke-linecap="round" stroke-width="12">
+        <path d="M120 40 C 300 220, 380 300, 470 470 S 560 760, 860 860" stroke="#e0564a"/>
+        <path d="M40 300 C 260 330, 420 380, 560 360 S 820 260, 900 140" stroke="#4d8fe0"/>
+        <path d="M640 0 C 600 180, 560 260, 520 420 S 470 640, 520 900" stroke="#3fbf7f"/>
+        <path d="M330 520 C 430 640, 640 700, 760 600 S 860 380, 740 300" stroke="#a46ce0"/>
+      </g>
+      <g fill="#0f1820" stroke="#ffffff" stroke-width="7">
+        <circle cx="470" cy="470" r="17"/><circle cx="560" cy="360" r="17"/><circle cx="520" cy="420" r="17"/>
+        <circle cx="300" cy="215" r="14"/><circle cx="760" cy="600" r="14"/><circle cx="820" cy="245" r="14"/>
+      </g>
+    </svg>
+    <p class="eyebrow">STATS 401 · Final project poster</p>
+    <h1>Who Can Reach the Metro in Ten&nbsp;Minutes?</h1>
+    <p class="subtitle">Visualizing pedestrian access to metro, buses and bazaars in Tashkent, Uzbekistan</p>
+    <p class="authors">Doniyor Erkinov <span>(de82)</span><br>Saidkamolkhon Bakhodirov <span>(sb932)</span></p>
+  </div>
+
+  <div class="headline">
+    <p class="lbl">The headline answer</p>
+    <div class="hero-num">13.6%</div>
+    <p class="hero-text">of the analysed population lives within a <b>modelled 10-minute walk of metro access</b>: about <b>435,690 of 3,212,200</b> residents.</p>
+    <svg class="hero-bar" viewBox="0 0 900 150" role="img" aria-label="Metro 13.6 percent, bus-only 72.0 percent, underserved 14.4 percent">
+      <!-- 100% bar with surface-colour gaps between segments -->
+      <rect x="0" y="0" width="120.4" height="40" rx="6" fill="#35c2d6"/>
+      <rect x="124.4" y="0" width="644.4" height="40" fill="#dd9a41"/>
+      <rect x="772.8" y="0" width="127.2" height="40" rx="6" fill="#6f8098"/>
+      <rect x="768.8" y="0" width="4" height="40" fill="#182531"/>
+      <rect x="120.4" y="0" width="4" height="40" fill="#182531"/>
+      <g font-family="Inter, Segoe UI, sans-serif" fill="#ffffff">
+        <rect x="0" y="72" width="20" height="20" rx="4" fill="#35c2d6"/>
+        <text x="30" y="90" font-size="27" font-weight="700">Metro 13.6%</text>
+        <text x="30" y="126" font-size="23" fill="#8fa3b6">435,690</text>
+        <rect x="300" y="72" width="20" height="20" rx="4" fill="#dd9a41"/>
+        <text x="330" y="90" font-size="27" font-weight="700">Bus-only 72.0%</text>
+        <text x="330" y="126" font-size="23" fill="#8fa3b6">2,314,113</text>
+        <rect x="620" y="72" width="20" height="20" rx="4" fill="#6f8098"/>
+        <text x="650" y="90" font-size="27" font-weight="700">Underserved</text>
+        <text x="650" y="126" font-size="23" fill="#8fa3b6">14.4% · 462,397</text>
+      </g>
+    </svg>
+    <p class="hero-meta">12 districts · official SIAT 2026-Q2 population · 800 m along the pedestrian network (10 min at 4.8 km/h). A model estimate, not observed travel.</p>
+  </div>
+
+  <div class="intro-block">
+    <h2>Introduction</h2>
+    <p>Tashkent's metro grew from 29 stations in 2015 to 50, but a line on a map is not access on foot. We built a reproducible walking-network model and a linked interactive website so <b>residents, commuters and planners</b> can see who can walk to the metro, and who relies on buses.</p>
+    <h3>Research questions</h3>
+    <ol class="rq">
+      <li><i>1</i>What share of residents live within a 10-minute walk of metro access?</li>
+      <li><i>2</i>Which districts have the highest and lowest coverage?</li>
+      <li><i>3</i>Which districts depend mostly on buses?</li>
+      <li><i>4</i>Are dense districts relatively underserved?</li>
+      <li><i>5</i>How does bazaar access overlap with metro and bus?</li>
+    </ol>
+  </div>
+</header>
+
+<!-- ═══════════ METHOD ═══════════ -->
+<section class="band band--tint">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/></svg></div>
+      <div class="bar"><h2>Method</h2><span class="aside">Python · pandas · GeoPandas · OSMnx · SciPy · D3.js v7 · MapLibre GL JS</span></div>
+    </div>
+    <div class="steps">
+      <article class="step">
+        <div class="step-top">
+          <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#0e6f7e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></div>
+          <div><p class="n">Step 1</p><h3>Acquire open data</h3></div>
+        </div>
+        <ul>
+          <li><b>OpenStreetMap</b> via OSMnx + Overpass: walk network (111,386 nodes), 50 stations, 144 entrances, 2,163 bus stops, 83 bazaars</li>
+          <li><b>SIAT</b> official 2026-Q2 district totals; <b>WorldPop</b> 100 m grid</li>
+          <li>Each run logs endpoint, time, counts, checksums</li>
+        </ul>
+      </article>
+      <div class="chev"><svg viewBox="0 0 40 96"><path d="M7 8 L33 48 L7 88" fill="none" stroke="#0e6f7e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <article class="step">
+        <div class="step-top">
+          <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#0e6f7e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></div>
+          <div><p class="n">Step 2</p><h3>Clean &amp; calibrate</h3></div>
+        </div>
+        <ul>
+          <li><b>13 → 12 districts</b>: no official population for Yangi Toshkent, so it is excluded rather than invented</li>
+          <li><b>56 → 50 stations</b>: Latin/Cyrillic duplicates merged</li>
+          <li>WorldPop only weights cells <b>within</b> districts, rescaled to official totals</li>
+        </ul>
+      </article>
+      <div class="chev"><svg viewBox="0 0 40 96"><path d="M7 8 L33 48 L7 88" fill="none" stroke="#0e6f7e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <article class="step">
+        <div class="step-top">
+          <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#0e6f7e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h4a3 3 0 0 0 3-3V8a3 3 0 0 1 3-3"/></svg></div>
+          <div><p class="n">Step 3</p><h3>Route on the walk network</h3></div>
+        </div>
+        <div class="netfig">
+          <svg id="netfig" viewBox="0 0 300 300" role="img" aria-label="Schematic: an 800 metre circle around a station compared with the street network reachable within 800 metres, cut by a barrier with one crossing"></svg>
+          <p><b style="color:var(--ink)">Network, not circles.</b> 800 m is walked along streets: a barrier with one crossing (blue) cuts the reachable network (teal) well inside the straight-line circle (dashed). Multi-source Dijkstra from <b style="color:var(--ink)">154 metro access points</b> and every bus stop.</p>
+        </div>
+      </article>
+      <div class="chev"><svg viewBox="0 0 40 96"><path d="M7 8 L33 48 L7 88" fill="none" stroke="#0e6f7e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <article class="step">
+        <div class="step-top">
+          <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#0e6f7e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
+          <div><p class="n">Step 4</p><h3>Classify &amp; visualize</h3></div>
+        </div>
+        <ul>
+          <li><b>65,169 cells</b> → metro · bus-only · underserved, summed by district</li>
+          <li>Sensitivity to walking speed and population surface</li>
+          <li>Static site: D3 charts + MapLibre map sharing <b>one selection store</b></li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ RESULTS ═══════════ -->
+<section class="band band--white">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
+      <div class="bar"><h2>Results · five linked views</h2><span class="aside">Screenshots of the live website; Chilanzar selected</span></div>
+    </div>
+
+    <div class="row row1">
+      <figure>
+        <div class="fig"><img src="../screenshots/02b_access_map_only.png" alt="Access map"></div>
+        <div class="cap">
+          <h3><span class="badge">A</span>Interactive access map <span class="q">Q1</span></h3>
+          Teal 10-minute metro catchment over population density, with bus-stop and bazaar layers, search and district selection. <b>Access is a narrow ribbon along the lines</b>; counting bus stops, 85.6% reach some transit.
+        </div>
+      </figure>
+      <figure>
+        <div class="fig"><img src="../screenshots/05_ranked_dot_plot.png" alt="Ranked dot plot"></div>
+        <div class="cap">
+          <h3><span class="badge">B</span>Ranked dot plot <span class="q">Q2</span></h3>
+          <b>Mirabad 24.9% → Uchtepa 0.0%.</b> The top four hold 62% of all metro-accessible residents.
+        </div>
+      </figure>
+      <figure>
+        <div class="fig"><img src="../screenshots/06_composition_stacked_bars.png" alt="100 percent stacked composition"></div>
+        <div class="cap">
+          <h3><span class="badge">C</span>100% stacked composition <span class="q">Q3</span></h3>
+          Two different gaps. <b>Mostly bus-only:</b> Uchtepa 95.2%, Yakkasaray 88.8%, Almazar 84.5% bus-only. <b>Beyond both modes:</b> Bektemir 50.7%, Sergeli 42.6% underserved.
+        </div>
+      </figure>
+      <figure>
+        <div class="fig"><img src="../screenshots/07_density_access_scatter.png" alt="Density versus access scatterplot"></div>
+        <div class="cap">
+          <h3><span class="badge">D</span>Density vs access <span class="q">Q4</span></h3>
+          No relationship (Spearman ρ ≈ 0.01, n = 12). <b>Almazar, Uchtepa, Yakkasaray</b> are dense, below-median for metro, and mostly bus-only.
+        </div>
+      </figure>
+    </div>
+
+    <div class="row row2">
+      <figure class="e">
+        <div class="fig"><img src="../screenshots/08_parallel_coordinates_compare.png" alt="Parallel coordinates"></div>
+        <div class="cap">
+          <h3><span class="badge">E</span>Parallel coordinates <span class="q">Compare</span></h3>
+          Six attributes, up to four pinned districts. Profiles cross: Uchtepa is 0% metro but tops bus-only; Sergeli has the lowest bus-only share. <b>No district is uniformly strong or weak.</b>
+        </div>
+      </figure>
+      <div class="linked">
+        <h3>Major interactions: one store links all five views</h3>
+        <p class="sub">Hovering over Uchtepa in C highlights it in D and E and opens a tooltip.</p>
+        <div class="fig"><img src="../screenshots/09_linked_hover_district_deck.png" alt="Linked hover across views"></div>
+        <ul class="ix">
+          <li><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 8-6 2-2 6z"/></svg></span><span><b>Hover</b>highlights a district in every view</span></li>
+          <li><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></span><span><b>Click</b>selects it globally; the map zooms and the profile opens</span></li>
+          <li><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h6"/></svg></span><span><b>Compare</b>pins up to four districts in colour</span></li>
+          <li><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg></span><span><b>Search &amp; layers</b>find a district or station; toggle buses and bazaars</span></li>
+        </ul>
+      </div>
+      <article class="card">
+        <p class="kicker">Q5 · Bazaar × transit overlap</p>
+        <h3>Four in five residents near a bazaar are bus-only</h3>
+        <svg id="donut" viewBox="0 0 860 420" role="img" aria-label="Of 463,682 residents within ten minutes of a mapped bazaar: 79.9 percent bus-only, 19.7 percent metro, 0.4 percent underserved"></svg>
+        <p class="note">Residents within a modelled 10-minute walk of a mapped OSM marketplace, by transit class. Measures walking proximity, not shopping trips or transfers.</p>
+      </article>
+    </div>
+
+    <div class="row row3">
+      <article class="card">
+        <p class="kicker">Everyday destinations · same current model</p>
+        <h3>Schools are near most residents; bazaars are not</h3>
+        <svg id="dest" viewBox="0 0 1400 214" role="img" aria-label="Share of residents within a ten-minute walk: education 72.5 percent, healthcare 46.9 percent, both healthcare and education 43.7 percent, bazaar 14.4 percent"></svg>
+        <p class="note">"Healthcare + education" is the true intersection of the two, not the sum of two shares.</p>
+      </article>
+      <article class="card">
+        <p class="kicker">Standardized 2015–2026 series · separate method</p>
+        <h3>The 2020 station openings moved access the most</h3>
+        <svg id="temporal" viewBox="0 0 1400 214" role="img" aria-label="Standardized metro access from 6.9 percent in 2015 to 10.0 percent in 2026, with the largest step in 2020 when 14 stations opened"></svg>
+        <p class="note">Station-centre proxies, fixed network, annual WorldPop weights: <b>not</b> comparable with the 13.6% headline.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ DISCUSSION / CONCLUSION ═══════════ -->
+<div class="split">
+  <section class="disc">
+    <h2>Discussion</h2>
+    <table class="wwh">
+      <thead><tr><th>View</th><th>What (data)</th><th>Why (task)</th><th>How (marks · channels)</th></tr></thead>
+      <tbody>
+        <tr><td>A Map</td><td>Catchment, density grid, stations, stops</td><td>Locate, explore</td><td>Areas, points, lines · luminance, teal hue</td></tr>
+        <tr><td>B Dot plot</td><td>12 districts × metro %</td><td>Rank, find extremes</td><td>Points · aligned position, sorted</td></tr>
+        <tr><td>C 100% bars</td><td>12 × three-class split</td><td>Part-to-whole</td><td>Segments · length, categorical hue</td></tr>
+        <tr><td>D Scatter</td><td>Density × metro %</td><td>Correlate, outliers</td><td>Points · x/y position, median guides</td></tr>
+        <tr><td>E Parallel</td><td>6 attributes per district</td><td>Compare profiles</td><td>Lines · position per axis, ≤ 4 highlights</td></tr>
+      </tbody>
+    </table>
+    <div class="twocol">
+      <div>
+        <h3>Strengths</h3>
+        <ul class="ticks">
+          <li><span>Quantities use <b>position on common scales</b></span></li>
+          <li><span><b>One colour code</b> across all views</span></li>
+          <li><span>Linked <b>overview → details on demand</b></span></li>
+          <li><span>Uncertainty shown; keyboard and screen-reader access</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Limitations</h3>
+        <ul class="ticks warn">
+          <li><span><b>Modelled proximity</b>, not travel, frequency or fares</span></li>
+          <li><span>District averages hide local variation (n = 12)</span></li>
+          <li><span>OSM gaps; straight-line connectors; 10 stations lack entrances</span></li>
+          <li><span>Parallel coordinates are unfamiliar to lay readers</span></li>
+        </ul>
+      </div>
+    </div>
+    <h3>How sensitive is 13.6% to walking speed?</h3>
+    <svg id="sens" viewBox="0 0 1500 150" role="img" aria-label="Modelled metro access: 10.0 percent at 4.0 kilometres per hour, 13.6 percent at 4.8, 17.3 percent at 5.6"></svg>
+  </section>
+
+  <section class="conc">
+    <h2>Conclusion</h2>
+    <ol class="answers">
+      <li><i>1</i><span><b>About one in seven</b> residents (13.6%) can reach metro access in a modelled 10-minute walk.</span></li>
+      <li><i>2</i><span>Access concentrates in <b>four central districts</b> (20–25%); Uchtepa sits at 0.0%, only 19.7 m outside the threshold.</span></li>
+      <li><i>3</i><span>For <b>72%</b> of residents the walkable transit is a bus stop, most of all in Uchtepa, Yakkasaray and Almazar.</span></li>
+      <li><i>4</i><span><b>Density does not predict access:</b> dense Uchtepa, Almazar and Yakkasaray rely mostly on buses; the low-density periphery lacks both.</span></li>
+      <li><i>5</i><span>Among residents who can walk to a bazaar, <b>79.9% are bus-only</b>.</span></li>
+    </ol>
+    <p class="takeaway"><b>What readers can take away:</b> residents can check whether the metro is realistically walkable from their district. Planners can tell apart two kinds of gap, dense districts that rely on buses and a periphery beyond both modes, as places to examine rather than verdicts on service quality.</p>
+    <h3>Future work</h3>
+    <p class="future">Address search · walking-speed slider · mahalla-level aggregation · official bus-frequency data · lines under construction · testing with residents.</p>
+  </section>
+</div>
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer class="footer">
+  <div>
+    <h4>References</h4>
+    <div class="refs">
+      <p>Boeing, G. (2017). OSMnx: New methods for acquiring, constructing, analyzing, and visualizing complex street networks. <i>CEUS</i>, 65, 126–139.</p>
+      <p>Bostock, M., Ogievetsky, V., &amp; Heer, J. (2011). D3: Data-Driven Documents. <i>IEEE TVCG</i>, 17(12), 2301–2309.</p>
+      <p>Munzner, T. (2014). <i>Visualization Analysis and Design</i>. CRC Press.</p>
+      <p>Shneiderman, B. (1996). The eyes have it: A task by data type taxonomy for information visualizations. <i>IEEE VL</i>, 336–343.</p>
+      <p>WorldPop (2025). Global 2015–2030 constrained population, R2025A. doi:10.5258/SOTON/WP00839</p>
+      <p>MapLibre GL JS v5.24 · OpenFreeMap / OpenMapTiles basemap.</p>
+    </div>
+  </div>
+  <div class="data">
+    <h4>Data &amp; licences</h4>
+    <p><b>OpenStreetMap</b> contributors, ODbL: network, stations, entrances, stops, bazaars, facilities, boundaries.</p>
+    <p><b>SIAT</b>, Statistics Agency of Uzbekistan, dataset 3890 (2026-Q2), CC BY 4.0, www.stat.uz</p>
+    <p><b>WorldPop</b> R2025A 100 m, CC BY 4.0: within-district weights only.</p>
+  </div>
+  <div class="qr">
+    <div class="code"><img src="qr_site.svg" alt="QR code linking to the live website"></div>
+    <div>
+      <p class="lbl">Scan to explore the live website</p>
+      <p class="url">tashkent-transit-walkability.saidkamolbahodirov.workers.dev</p>
+      <p class="repo">Code &amp; data: github.com/Abdullajon1881/stats401-final-project</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* Native poster charts. Values copied from the committed analysis outputs:
+   transit_bazaar_overlap_city.csv, urban_dimensions_city.csv,
+   metro_access_temporal_city.csv and the Week 4 sensitivity table
+   (site/data/sensitivity.json). */
+const NS = 'http://www.w3.org/2000/svg';
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const C = { metro: css('--metro'), bus: css('--bus'), under: css('--under'), ink: css('--ink'),
+            ink2: css('--ink-2'), muted: css('--muted'), line: css('--line') };
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, v);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function text(parent, x, y, str, attrs) {
+  const t = el('text', { x, y, 'font-size': 26, fill: C.ink2, ...(attrs || {}) }, parent);
+  t.textContent = str;
+  return t;
+}
+
+/* Step 3 schematic: reachable street network vs the straight-line circle. */
+(function netfig() {
+  const svg = document.getElementById('netfig');
+  const N = 9, S = 30, O = 30, budget = 4.2;     // grid units; station at (4,4)
+  const barrierX = 6.5, bridgeY = 2;              // barrier between x = 6 and 7, crossing at y = 2
+  const id = (x, y) => y * N + x;
+  const edges = [];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    if (x + 1 < N && !(x === 6 && y !== bridgeY)) edges.push([x, y, x + 1, y]);
+    if (y + 1 < N) edges.push([x, y, x, y + 1]);
+  }
+  const dist = new Array(N * N).fill(Infinity);
+  dist[id(4, 4)] = 0;
+  const queue = [[4, 4]];
+  while (queue.length) {                           // unit-weight BFS: exact on this grid
+    const [x, y] = queue.shift();
+    for (const [a, b, c, d] of edges) {
+      let nx, ny;
+      if (a === x && b === y) { nx = c; ny = d; } else if (c === x && d === y) { nx = a; ny = b; } else continue;
+      if (dist[id(nx, ny)] > dist[id(x, y)] + 1) { dist[id(nx, ny)] = dist[id(x, y)] + 1; queue.push([nx, ny]); }
+    }
+  }
+  const P = (v) => O + v * S;
+  el('rect', { x: 0, y: 0, width: 300, height: 300, rx: 18, fill: '#f4f8f9' }, svg);
+  for (const [a, b, c, d] of edges) el('line', { x1: P(a), y1: P(b), x2: P(c), y2: P(d), stroke: '#c9d3db', 'stroke-width': 2 }, svg);
+  for (const [a, b, c, d] of edges) {
+    const reach = (sx, sy, ex, ey, ds) => {
+      const left = budget - ds;
+      if (left <= 0) return;
+      const f = Math.min(1, left);
+      el('line', { x1: P(sx), y1: P(sy), x2: P(sx + (ex - sx) * f), y2: P(sy + (ey - sy) * f), stroke: C.metro, 'stroke-width': 6, 'stroke-linecap': 'round' }, svg);
+    };
+    reach(a, b, c, d, dist[id(a, b)]);
+    reach(c, d, a, b, dist[id(c, d)]);
+  }
+  el('rect', { x: P(barrierX) - 6, y: 6, width: 12, height: 288, fill: '#7fa7d8' }, svg);
+  el('rect', { x: P(barrierX) - 10, y: P(bridgeY) - 5, width: 20, height: 10, fill: '#455a6e' }, svg);
+  el('circle', { cx: P(4), cy: P(4), r: P(budget) - O, fill: 'none', stroke: C.ink2, 'stroke-width': 2.5, 'stroke-dasharray': '8 7' }, svg);
+  el('circle', { cx: P(4), cy: P(4), r: 11, fill: C.ink, stroke: '#ffffff', 'stroke-width': 4 }, svg);
+})();
+
+/* Q5 donut: bazaar-accessible residents by mutually exclusive transit class. */
+(function donut() {
+  const svg = document.getElementById('donut');
+  const data = [
+    { v: 370579.615668, c: C.bus,   pct: '79.9%', name: 'Bus-only', n: '370,580' },
+    { v: 91271.537286,  c: C.metro, pct: '19.7%', name: 'Metro',    n: '91,272' },
+    { v: 1830.726976,   c: C.under, pct: '0.4%',  name: 'Underserved', n: '1,831' },
+  ];
+  const total = data.reduce((s, d) => s + d.v, 0);  // 463,681.879929
+  const cx = 205, cy = 210, R = 195, r = 122, gap = 0.014;
+  const p = (ang, rad) => [cx + rad * Math.cos(ang), cy + rad * Math.sin(ang)];
+  const arc = (s, e) => {
+    const large = e - s > Math.PI ? 1 : 0;
+    const [x0, y0] = p(s, R), [x1, y1] = p(e, R), [x2, y2] = p(e, r), [x3, y3] = p(s, r);
+    return `M${x0} ${y0} A${R} ${R} 0 ${large} 1 ${x1} ${y1} L${x2} ${y2} A${r} ${r} 0 ${large} 0 ${x3} ${y3}Z`;
+  };
+  let a0 = -Math.PI / 2;
+  for (const d of data) {
+    const sweep = (d.v / total) * Math.PI * 2;
+    const s = a0 + gap / 2;
+    const e = Math.max(s + 0.014, a0 + sweep - gap / 2);   // keep the 0.4% sliver visible
+    el('path', { d: arc(s, e), fill: d.c }, svg);
+    a0 += sweep;
+  }
+  text(svg, cx, cy - 4, '463,682', { 'text-anchor': 'middle', 'font-size': 42, 'font-weight': 800, fill: C.ink });
+  text(svg, cx, cy + 34, 'bazaar-accessible', { 'text-anchor': 'middle', 'font-size': 23, fill: C.muted });
+  text(svg, cx, cy + 62, 'residents', { 'text-anchor': 'middle', 'font-size': 23, fill: C.muted });
+  // A direct label for every segment: the neutral class depends on it.
+  data.forEach((d, i) => {
+    const y = 100 + i * 120;
+    el('rect', { x: 470, y: y - 34, width: 22, height: 22, rx: 4, fill: d.c }, svg);
+    text(svg, 506, y - 13, d.pct, { 'font-size': 46, 'font-weight': 800, fill: C.ink });
+    text(svg, 506, y + 24, `${d.name} · ${d.n}`, { 'font-size': 25, fill: C.ink2 });
+  });
+})();
+
+/* Destinations: one series, so one colour; value at each bar tip. */
+(function dest() {
+  const svg = document.getElementById('dest');
+  const rows = [
+    ['Education', 72.482732459],
+    ['Healthcare', 46.891988202],
+    ['Healthcare + education', 43.653596349],
+    ['Bazaar', 14.435025214],
+  ];
+  const L = 330, W = 960, top = 10, step = 44, bh = 20;
+  for (const g of [0, 25, 50, 75, 100]) {
+    const x = L + (g / 100) * W;
+    el('line', { x1: x, y1: top - 6, x2: x, y2: top + step * rows.length - 20, stroke: C.line, 'stroke-width': 1.5 }, svg);
+    text(svg, x, top + step * rows.length + 12, `${g}%`, { 'font-size': 22, fill: C.muted, 'text-anchor': 'middle' });
+  }
+  rows.forEach(([label, v], i) => {
+    const y = top + i * step;
+    text(svg, L - 20, y + 20, label, { 'font-size': 26, 'font-weight': 600, fill: C.ink, 'text-anchor': 'end' });
+    const bw = (v / 100) * W;
+    el('path', { d: `M${L} ${y} h${bw - 5} a5 5 0 0 1 5 5 v${bh - 10} a5 5 0 0 1 -5 5 h${-(bw - 5)}z`, fill: C.metro }, svg);
+    text(svg, L + bw + 14, y + 21, `${v.toFixed(1)}%`, { 'font-size': 27, 'font-weight': 800, fill: C.ink });
+  });
+})();
+
+/* Standardized series: one line, endpoints and station-set changes labelled. */
+(function temporal() {
+  const svg = document.getElementById('temporal');
+  const pts = [[2015, 6.867180574], [2016, 6.862243381], [2017, 6.858536251], [2018, 6.855662081], [2019, 6.850650207],
+               [2020, 9.199727142], [2021, 9.19690422], [2022, 9.193179782], [2023, 9.730442334], [2024, 10.03613144],
+               [2025, 10.031486101], [2026, 10.028085007]];
+  const L = 80, R = 1370, T = 30, B = 176;
+  const X = (yr) => L + ((yr - 2015) / 11) * (R - L);
+  const Y = (v) => B - (v / 12) * (B - T);
+  for (const g of [0, 4, 8, 12]) {
+    el('line', { x1: L, y1: Y(g), x2: R, y2: Y(g), stroke: C.line, 'stroke-width': 1.5 }, svg);
+    text(svg, L - 14, Y(g) + 8, `${g}%`, { 'font-size': 22, fill: C.muted, 'text-anchor': 'end' });
+  }
+  for (let yr = 2015; yr <= 2026; yr++) text(svg, X(yr), B + 36, String(yr), { 'font-size': 21, fill: C.muted, 'text-anchor': 'middle' });
+  for (const [yr, lbl] of [[2020, '+14 stations'], [2023, '+5'], [2024, '+2']]) {
+    el('line', { x1: X(yr), y1: T - 14, x2: X(yr), y2: B, stroke: '#b9c4ce', 'stroke-width': 1.5 }, svg);
+    text(svg, X(yr) + 8, T - 2, lbl, { 'font-size': 22, fill: C.ink2, 'font-weight': 700 });
+  }
+  el('polyline', { points: pts.map(([x, v]) => `${X(x)},${Y(v)}`).join(' '), fill: 'none', stroke: C.metro, 'stroke-width': 4, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+  for (const [x, v] of pts) el('circle', { cx: X(x), cy: Y(v), r: 7, fill: C.metro, stroke: '#fff', 'stroke-width': 3 }, svg);
+  text(svg, X(2015) + 4, Y(6.87) + 42, '6.9% · 29 stations', { 'font-size': 25, 'font-weight': 800, fill: C.ink });
+  text(svg, X(2026), Y(10.03) + 42, '10.0% · 50 stations', { 'font-size': 25, 'font-weight': 800, fill: C.ink, 'text-anchor': 'end' });
+})();
+
+/* Sensitivity: the three tested walking speeds on one scale. */
+(function sens() {
+  const svg = document.getElementById('sens');
+  const L = 380, R = 1470, Y0 = 72;
+  const X = (v) => L + ((v - 8) / (20 - 8)) * (R - L);
+  el('line', { x1: X(8), y1: Y0, x2: X(20), y2: Y0, stroke: C.line, 'stroke-width': 3 }, svg);
+  el('line', { x1: X(10.0), y1: Y0, x2: X(17.3), y2: Y0, stroke: C.metro, 'stroke-width': 8, opacity: 0.3 }, svg);
+  for (const g of [8, 12, 16, 20]) text(svg, X(g), Y0 + 74, `${g}%`, { 'font-size': 21, fill: C.muted, 'text-anchor': 'middle' });
+  text(svg, 0, Y0 - 4, 'Modelled metro share', { 'font-size': 26, 'font-weight': 700, fill: C.ink });
+  text(svg, 0, Y0 + 30, 'at each tested walking speed', { 'font-size': 23, fill: C.muted });
+  for (const [v, lbl, pct, head] of [[10.0, '4.0 km/h', '10.0%', false], [13.6, '4.8 km/h · headline', '13.6%', true], [17.3, '5.6 km/h', '17.3%', false]]) {
+    el('circle', { cx: X(v), cy: Y0, r: head ? 15 : 11, fill: head ? C.metro : '#ffffff', stroke: head ? '#ffffff' : C.metro, 'stroke-width': head ? 4 : 5 }, svg);
+    text(svg, X(v), Y0 - 30, pct, { 'font-size': 30, 'font-weight': 800, fill: C.ink, 'text-anchor': 'middle' });
+    text(svg, X(v), Y0 + 48, lbl, { 'font-size': 22, fill: C.ink2, 'text-anchor': 'middle', 'font-weight': head ? 700 : 400 });
+  }
+})();
+document.body.dataset.ready = '1';
+</script>
+</body>
+</html>

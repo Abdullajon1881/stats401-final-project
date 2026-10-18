@@ -1,0 +1,12 @@
+{
+  "name": "stats401-submission-tools",
+  "private": true,
+  "description": "Screenshot capture and poster rendering for the STATS 401 final submission",
+  "scripts": {
+    "screenshots": "node capture_screenshots.js",
+    "poster": "node render_poster.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "23.11.1"
+  }
+}
