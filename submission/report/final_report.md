@@ -146,6 +146,10 @@ Our answers to the five questions are:
 
 Together, the views turn one percentage into knowledge readers can act on. Residents can find their district and see whether the metro is realistically walkable. Planners and students can separate two kinds of gap: dense districts that rely mostly on buses, and a periphery beyond both modes. These are places where metro extensions, feeder buses or pedestrian links may be worth examining, not verdicts on service quality. Because every figure carries its assumptions and sensitivity, the project also shows how to communicate a modelled estimate transparently: what the evidence supports, and where it stops.
 
+## Contributions
+
+Both members contributed equally (50/50). **Doniyor Erkinov** led data acquisition and cleaning (OpenStreetMap, SIAT and WorldPop), population calibration, validation and documentation, and wrote the final report and poster. **Saidkamolkhon Bakhodirov** led the network-routing analysis, visualization design, the D3 and MapLibre implementation, linked interactions and deployment. Both defined the research questions, interpreted the results and prepared the presentation.
+
 ## References
 
 - Boeing, G. (2017). OSMnx: New methods for acquiring, constructing, analyzing, and visualizing complex street networks. *Computers, Environment and Urban Systems*, 65, 126–139.
