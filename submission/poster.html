@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tashkent Transit & Walkability — Poster</title>
+<!--
+  Editable A1-landscape (841mm x 594mm) academic poster source.
+  Category colours are aligned with the website: metro #35c2d6, bus #dd9a41, underserved #6f8098.
+  Figures are unaltered screenshots of the real build (submission/figures/).
+  Export: rendered to submission/poster.pdf with Chromium page.pdf() at 841x594 mm.
+  All numbers are from committed data at main = aa2b494.
+-->
+<style>
+  :root{
+    --metro:#1796a8; --metro-strong:#0f7686; --bus:#d98a2b; --under:#6f8098;
+    --navy:#0b3b5c; --navy-2:#11506f; --ink:#1a2630; --muted:#5a6b7a;
+    --bg:#f6f9fb; --panel:#ffffff; --line:#d7e0e8; --band:#eaf1f5;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  @page{ size:841mm 594mm; margin:0; }
+  html,body{ background:var(--bg); }
+  body{
+    width:841mm; height:594mm; font-family:'Helvetica Neue',Arial,sans-serif;
+    color:var(--ink); padding:20mm 22mm; position:relative;
+  }
+  .masthead{ display:flex; justify-content:space-between; align-items:flex-start; gap:14mm;
+    border-bottom:3px solid var(--navy); padding-bottom:7mm; }
+  .masthead h1{ font-size:40pt; line-height:1.03; color:var(--navy); letter-spacing:-0.4pt; max-width:560mm; }
+  .masthead .sub{ font-size:16.5pt; color:var(--metro-strong); margin-top:3mm; font-weight:600; }
+  .meta{ text-align:right; min-width:150mm; }
+  .meta .authors{ font-size:15pt; font-weight:700; color:var(--ink); }
+  .meta .course{ font-size:12.5pt; color:var(--muted); margin-top:1.5mm; }
+  .meta .qr{ margin-top:5mm; display:flex; align-items:center; gap:4mm; justify-content:flex-end; }
+  .meta .qr img{ width:34mm; height:34mm; border:1px solid var(--line); background:#fff; }
+  .meta .qr .qrcap{ font-size:9.5pt; color:var(--muted); text-align:right; max-width:72mm; }
+  .meta .qr .qrcap b{ color:var(--navy); }
+
+  .cols{ display:grid; grid-template-columns:1fr 1.15fr 1fr; gap:11mm; margin-top:8mm; height:468mm; }
+  .col{ display:flex; flex-direction:column; gap:6mm; justify-content:space-between; }
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:3mm; padding:7mm 7.5mm; }
+  .card h2{ font-size:16pt; color:var(--navy); margin-bottom:3mm; border-bottom:1.5px solid var(--band); padding-bottom:2mm; }
+  .card p{ font-size:12pt; line-height:1.42; color:var(--ink); margin-bottom:2.5mm; }
+  .card p:last-child{ margin-bottom:0; }
+  .card ul{ margin:0 0 0 5mm; }
+  .card li{ font-size:11.3pt; line-height:1.38; margin-bottom:1.6mm; }
+  strong{ color:var(--navy); }
+  .small{ font-size:10.5pt; color:var(--muted); }
+
+  /* headline stat tiles */
+  .tiles{ display:grid; grid-template-columns:repeat(3,1fr); gap:5mm; }
+  .tile{ border-radius:3mm; padding:5.5mm 4mm; color:#fff; }
+  .tile .pct{ font-size:30pt; font-weight:800; line-height:1; letter-spacing:-0.5pt; }
+  .tile .lab{ font-size:11pt; font-weight:700; margin-top:2mm; }
+  .tile .pop{ font-size:9.8pt; opacity:.9; margin-top:1mm; }
+  .t-metro{ background:var(--metro); } .t-bus{ background:var(--bus); } .t-under{ background:var(--under); }
+
+  figure{ background:var(--panel); border:1px solid var(--line); border-radius:3mm; padding:4mm; text-align:center; }
+  figure img{ max-width:100%; width:auto; display:block; margin:0 auto; border-radius:1.5mm; }
+  .fig-geo img{ max-height:150mm; } .fig-comp img{ max-height:120mm; }
+  .fig-over img{ max-height:150mm; } .fig-temp img{ max-height:112mm; }
+  figcaption{ font-size:10pt; color:var(--muted); margin-top:2.5mm; line-height:1.3; }
+  figcaption b{ color:var(--navy); }
+
+  .takeaway{ background:var(--navy); color:#eaf3f8; }
+  .takeaway h2{ color:#fff; border-color:rgba(255,255,255,.2); }
+  .takeaway p{ color:#eaf3f8; font-size:12.5pt; }
+  .footer-note{ position:absolute; left:22mm; right:22mm; bottom:7mm; font-size:9pt; color:var(--muted);
+    border-top:1px solid var(--line); padding-top:2.5mm; display:flex; justify-content:space-between; }
+</style>
+</head>
+<body>
+
+  <header class="masthead">
+    <div>
+      <h1>Tashkent Transit &amp; Walkability:<br>Who Can Reach the Metro in Ten Minutes?</h1>
+      <div class="sub">A pedestrian-network model of walking access to metro, buses and everyday destinations across 12 districts</div>
+    </div>
+    <div class="meta">
+      <div class="authors">Doniyor Erkinov &middot; Saidkamolkhon Bakhodirov</div>
+      <div class="course">STATS 401 — Data Visualization &middot; Final Project</div>
+      <div class="qr">
+        <div class="qrcap">Explore the live interactive site:<br><b>tashkent-transit-walkability.<br>saidkamolbahodirov.workers.dev</b></div>
+        <img src="figures/qr-primary-site.png" alt="QR code to the live project website">
+      </div>
+    </div>
+  </header>
+
+  <div class="cols">
+
+    <!-- Column 1 -->
+    <div class="col">
+      <div class="card">
+        <h2>Motivation &amp; question</h2>
+        <p>A metro line on a map does not mean residents can <em>reach</em> it on foot. Rail corridors, canals and walled blocks make two points the same crow-flies distance a very different walk apart.</p>
+        <p><strong>How much of Tashkent's analysed population is within a modelled ten-minute walk of metro access, and where does the bus network fill the gap?</strong></p>
+        <p class="small">Five questions: (1) citywide metro share; (2) district variation; (3) bus-only dependence; (4) density vs access; (5) bazaar–transit overlap.</p>
+      </div>
+      <div class="card">
+        <h2>The ten-minute model</h2>
+        <ul>
+          <li><strong>10 minutes at 4.8 km/h = 800 m</strong> of distance along the OpenStreetMap pedestrian network — not a straight-line circle.</li>
+          <li>Each population cell is routed to the nearest metro access point and bus stop; metro routing is <strong>entrance-aware</strong> (154 access points: 144 entrances, 10 station-point fallbacks).</li>
+          <li>Three <strong>mutually exclusive</strong> classes that sum to 100%: metro / bus-only / underserved.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>Data &amp; method</h2>
+        <ul>
+          <li><strong>OpenStreetMap</strong> (ODbL): pedestrian network, stations, entrances, bus stops, bazaars, boundaries.</li>
+          <li><strong>SIAT 2026-Q2</strong>: official district population totals.</li>
+          <li><strong>WorldPop R2025A</strong>: distributes each district's official total within its boundary only.</li>
+          <li><strong>12 matched districts; 3,212,200 residents.</strong> Yangi Toshkent is excluded — no official total to calibrate against.</li>
+          <li>Python geospatial analysis; static D3 + MapLibre dashboard.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>What the model does <em>not</em> claim</h2>
+        <ul>
+          <li>Physical walking proximity, <strong>not</strong> observed trips, frequency, fares, transfers or service quality.</li>
+          <li>Cell-to-network connectors are straight lines that may cross unmapped barriers.</li>
+          <li>Headline moves with walking speed: <strong>10.0% at 4.0 km/h → 17.3% at 5.6 km/h</strong>.</li>
+          <li>Mapped bazaars/facilities are an OSM lower bound, not a census of capacity or quality.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Column 2 -->
+    <div class="col">
+      <div class="tiles">
+        <div class="tile t-metro"><div class="pct">13.6%</div><div class="lab">Metro access</div><div class="pop">435,690 residents</div></div>
+        <div class="tile t-bus"><div class="pct">72.0%</div><div class="lab">Bus-only</div><div class="pop">2,314,113 residents</div></div>
+        <div class="tile t-under"><div class="pct">14.4%</div><div class="lab">Underserved</div><div class="pop">462,397 residents</div></div>
+      </div>
+      <figure class="fig-geo">
+        <img src="figures/01-current-metro-access-map.png" alt="MapLibre metro-access map of Tashkent">
+        <figcaption><b>Metro-access map (Q1).</b> Teal shading is the modelled ten-minute metro-access area; white/cyan dots are stations and entrances, over the population-density grid. Access is a ribbon along the lines, and every reported share comes from per-cell pedestrian-network distance, not the drawn shading. Explore it live — scan the QR.</figcaption>
+      </figure>
+      <figure class="fig-comp">
+        <img src="figures/03-population-composition.png" alt="Metro / bus-only / underserved composition by district">
+        <figcaption><b>Dependence is uneven.</b> Districts sorted by bus-only share — <b>Uchtepa 95.2%</b> bus-only; metro access ranges from <b>Mirabad 24.9%</b> to <b>Uchtepa 0.0%</b> (its nearest cell is only ~19.7 m beyond the 800 m budget).</figcaption>
+      </figure>
+    </div>
+
+    <!-- Column 3 -->
+    <div class="col">
+      <figure class="fig-over">
+        <img src="figures/06-bazaar-transit-overlap.png" alt="Bazaar-transit overlap composition">
+        <figcaption><b>Bazaar–transit overlap (Q5).</b> Of 463,682 residents near a mapped bazaar: <b>19.7% metro+bazaar</b>, <b>79.9% bus-only+bazaar</b>, <b>0.4% underserved+bazaar</b> — conditional shares of bazaar-accessible residents, kept separate from city-population shares.</figcaption>
+      </figure>
+      <figure class="fig-temp">
+        <img src="figures/07-temporal-access.png" alt="Standardized temporal access 2015-2026">
+        <figcaption><b>Standardized history (separate method).</b> Modelled access rises 6.9% (2015) → 10.0% (2026) using station-centre proxies and annual weights — <b>not comparable</b> to the entrance-aware 13.6% headline.</figcaption>
+      </figure>
+      <div class="card">
+        <h2>Everyday destinations</h2>
+        <p class="small">Same 800 m model: <strong>46.9%</strong> reach mapped healthcare, <strong>72.5%</strong> education, <strong>14.4%</strong> a bazaar. The committed healthcare-and-education intersection is <strong>43.7%</strong> (residents reaching both, not a sum).</p>
+      </div>
+      <div class="card takeaway">
+        <h2>Takeaway</h2>
+        <p>On this model, metro walking access in Tashkent is <strong style="color:#fff">narrow and concentrated along the lines</strong> — about one analysed resident in seven. The large majority can walk to a bus stop but not the metro, and that dependence is very unevenly spread across districts. Everything is reproducible from audited outputs, with the uncertainty on the page rather than buried.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-note">
+    <span>Five coordinated idioms: geographic map · ranked comparison · stacked composition · density scatter · parallel coordinates. Built with D3 7.9.0 &amp; MapLibre GL JS 5.24.0.</span>
+    <span>All values from committed audited data (release aa2b494). Figures are unaltered screenshots of the real build.</span>
+  </div>
+
+</body>
+</html>
